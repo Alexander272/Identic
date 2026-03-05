@@ -1,0 +1,259 @@
+package services
+
+import (
+	"context"
+	"fmt"
+	"regexp"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/Alexander272/Identic/backend/internal/constants"
+	"github.com/Alexander272/Identic/backend/internal/models"
+	"github.com/Alexander272/Identic/backend/internal/repository/postgres"
+	"github.com/Alexander272/Identic/backend/pkg/logger"
+	"github.com/xuri/excelize/v2"
+)
+
+type ImportService struct {
+	txManager TransactionManager
+	orders    Orders
+	positions Positions
+}
+
+func NewImportService(txManager TransactionManager, orders Orders, positions Positions) *ImportService {
+	return &ImportService{
+		txManager: txManager,
+		orders:    orders,
+		positions: positions,
+	}
+}
+
+type Import interface {
+	Load(ctx context.Context, dto *models.ImportDTO) error
+}
+
+func (s *ImportService) Load(ctx context.Context, dto *models.ImportDTO) error {
+	return s.txManager.WithinTransaction(ctx, func(tx postgres.Tx) error {
+		file, err := dto.File.Open()
+		if err != nil {
+			return fmt.Errorf("failed to open file. error: %w", err)
+		}
+		defer file.Close()
+
+		excel, err := excelize.OpenReader(file)
+		if err != nil {
+			return fmt.Errorf("failed to open excel file. error: %w", err)
+		}
+		defer excel.Close()
+
+		sheet := excel.GetSheetName(excel.GetActiveSheetIndex())
+		rows, err := excel.Rows(sheet)
+		if err != nil {
+			return fmt.Errorf("failed to get rows. error: %w", err)
+		}
+		defer rows.Close()
+
+		template := constants.ImportTemplate
+		ordersBuffer := make([]*models.OrderDTO, 0, constants.MaxOrdersInBatch)
+		var currentOrder *models.OrderDTO
+		rowNum := 0
+		row := make([]string, template.Count)
+		totalPositionsInBuffer := 0 // Количество позиций в буфере
+
+		for rows.Next() {
+			if err := ctx.Err(); err != nil {
+				return err
+			}
+			rowNum++
+
+			origRow, err := rows.Columns(excelize.Options{RawCellValue: true})
+			if err != nil {
+				return fmt.Errorf("failed to get columns. error: %w", err)
+			}
+			for i := range row {
+				row[i] = ""
+			}
+			copy(row, origRow)
+
+			if len(row) == 0 || row[template.NameColumn] == "" || row[template.NameColumn] == "Наименование продукции" {
+				continue
+			}
+
+			// dateStr := strings.TrimSpace(row[template.DateColumn])
+			// date, err := time.Parse("02/01/2006", dateStr)
+			// if err != nil {
+			// 	logger.Debug("import", logger.StringAttr("date", dateStr))
+			// 	return fmt.Errorf("row %d: invalid date format: %w", rowNum, err)
+			// }
+			// qtyStr := strings.TrimSpace(row[template.QuantityColumn])
+			// quantityFloat, err := strconv.ParseFloat(qtyStr, 64)
+			// if err != nil {
+			// 	return fmt.Errorf("row %d: invalid quantity: %w", rowNum, err)
+			// }
+			// quantity := int(quantityFloat)
+
+			// customer := strings.TrimSpace(row[template.CustomerColumn])
+			// consumer := strings.TrimSpace(row[template.ConsumerColumn])
+			// bill := strings.TrimSpace(row[template.BillColumn])
+
+			// position := &models.PositionDTO{
+			// 	Name:     strings.TrimSpace(row[template.NameColumn]),
+			// 	Quantity: quantity,
+			// 	Notes:    strings.TrimSpace(row[template.NotesColumn]),
+			// }
+
+			tmp, err := s.parseRow(row, template, rowNum)
+			if err != nil {
+				return err
+			}
+
+			isNewOrder := false
+			if currentOrder == nil {
+				isNewOrder = true
+			} else if tmp.order.Bill != "" && tmp.order.Bill != currentOrder.Bill {
+				isNewOrder = true
+			} else if tmp.order.Bill == "" && (tmp.order.Customer != currentOrder.Customer || tmp.order.Consumer != currentOrder.Consumer) {
+				isNewOrder = true
+			}
+
+			if isNewOrder {
+				if currentOrder != nil {
+					totalPositionsInBuffer += len(currentOrder.Positions)
+					ordersBuffer = append(ordersBuffer, currentOrder)
+				}
+				currentOrder = &models.OrderDTO{
+					Customer:  tmp.order.Customer,
+					Consumer:  tmp.order.Consumer,
+					Manager:   strings.TrimSpace(row[template.ManagerColumn]),
+					Bill:      tmp.order.Bill,
+					Date:      tmp.order.Date,
+					Positions: []*models.PositionDTO{tmp.position},
+				}
+			} else {
+				currentOrder.Positions = append(currentOrder.Positions, tmp.position)
+			}
+
+			if len(ordersBuffer) >= constants.MaxOrdersInBatch || totalPositionsInBuffer >= constants.MaxPositionsInBatch {
+				if err := s.orders.CreateSeveral(ctx, tx, ordersBuffer); err != nil {
+					return fmt.Errorf("create batch: %w", err)
+				}
+				for i := range ordersBuffer {
+					ordersBuffer[i] = nil
+				}
+
+				ordersBuffer = ordersBuffer[:0] // Очистка без аллокации
+				currentOrder = nil              // Сброс текущего заказа, так как буфер очищен
+			}
+		}
+
+		if currentOrder != nil {
+			ordersBuffer = append(ordersBuffer, currentOrder)
+		}
+		if len(ordersBuffer) > 0 {
+			if err := s.orders.CreateSeveral(ctx, tx, ordersBuffer); err != nil {
+				return fmt.Errorf("create final batch: %w", err)
+			}
+		}
+		return nil
+	})
+}
+
+type rowData struct {
+	order    *models.OrderDTO
+	position *models.PositionDTO
+}
+
+var reNumbers = regexp.MustCompile(`[0-9,.]+`)
+var reNum = regexp.MustCompile(`\d+(?:[.,]\d+)?`)
+
+func (s *ImportService) parseRow(row []string, t *models.ImportTemplate, rowNum int) (*rowData, error) {
+	date := time.Time{}
+	dateStr := strings.TrimSpace(row[t.DateColumn])
+	if dateStr != "" {
+		// var err error
+		// dateRe := regexp.MustCompile(`\d{2}\/\d{2}\/\d{4}`)
+		// dateTemplate := "02/01/2006"
+
+		// if !dateRe.MatchString(dateStr) {
+		// 	dateTemplate = "02/01/06"
+		// }
+
+		// date, err = time.Parse(dateTemplate, dateStr)
+		dateNum, err := strconv.ParseFloat(dateStr, 64)
+		if err != nil {
+			logger.Debug("import", logger.StringAttr("date", dateStr))
+			return nil, fmt.Errorf("row %d: invalid date: %w", rowNum, err)
+		}
+
+		date, err = excelize.ExcelDateToTime(dateNum, false)
+		if err != nil {
+			logger.Debug("import", logger.StringAttr("date", dateStr))
+			return nil, fmt.Errorf("row %d: invalid date: %w", rowNum, err)
+		}
+	}
+	name := strings.TrimSpace(row[t.NameColumn])
+	var quantity float64 = 0
+
+	match := reNumbers.FindString(row[t.QuantityColumn])
+	match = strings.ReplaceAll(match, ",", ".")
+
+	if match == "" {
+		name, quantity = s.parseLine(row[t.NameColumn])
+	} else {
+		var err error
+		quantity, err = strconv.ParseFloat(match, 64)
+		if err != nil {
+			logger.Debug("import", logger.StringAttr("quantity", match))
+			return nil, fmt.Errorf("row %d: invalid quantity: %w", rowNum, err)
+		}
+	}
+	name = NormalizeString(name)
+
+	return &rowData{
+		order: &models.OrderDTO{
+			Customer: strings.TrimSpace(row[t.CustomerColumn]),
+			Consumer: strings.TrimSpace(row[t.ConsumerColumn]),
+			Manager:  strings.TrimSpace(row[t.ManagerColumn]),
+			Bill:     strings.TrimSpace(row[t.BillColumn]),
+			Date:     date,
+		},
+		position: &models.PositionDTO{
+			Name:     name,
+			Quantity: quantity,
+			Notes:    strings.TrimSpace(row[t.NotesColumn]),
+		},
+	}, nil
+}
+
+func (s *ImportService) parseLine(line string) (name string, quantity float64) {
+	line = strings.TrimSpace(line)
+
+	// 1. Находим все вхождения чисел в строке
+	matches := reNum.FindAllString(line, -1)
+	indices := reNum.FindAllStringIndex(line, -1)
+
+	if len(matches) > 0 {
+		// Берем ПОСЛЕДНЕЕ число из найденных
+		lastIdx := len(matches) - 1
+		rawVal := matches[lastIdx]
+		pos := indices[lastIdx]
+
+		// Конвертируем в число
+		cleanVal := strings.ReplaceAll(rawVal, ",", ".")
+		quantity, _ = strconv.ParseFloat(cleanVal, 64)
+
+		// Название — это всё, что ДО начала последнего числа
+		name = line[:pos[0]]
+
+		// Чистим хвост названия от мусора: "шт", "ШТ", "шт.", "-", пробелы
+		name = strings.TrimRight(name, " -–штШТ. ")
+
+		// (Опционально) Убираем порядковый номер в начале: "2. "
+		name = regexp.MustCompile(`^\d+[.)]\s*`).ReplaceAllString(name, "")
+	} else {
+		name = line
+	}
+
+	return name, quantity
+}
