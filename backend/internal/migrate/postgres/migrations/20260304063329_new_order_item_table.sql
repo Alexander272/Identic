@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS public.positions (
     id uuid NOT NULL,
     order_id uuid NOT NULL,
     name text COLLATE pg_catalog."default" NOT NULL,
+    search text COLLATE pg_catalog."default" NOT NULL,
     quantity real NOT NULL,
     notes text COLLATE pg_catalog."default" DEFAULT ''::text,
     created_at timestamp with time zone DEFAULT now(),

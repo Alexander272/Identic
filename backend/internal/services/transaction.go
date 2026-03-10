@@ -20,7 +20,7 @@ type TransactionManager interface {
 	WithinTransaction(ctx context.Context, fn func(tx postgres.Tx) error) error
 }
 
-func (tm *TransactionManagerService) WithinTransaction(ctx context.Context, fn func(tx postgres.Tx) error) (err error) {
+func (tm *TransactionManagerService) WithinTransaction(ctx context.Context, fn func(tx postgres.Tx) error) error {
 	tx, err := tm.repo.BeginTx(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)

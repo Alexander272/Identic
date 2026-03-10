@@ -3,10 +3,10 @@ package postgres
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/Alexander272/Identic/backend/internal/models"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -52,31 +52,57 @@ func (r *OrderRepo) CreateSeveral(ctx context.Context, tx Tx, dto []*models.Orde
 		return nil
 	}
 
-	ids := make([]string, len(dto))
-	customers := make([]string, len(dto))
-	consumers := make([]string, len(dto))
-	managers := make([]string, len(dto))
-	bills := make([]string, len(dto))
-	dates := make([]time.Time, len(dto))
-	notes := make([]string, len(dto))
+	// ids := make([]string, len(dto))
+	// customers := make([]string, len(dto))
+	// consumers := make([]string, len(dto))
+	// managers := make([]string, len(dto))
+	// bills := make([]string, len(dto))
+	// dates := make([]time.Time, len(dto))
+	// notes := make([]string, len(dto))
 
+	// for i, v := range dto {
+	// 	ids[i] = v.Id
+	// 	customers[i] = v.Customer
+	// 	consumers[i] = v.Consumer
+	// 	managers[i] = v.Manager
+	// 	bills[i] = v.Bill
+	// 	dates[i] = v.Date
+	// 	notes[i] = v.Notes
+	// }
+
+	// query := fmt.Sprintf(`INSERT INTO %s (id, customer, consumer, manager, bill, date, notes)
+	// 	SELECT unnest($1::uuid[]), unnest($2::text[]), unnest($3::text[]), unnest($4::text[]),
+	// 		unnest($5::text[]), unnest($6::timestamp with time zone[]), unnest($7::text[])`,
+	// 	OrdersTable,
+	// )
+
+	// if _, err := r.getExec(tx).Exec(ctx, query, ids, customers, consumers, managers, bills, dates, notes); err != nil {
+	// 	return fmt.Errorf("failed to execute query. error: %w", err)
+	// }
+	// return nil
+
+	rows := make([][]interface{}, len(dto))
 	for i, v := range dto {
-		ids[i] = v.Id
-		customers[i] = v.Customer
-		consumers[i] = v.Consumer
-		managers[i] = v.Manager
-		bills[i] = v.Bill
-		dates[i] = v.Date
-		notes[i] = v.Notes
+		rows[i] = []interface{}{
+			v.Id,
+			v.Customer,
+			v.Consumer,
+			v.Manager,
+			v.Bill,
+			v.Date,
+			v.Notes,
+		}
 	}
 
-	query := fmt.Sprintf(`INSERT INTO %s (id, customer, consumer, manager, bill, date, notes)
-		SELECT unnest($1::uuid[]), unnest($2::text[]), unnest($3::text[]), unnest($4::text[]), 
-			unnest($5::text[]), unnest($6::timestamp with time zone[]), unnest($7::text[])`,
-		OrdersTable,
+	columns := []string{"id", "customer", "consumer", "manager", "bill", "date", "notes"}
+	_, err := r.getExec(tx).CopyFrom(
+		ctx,
+		pgx.Identifier{OrdersTable},
+		columns,
+		pgx.CopyFromRows(rows),
 	)
 
-	if _, err := r.getExec(tx).Exec(ctx, query, ids, customers, consumers, managers, bills, dates, notes); err != nil {
+	if err != nil {
 		return fmt.Errorf("failed to execute query. error: %w", err)
 	}
 	return nil
