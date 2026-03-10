@@ -23,15 +23,34 @@ func NewOrderRepo(db *pgxpool.Pool, tr Transaction) *OrderRepo {
 }
 
 type Orders interface {
+	GetById(ctx context.Context, req *models.GetOrderByIdDTO) (*models.Order, error)
 	Create(ctx context.Context, tx Tx, dto *models.OrderDTO) error
 	CreateSeveral(ctx context.Context, tx Tx, dto []*models.OrderDTO) error
 	Update(ctx context.Context, tx Tx, dto *models.OrderDTO) error
 	Delete(ctx context.Context, tx Tx, dto *models.DeleteOrderDTO) error
 }
 
+func (r *OrderRepo) GetById(ctx context.Context, req *models.GetOrderByIdDTO) (*models.Order, error) {
+	query := fmt.Sprintf(`SELECT id, customer, consumer, manager, bill, date, notes FROM %s WHERE id = $1`,
+		OrdersTable,
+	)
+	var order *models.Order
+	err := r.db.QueryRow(ctx, query, req.Id).Scan(
+		&order.Id, &order.Customer, &order.Consumer, &order.Manager, &order.Bill, &order.Date, &order.Notes,
+	)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return nil, models.ErrNoRows
+		}
+		return nil, fmt.Errorf("failed to get order. error: %w", err)
+	}
+	return order, nil
+
+}
+
 func (r *OrderRepo) Create(ctx context.Context, tx Tx, dto *models.OrderDTO) error {
-	query := fmt.Sprintf(`INSERT INTO %s (id, customer, consumer, manager, bill, date, notes)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+	query := fmt.Sprintf(`INSERT INTO %s (id, customer, consumer, manager, bill, date, year, notes)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
 		OrdersTable,
 	)
 	if dto.Id == "" {
@@ -39,7 +58,7 @@ func (r *OrderRepo) Create(ctx context.Context, tx Tx, dto *models.OrderDTO) err
 	}
 
 	_, err := r.getExec(tx).Exec(ctx, query,
-		dto.Id, dto.Customer, dto.Consumer, dto.Manager, dto.Bill, dto.Date, dto.Notes,
+		dto.Id, dto.Customer, dto.Consumer, dto.Manager, dto.Bill, dto.Date, dto.Date.Year(), dto.Notes,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create order. error: %w", err)
@@ -90,11 +109,12 @@ func (r *OrderRepo) CreateSeveral(ctx context.Context, tx Tx, dto []*models.Orde
 			v.Manager,
 			v.Bill,
 			v.Date,
+			v.Date.Year(),
 			v.Notes,
 		}
 	}
 
-	columns := []string{"id", "customer", "consumer", "manager", "bill", "date", "notes"}
+	columns := []string{"id", "customer", "consumer", "manager", "bill", "date", "year", "notes"}
 	_, err := r.getExec(tx).CopyFrom(
 		ctx,
 		pgx.Identifier{OrdersTable},
@@ -109,13 +129,13 @@ func (r *OrderRepo) CreateSeveral(ctx context.Context, tx Tx, dto []*models.Orde
 }
 
 func (r *OrderRepo) Update(ctx context.Context, tx Tx, dto *models.OrderDTO) error {
-	query := fmt.Sprintf(`UPDATE %s SET customer = $2, consumer = $3, manager = $4, bill = $5, date = $6, notes = $7 
+	query := fmt.Sprintf(`UPDATE %s SET customer = $2, consumer = $3, manager = $4, bill = $5, date = $6, year = $7, notes = $8 
 		WHERE id = $1`,
 		OrdersTable,
 	)
 
 	_, err := r.getExec(tx).Exec(ctx, query,
-		dto.Id, dto.Customer, dto.Consumer, dto.Manager, dto.Bill, dto.Date, dto.Notes,
+		dto.Id, dto.Customer, dto.Consumer, dto.Manager, dto.Bill, dto.Date, dto.Date.Year(), dto.Notes,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to update order. error: %w", err)

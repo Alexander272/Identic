@@ -8,8 +8,10 @@ import (
 
 var (
 	// Оставляем только буквы, цифры и базовые разделители
-	reCleanSymbols = regexp.MustCompile(`[^a-zA-Zа-яА-Я0-9\s\.,/№]`)
+	// reCleanSymbols = regexp.MustCompile(`[^a-zA-Zа-яА-Я0-9\s\.,/№]`)
+	reCleanSymbols = regexp.MustCompile(`[^a-zа-я0-9]+`)
 	reMultiSpace   = regexp.MustCompile(`\s+`)
+	reStd          = regexp.MustCompile(`(?:гост|ост|ту)[\s\-]*[\d\.\-]+`)
 )
 
 func NormalizeString(name string) string {
@@ -29,19 +31,23 @@ func NormalizeString(name string) string {
 	// 2. Нижний регистр и базовая очистка
 	name = strings.ToLower(name)
 
-	// 3. Удаляем запрещенные спецсимволы (оставляем только разрешенные: №, /, -, ., ,)
-	name = reCleanSymbols.ReplaceAllString(name, " ")
+	// Удаляем стандарты (гост, ост, ту)
+	// name = reStd.ReplaceAllString(name, "")
 
-	// 4. Замена латиницы на кириллицу (самые коварные символы)
-	replacer := strings.NewReplacer(
-		"a", "а", "e", "е", "o", "о", "p", "р",
-		"c", "с", "x", "х", "y", "у", "h", "н", "k", "к",
-	)
-	name = replacer.Replace(name)
+	//// 3. Удаляем запрещенные спецсимволы (оставляем только разрешенные: №, /, -, ., ,)
+	//3. Удаляем все символы кроме букв, цифр
+	name = reCleanSymbols.ReplaceAllString(name, "")
 
-	// 5. Схлопываем лишние пробелы внутри и по краям
-	name = reMultiSpace.ReplaceAllString(name, " ")
-	name = strings.TrimSpace(name)
+	// // 4. Замена латиницы на кириллицу (самые коварные символы)
+	// replacer := strings.NewReplacer(
+	// 	"a", "а", "e", "е", "o", "о", "p", "р",
+	// 	"c", "с", "x", "х", "y", "у", "h", "н", "k", "к",
+	// )
+	// name = replacer.Replace(name)
+
+	// // 5. Схлопываем лишние пробелы внутри и по краям
+	// name = reMultiSpace.ReplaceAllString(name, " ")
+	// name = strings.TrimSpace(name)
 
 	return name
 }

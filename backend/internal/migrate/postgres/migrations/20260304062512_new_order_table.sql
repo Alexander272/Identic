@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS public.orders (
     manager text COLLATE pg_catalog."default" DEFAULT ''::text,
     bill text COLLATE pg_catalog."default" DEFAULT ''::text,
     date timestamp with time zone DEFAULT now(),
+    year SMALLINT NOT NULL,
     notes text COLLATE pg_catalog."default" DEFAULT ''::text,
     created_at timestamp with time zone DEFAULT now(),
     CONSTRAINT orders_pkey PRIMARY KEY (id)

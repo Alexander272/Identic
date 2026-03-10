@@ -4,6 +4,7 @@ import (
 	"github.com/Alexander272/Identic/backend/internal/config"
 	"github.com/Alexander272/Identic/backend/internal/services"
 	"github.com/Alexander272/Identic/backend/internal/transport/http/handlers/import_file"
+	"github.com/Alexander272/Identic/backend/internal/transport/http/handlers/search"
 	"github.com/gin-gonic/gin"
 )
 
@@ -32,6 +33,7 @@ func (h *Handler) Init(group *gin.RouterGroup) {
 
 	// auth.Register(v1, auth.Deps{Service: h.services.Session, Middleware: h.middleware, Auth: h.conf.Auth})
 	import_file.Register(v1, h.services.Import)
+	search.Register(v1, h.services.Search)
 
 	// secure := v1.Group("", h.middleware.VerifyToken)
 }

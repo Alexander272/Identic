@@ -2,16 +2,20 @@ package models
 
 import "time"
 
+type GetOrderByIdDTO struct {
+	Id string `json:"id" db:"id"`
+}
+
 type Order struct {
-	Id        string    `json:"id" db:"id"`
-	Customer  string    `json:"customer" db:"customer"`
-	Consumer  string    `json:"consumer" db:"consumer"`
-	Manager   string    `json:"manager" db:"manager"`
-	Bill      string    `json:"bill" db:"bill"`
-	Date      time.Time `json:"date" db:"date"`
-	Notes     string    `json:"notes" db:"notes"`
-	CreatedAt time.Time `json:"createdAt" db:"created_at"`
-	Positions []*Position
+	Id        string      `json:"id" db:"id"`
+	Customer  string      `json:"customer" db:"customer"`
+	Consumer  string      `json:"consumer" db:"consumer"`
+	Manager   string      `json:"manager" db:"manager"`
+	Bill      string      `json:"bill" db:"bill"`
+	Date      time.Time   `json:"date" db:"date"`
+	Notes     string      `json:"notes" db:"notes"`
+	CreatedAt time.Time   `json:"createdAt" db:"created_at"`
+	Positions []*Position `json:"positions"`
 }
 
 type OrderDTO struct {
@@ -21,6 +25,7 @@ type OrderDTO struct {
 	Manager   string         `json:"manager" db:"manager"`
 	Bill      string         `json:"bill" db:"bill"`
 	Date      time.Time      `json:"date" db:"date"`
+	Year      int            `json:"year" db:"year"`
 	Notes     string         `json:"notes" db:"notes"`
 	Positions []*PositionDTO `json:"positions"`
 }

@@ -6,6 +6,7 @@ type Services struct {
 	Import
 	Orders
 	Positions
+	Search
 }
 
 type Deps struct {
@@ -19,9 +20,12 @@ func NewServices(deps *Deps) *Services {
 	orders := NewOrdersService(deps.Repo.Orders, transaction, positions)
 	import_file := NewImportService(transaction, orders, positions)
 
+	search := NewSearchService(deps.Repo.Search)
+
 	return &Services{
 		Import:    import_file,
 		Orders:    orders,
 		Positions: positions,
+		Search:    search,
 	}
 }
