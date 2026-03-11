@@ -25,9 +25,27 @@ func NewOrdersService(repo repository.Orders, txManager TransactionManager, posi
 }
 
 type Orders interface {
+	GetById(ctx context.Context, req *models.GetOrderByIdDTO) (*models.Order, error)
 	Create(ctx context.Context, dto *models.OrderDTO) error
 	CreateSeveral(ctx context.Context, tx postgres.Tx, dto []*models.OrderDTO) error
 	Update(ctx context.Context, dto *models.OrderDTO) error
+}
+
+func (s *OrdersService) GetById(ctx context.Context, req *models.GetOrderByIdDTO) (*models.Order, error) {
+	data, err := s.repo.GetById(ctx, req)
+	if err != nil {
+		if err == models.ErrNoRows {
+			return nil, err
+		}
+		return nil, fmt.Errorf("failed to get order. error: %w", err)
+	}
+	positions, err := s.positions.GetByOrder(ctx, &models.GetPositionsByOrderIdDTO{OrderId: data.Id})
+	if err != nil {
+		return nil, err
+	}
+	data.Positions = positions
+
+	return data, nil
 }
 
 func (s *OrdersService) Create(ctx context.Context, dto *models.OrderDTO) error {

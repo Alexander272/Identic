@@ -37,5 +37,6 @@ type OrderMatchResult struct {
 
 type Results struct {
 	Year   int                 `json:"year"`
+	Count  int                 `json:"count"`
 	Orders []*OrderMatchResult `json:"orders"`
 }

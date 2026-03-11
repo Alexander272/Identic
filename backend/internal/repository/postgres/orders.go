@@ -42,7 +42,7 @@ func (r *OrderRepo) GetById(ctx context.Context, req *models.GetOrderByIdDTO) (*
 		if err == pgx.ErrNoRows {
 			return nil, models.ErrNoRows
 		}
-		return nil, fmt.Errorf("failed to get order. error: %w", err)
+		return nil, fmt.Errorf("failed to execute query. error: %w", err)
 	}
 	return order, nil
 
@@ -61,7 +61,7 @@ func (r *OrderRepo) Create(ctx context.Context, tx Tx, dto *models.OrderDTO) err
 		dto.Id, dto.Customer, dto.Consumer, dto.Manager, dto.Bill, dto.Date, dto.Date.Year(), dto.Notes,
 	)
 	if err != nil {
-		return fmt.Errorf("failed to create order. error: %w", err)
+		return fmt.Errorf("failed to execute query. error: %w", err)
 	}
 	return nil
 }
@@ -138,7 +138,7 @@ func (r *OrderRepo) Update(ctx context.Context, tx Tx, dto *models.OrderDTO) err
 		dto.Id, dto.Customer, dto.Consumer, dto.Manager, dto.Bill, dto.Date, dto.Date.Year(), dto.Notes,
 	)
 	if err != nil {
-		return fmt.Errorf("failed to update order. error: %w", err)
+		return fmt.Errorf("failed to execute query. error: %w", err)
 	}
 	return nil
 }
@@ -147,7 +147,7 @@ func (r *OrderRepo) Delete(ctx context.Context, tx Tx, dto *models.DeleteOrderDT
 	query := fmt.Sprintf(`DELETE FROM %s WHERE id = $1`, OrdersTable)
 	_, err := r.getExec(tx).Exec(ctx, query, dto.Id)
 	if err != nil {
-		return fmt.Errorf("failed to delete order. error: %w", err)
+		return fmt.Errorf("failed to execute query. error: %w", err)
 	}
 	return nil
 }

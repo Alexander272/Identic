@@ -1,6 +1,9 @@
 package services
 
-import "github.com/Alexander272/Identic/backend/internal/repository"
+import (
+	"github.com/Alexander272/Identic/backend/internal/config"
+	"github.com/Alexander272/Identic/backend/internal/repository"
+)
 
 type Services struct {
 	Import
@@ -10,7 +13,8 @@ type Services struct {
 }
 
 type Deps struct {
-	Repo *repository.Repository
+	Repo  *repository.Repository
+	Links config.LinksConfig
 }
 
 func NewServices(deps *Deps) *Services {
@@ -20,7 +24,7 @@ func NewServices(deps *Deps) *Services {
 	orders := NewOrdersService(deps.Repo.Orders, transaction, positions)
 	import_file := NewImportService(transaction, orders, positions)
 
-	search := NewSearchService(deps.Repo.Search)
+	search := NewSearchService(deps.Repo.Search, deps.Links.Orders)
 
 	return &Services{
 		Import:    import_file,

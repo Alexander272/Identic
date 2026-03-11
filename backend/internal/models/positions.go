@@ -2,6 +2,10 @@ package models
 
 import "time"
 
+type GetPositionsByOrderIdDTO struct {
+	OrderId string `json:"orderId" db:"order_id"`
+}
+
 type Position struct {
 	Id        string    `json:"id" db:"id"`
 	OrderId   string    `json:"orderId" db:"order_id"`

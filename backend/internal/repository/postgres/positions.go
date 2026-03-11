@@ -23,9 +23,35 @@ func NewPositionRepo(db *pgxpool.Pool, tr Transaction) *PositionRepo {
 }
 
 type Positions interface {
+	GetByOrder(ctx context.Context, req *models.GetPositionsByOrderIdDTO) ([]*models.Position, error)
 	Create(ctx context.Context, tx Tx, dto []*models.PositionDTO) error
 	Update(ctx context.Context, tx Tx, dto []*models.PositionDTO) error
 	Delete(ctx context.Context, tx Tx, dto []*models.DeletePositionDTO) error
+}
+
+func (r *PositionRepo) GetByOrder(ctx context.Context, req *models.GetPositionsByOrderIdDTO) ([]*models.Position, error) {
+	query := fmt.Sprintf(`SELECT id, order_id, name, quantity, notes FROM %s WHERE order_id = $1`,
+		PositionsTable,
+	)
+
+	var positions []*models.Position
+	rows, err := r.db.Query(ctx, query, req.OrderId)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return nil, models.ErrNoRows
+		}
+		return nil, fmt.Errorf("failed to execute query. error: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		tmp := &models.Position{}
+		if err := rows.Scan(&tmp.Id, &tmp.OrderId, &tmp.Name, &tmp.Quantity, &tmp.Notes); err != nil {
+			return nil, fmt.Errorf("failed to scan row. error: %w", err)
+		}
+		positions = append(positions, tmp)
+	}
+	return positions, nil
 }
 
 func (r *PositionRepo) Create(ctx context.Context, tx Tx, dto []*models.PositionDTO) error {

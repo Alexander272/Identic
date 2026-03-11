@@ -2,6 +2,8 @@ package services
 
 import (
 	"context"
+	"fmt"
+	"net/url"
 	"sort"
 
 	"github.com/Alexander272/Identic/backend/internal/models"
@@ -9,12 +11,14 @@ import (
 )
 
 type SearchService struct {
-	repo repository.Search
+	repo     repository.Search
+	orderUrl string
 }
 
-func NewSearchService(repo repository.Search) *SearchService {
+func NewSearchService(repo repository.Search, orderUrl string) *SearchService {
 	return &SearchService{
-		repo: repo,
+		repo:     repo,
+		orderUrl: orderUrl,
 	}
 }
 
@@ -40,7 +44,15 @@ func (s *SearchService) SearchAndGroup(ctx context.Context, req *models.SearchRe
 		rawResults, err = s.repo.Find(ctx, req)
 	}
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to find orders. error: %w", err)
+	}
+
+	// генерируем ссылку на заказ
+	for i := range rawResults {
+		rawResults[i].Link, err = url.JoinPath(s.orderUrl, rawResults[i].OrderId)
+		if err != nil {
+			return nil, fmt.Errorf("failed to generate link. error: %w", err)
+		}
 	}
 
 	// 2. Группируем по годам в Go
@@ -56,6 +68,7 @@ func (s *SearchService) SearchAndGroup(ctx context.Context, req *models.SearchRe
 		groups = append(groups, &models.Results{
 			Year:   year,
 			Orders: apps,
+			Count:  len(apps),
 		})
 	}
 

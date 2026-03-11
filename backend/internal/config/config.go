@@ -18,6 +18,7 @@ type (
 		Keycloak KeycloakConfig
 		Http     HttpConfig
 		Limiter  LimiterConfig
+		Links    LinksConfig
 	}
 
 	HttpConfig struct {
@@ -67,6 +68,10 @@ type (
 		RPS   int           `yaml:"rps" env:"RPS" env-default:"10"`
 		Burst int           `yaml:"burst" env:"BURST" env-default:"20"`
 		TTL   time.Duration `yaml:"ttl" env:"TTL" env-default:"10m"`
+	}
+
+	LinksConfig struct {
+		Orders string `yaml:"orders" env-default:"/orders"`
 	}
 )
 

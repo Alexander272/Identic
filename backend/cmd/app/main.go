@@ -54,7 +54,8 @@ func main() {
 	//* Services, Repos & API Handlers
 	repo := repository.NewRepository(db)
 	services := services.NewServices(&services.Deps{
-		Repo: repo,
+		Repo:  repo,
+		Links: conf.Links,
 		// Keycloak:      keycloak,
 		// MostClient:    mostClient,
 		// CheckUsedConf: conf.Notification.CheckUsed,
