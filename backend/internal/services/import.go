@@ -124,15 +124,14 @@ func (s *ImportService) parseSheet(ctx context.Context, excel *excelize.File, sh
 	row := make([]string, template.Count)
 	totalPositionsInBuffer := 0 // Количество позиций в буфере
 	rowNum := 0
-	skippedRows := 0
-	ordersCreated := 0
-	positionsCreated := 0
+	rowNumInOrder := 0
 
 	for rows.Next() {
 		if err := ctx.Err(); err != nil {
 			return nil, err
 		}
 		rowNum++
+		rowNumInOrder++
 
 		origRow, err := rows.Columns(excelize.Options{RawCellValue: true})
 		if err != nil {
@@ -144,11 +143,10 @@ func (s *ImportService) parseSheet(ctx context.Context, excel *excelize.File, sh
 		copy(row, origRow)
 
 		if row[template.NameColumn] == "" || row[template.NameColumn] == "Наименование продукции" {
-			skippedRows++
 			continue
 		}
 
-		tmp, err := s.parseRow(row, template, rowNum)
+		tmp, err := s.parseRow(row, template, rowNum, rowNumInOrder)
 		if err != nil {
 			return nil, err
 		}
@@ -175,8 +173,9 @@ func (s *ImportService) parseSheet(ctx context.Context, excel *excelize.File, sh
 		}
 
 		if isNewOrder {
-			ordersCreated++
-			positionsCreated++
+			rowNumInOrder = 1
+			tmp.position.RowNumber = rowNumInOrder
+
 			if currentOrder != nil {
 				totalPositionsInBuffer += len(currentOrder.Positions)
 				ordersBuffer = append(ordersBuffer, currentOrder)
@@ -190,7 +189,6 @@ func (s *ImportService) parseSheet(ctx context.Context, excel *excelize.File, sh
 				Positions: []*models.PositionDTO{tmp.position},
 			}
 		} else {
-			positionsCreated++
 			currentOrder.Positions = append(currentOrder.Positions, tmp.position)
 		}
 	}
@@ -258,7 +256,7 @@ func (s *ImportService) loadSheet(ctx context.Context, tx postgres.Tx, sheet str
 		// 	Notes:    strings.TrimSpace(row[template.NotesColumn]),
 		// }
 
-		tmp, err := s.parseRow(row, template, rowNum)
+		tmp, err := s.parseRow(row, template, rowNum, 0)
 		if err != nil {
 			return err
 		}
@@ -329,7 +327,7 @@ type rowData struct {
 var reNumbers = regexp.MustCompile(`[0-9,.]+`)
 var reNum = regexp.MustCompile(`\d+(?:[.,]\d+)?`)
 
-func (s *ImportService) parseRow(row []string, t *models.ImportTemplate, rowNum int) (*rowData, error) {
+func (s *ImportService) parseRow(row []string, t *models.ImportTemplate, rowNum, rowInOrder int) (*rowData, error) {
 	date := time.Time{}
 	dateStr := strings.TrimSpace(row[t.DateColumn])
 	if dateStr != "" {
@@ -381,10 +379,11 @@ func (s *ImportService) parseRow(row []string, t *models.ImportTemplate, rowNum 
 			Date:     date,
 		},
 		position: &models.PositionDTO{
-			Name:     name,
-			Search:   search,
-			Quantity: quantity,
-			Notes:    strings.TrimSpace(row[t.NotesColumn]),
+			RowNumber: rowInOrder,
+			Name:      name,
+			Search:    search,
+			Quantity:  quantity,
+			Notes:     strings.TrimSpace(row[t.NotesColumn]),
 		},
 	}, nil
 }

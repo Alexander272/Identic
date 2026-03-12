@@ -34,7 +34,8 @@ func (r *OrderRepo) GetById(ctx context.Context, req *models.GetOrderByIdDTO) (*
 	query := fmt.Sprintf(`SELECT id, customer, consumer, manager, bill, date, notes FROM %s WHERE id = $1`,
 		OrdersTable,
 	)
-	var order *models.Order
+	order := &models.Order{}
+
 	err := r.db.QueryRow(ctx, query, req.Id).Scan(
 		&order.Id, &order.Customer, &order.Consumer, &order.Manager, &order.Bill, &order.Date, &order.Notes,
 	)

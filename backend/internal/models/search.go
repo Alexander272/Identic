@@ -25,14 +25,15 @@ type MatchedPosition struct {
 
 // OrderMatchResult - результат поиска по одному заказу
 type OrderMatchResult struct {
-	OrderId      string  `json:"orderId"`
-	Customer     string  `json:"customer"`
-	Consumer     string  `json:"consumer"`
-	Year         int     `json:"year"`
-	Link         string  `json:"link"`
-	Score        float64 `json:"score"`        // Общий процент совпадения (0-100)
-	MatchedCount int     `json:"matchedCount"` // Сколько позиций совпало
-	TotalCount   int     `json:"totalCount"`   // Сколько позиций в запросе
+	OrderId      string   `json:"orderId"`
+	Customer     string   `json:"customer"`
+	Consumer     string   `json:"consumer"`
+	Year         int      `json:"year"`
+	Link         string   `json:"link"`
+	Score        float64  `json:"score"`        // Общий процент совпадения (0-100)
+	MatchedCount int      `json:"matchedCount"` // Сколько позиций совпало
+	TotalCount   int      `json:"totalCount"`   // Сколько позиций в запросе
+	PositionIds  []string `json:"positionIds"`
 }
 
 type Results struct {

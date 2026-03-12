@@ -47,20 +47,22 @@ func (r *SearchRepo) Find(ctx context.Context, req *models.SearchRequest) ([]*mo
                 o.consumer,
                 o.year,
                 r.req_item_id,
+				p.id as matched_item_id,
 				CASE 
-					WHEN oi.quantity = r.req_qty THEN 1 
+					WHEN p.quantity = r.req_qty THEN 1 
 					ELSE 0 
 				END as qty_match_flag
             FROM req r
-            JOIN %s oi ON oi.search = r.req_name
-            JOIN %s o ON o.id = oi.order_id
+            JOIN %s p ON p.search = r.req_name
+            JOIN %s o ON o.id = p.order_id
             WHERE 
                 -- Допуск по количеству оставляем (разброс 30%%)
-                oi.quantity BETWEEN r.req_qty * 0.7 AND r.req_qty * 1.3
+                p.quantity BETWEEN r.req_qty * 0.7 AND r.req_qty * 1.3
         ),
         order_stats AS (
             SELECT 
                 id, customer, consumer, year,
+				array_agg(matched_item_id) AS matched_item_ids,
                 COUNT(DISTINCT req_item_id) AS matched_req_count,
 				COUNT(DISTINCT CASE WHEN qty_match_flag = 1 THEN req_item_id END) AS total_req_count
             FROM matches
@@ -68,6 +70,7 @@ func (r *SearchRepo) Find(ctx context.Context, req *models.SearchRequest) ([]*mo
         )
         SELECT 
             id, year, customer, consumer,
+			matched_item_ids,
             matched_req_count,
             -- cardinality($1) as total_req_count,
             total_req_count,
@@ -93,6 +96,7 @@ func (r *SearchRepo) Find(ctx context.Context, req *models.SearchRequest) ([]*mo
 			&match.Year,
 			&match.Customer,
 			&match.Consumer,
+			&match.PositionIds,
 			&match.MatchedCount,
 			&match.TotalCount,
 			&match.Score,
@@ -314,31 +318,34 @@ func (r *SearchRepo) FindSimilar(ctx context.Context, req *models.SearchRequest)
 			SELECT 
 				o.id, o.customer, o.consumer, o.year,
 				r.req_item_id,
+				p.id as matched_item_id,
 				-- Считаем финальный скор
-				word_similarity(r.req_name, oi.search) as sim_score
+				word_similarity(r.req_name, p.search) as sim_score
 			FROM req r
 			-- 1. Быстрый поиск по индексу триграмм
-			JOIN %s oi ON oi.search %% r.req_name
-			JOIN %s o ON o.id = oi.order_id
+			JOIN %s p ON p.search %% r.req_name
+			JOIN %s o ON o.id = p.order_id
 			WHERE 
 				-- 2. Фильтр по количеству
-				oi.quantity BETWEEN r.req_qty * 0.7 AND r.req_qty * 1.3
+				p.quantity BETWEEN r.req_qty * 0.7 AND r.req_qty * 1.3
 				-- 3. ЦИФРОВОЙ КОНТРОЛЛЕР: 
 				-- Проверяем, что каждое число >= 2 знаков из запроса есть в строке базы
 				AND NOT EXISTS (
 					SELECT FROM unnest(r.req_numbers) AS n
-					WHERE length(n) >= 2 AND oi.search NOT LIKE '%%' || n || '%%'
+					WHERE length(n) >= 2 AND p.search NOT LIKE '%%' || n || '%%'
 				)
 		),
 		order_stats AS (
 			SELECT 
 				id, customer, consumer, year,
+				array_agg(matched_item_id) AS matched_item_ids,
 				COUNT(DISTINCT req_item_id) AS matched_req_count
 			FROM matches
 			GROUP BY id, customer, consumer, year
 		)
 		SELECT 
 			id, year, customer, consumer,
+			matched_item_ids,
 			matched_req_count,
 			cardinality($1) as total_req_count,
 			ROUND((matched_req_count::numeric / cardinality($1)) * 100, 2) AS score
@@ -359,7 +366,7 @@ func (r *SearchRepo) FindSimilar(ctx context.Context, req *models.SearchRequest)
 		match := &models.OrderMatchResult{}
 		if err := rows.Scan(
 			&match.OrderId, &match.Year, &match.Customer, &match.Consumer,
-			&match.MatchedCount, &match.TotalCount, &match.Score,
+			&match.PositionIds, &match.MatchedCount, &match.TotalCount, &match.Score,
 		); err != nil {
 			return nil, err
 		}

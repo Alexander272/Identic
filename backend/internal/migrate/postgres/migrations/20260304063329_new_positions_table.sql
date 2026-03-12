@@ -5,6 +5,7 @@ CREATE EXTENSION IF NOT EXISTS pg_trgm;
 CREATE TABLE IF NOT EXISTS public.positions (
     id uuid NOT NULL,
     order_id uuid NOT NULL,
+    row_number SMALLINT NOT NULL,
     name text COLLATE pg_catalog."default" NOT NULL,
     search text COLLATE pg_catalog."default" NOT NULL,
     quantity real NOT NULL,

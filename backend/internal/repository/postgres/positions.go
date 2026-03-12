@@ -30,7 +30,7 @@ type Positions interface {
 }
 
 func (r *PositionRepo) GetByOrder(ctx context.Context, req *models.GetPositionsByOrderIdDTO) ([]*models.Position, error) {
-	query := fmt.Sprintf(`SELECT id, order_id, name, quantity, notes FROM %s WHERE order_id = $1`,
+	query := fmt.Sprintf(`SELECT id, order_id, row_number, name, quantity, notes FROM %s WHERE order_id = $1 ORDER BY row_number ASC`,
 		PositionsTable,
 	)
 
@@ -46,7 +46,7 @@ func (r *PositionRepo) GetByOrder(ctx context.Context, req *models.GetPositionsB
 
 	for rows.Next() {
 		tmp := &models.Position{}
-		if err := rows.Scan(&tmp.Id, &tmp.OrderId, &tmp.Name, &tmp.Quantity, &tmp.Notes); err != nil {
+		if err := rows.Scan(&tmp.Id, &tmp.OrderId, &tmp.RowNumber, &tmp.Name, &tmp.Quantity, &tmp.Notes); err != nil {
 			return nil, fmt.Errorf("failed to scan row. error: %w", err)
 		}
 		positions = append(positions, tmp)
@@ -99,6 +99,7 @@ func (r *PositionRepo) Create(ctx context.Context, tx Tx, dto []*models.Position
 		rows[i] = []interface{}{
 			v.Id,
 			v.OrderId,
+			v.RowNumber,
 			v.Name,
 			v.Search,
 			v.Quantity,
@@ -106,7 +107,7 @@ func (r *PositionRepo) Create(ctx context.Context, tx Tx, dto []*models.Position
 		}
 	}
 
-	columns := []string{"id", "order_id", "name", "search", "quantity", "notes"}
+	columns := []string{"id", "order_id", "row_number", "name", "search", "quantity", "notes"}
 	_, err := r.getExec(tx).CopyFrom(
 		ctx,
 		pgx.Identifier{PositionsTable},

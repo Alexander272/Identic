@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/url"
 	"sort"
+	"strings"
 
 	"github.com/Alexander272/Identic/backend/internal/models"
 	"github.com/Alexander272/Identic/backend/internal/repository"
@@ -53,6 +54,16 @@ func (s *SearchService) SearchAndGroup(ctx context.Context, req *models.SearchRe
 		if err != nil {
 			return nil, fmt.Errorf("failed to generate link. error: %w", err)
 		}
+
+		url, err := url.Parse(rawResults[i].Link)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse link. error: %w", err)
+		}
+		q := url.Query()
+		q.Set("positions", strings.Join(rawResults[i].PositionIds, ","))
+		url.RawQuery = q.Encode()
+
+		rawResults[i].Link = url.String()
 	}
 
 	// 2. Группируем по годам в Go
