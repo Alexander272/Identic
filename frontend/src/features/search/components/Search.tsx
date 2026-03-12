@@ -3,11 +3,11 @@ import { Button, FormControlLabel, Stack, Tooltip, Typography, useTheme, Checkbo
 import { DataSheetGrid, floatColumn, keyColumn, textColumn, type Column } from 'react-datasheet-grid'
 import { toast } from 'react-toastify'
 
-import type { IFetchError } from '@/app/types/error'
 import type { ISearchItem, ISearchResults } from '../types/search'
 import { useLazyFindOrdersQuery } from '../searchApiSlice'
 import { ContextMenu } from '@/components/DataSheet/ContextMenu'
 import { AddRow } from '@/components/DataSheet/AddRow'
+import { BoxFallback } from '@/components/Fallback/BoxFallback'
 import { SearchIcon } from '@/components/Icons/SearchIcon'
 import { RefreshIcon } from '@/components/Icons/RefreshIcon'
 import { Results } from './Results'
@@ -36,7 +36,7 @@ export const Search = () => {
 	const findHandler = async () => {
 		const items = []
 		for (let i = 0; i < data.length; i++) {
-			if (data[i].name !== null && data[i].quantity !== null) {
+			if (Boolean(data[i].name) && data[i].quantity !== null) {
 				items.push(data[i])
 			}
 		}
@@ -45,17 +45,14 @@ export const Search = () => {
 			return
 		}
 
-		try {
-			const payload = await findOrders({ items: items, isFuzzy: useFuzzy }).unwrap()
-			setResults(payload.data)
-		} catch (error) {
-			const fetchError = error as IFetchError
-			toast.error(fetchError.data.message, { autoClose: false })
-		}
+		const payload = await findOrders({ items: items, isFuzzy: useFuzzy }).unwrap()
+		setResults(payload.data)
 	}
 
 	return (
-		<Stack direction={'row'}>
+		<Stack direction={'row'} position={'relative'} height={'100%'}>
+			{isFetching ? <BoxFallback /> : null}
+
 			<Stack>
 				<Typography align='center' variant='h5'>
 					Множественный поиск
@@ -66,11 +63,18 @@ export const Search = () => {
 
 				<FormControlLabel
 					control={<Checkbox checked={useFuzzy} onChange={e => setUseFuzzy(e.target.checked)} />}
-					label='Использовать поиск по части строки'
-					sx={{ mb: 1, ml: 1.5 }}
+					label='Искать похожие наименования'
+					sx={{
+						mb: 1,
+						ml: 0.5,
+						pl: 1,
+						transition: 'background-color 0.2s ease-in-out',
+						borderRadius: 2,
+						':hover': { backgroundColor: '#eff8ff' },
+					}}
 				/>
 
-				<Stack width={900} position={'relative'} alignSelf={'center'}>
+				<Stack width={800} position={'relative'} alignSelf={'center'}>
 					<DataSheetGrid
 						value={data}
 						onChange={setData}
@@ -123,7 +127,7 @@ export const Search = () => {
 			{isSuccess && (
 				<>
 					<Divider orientation='vertical' flexItem sx={{ mx: 2 }} />
-					{results.length == 0 ? (
+					{results?.length == 0 ? (
 						<Stack alignItems={'center'} justifyContent={'center'}>
 							<Box component='img' src={NotFoundImage} alt='not found' width={192} height={192} mb={-2} />
 							<Typography align='center' fontSize={'1.3rem'} fontWeight={'bold'}>

@@ -28,9 +28,11 @@ type Props = {
 	data: ISearchResults[]
 }
 
-export const Results: FC<Props> = data => {
-	const [expanded, setExpanded] = useState<{ [key: number]: boolean }>({})
-	const expendedAll = Object.keys(expanded).length === data.data.length
+export const Results: FC<Props> = ({ data }) => {
+	const [expanded, setExpanded] = useState<{ [key: number]: boolean }>(
+		data.reduce((acc, item, i) => ({ ...acc, [item.year]: i === 0 }), {}),
+	)
+	const expendedAll = Object.keys(expanded)?.length === data.length
 
 	const accordionChangeHandler = (year: number) => {
 		setExpanded(prevState => ({
@@ -40,10 +42,10 @@ export const Results: FC<Props> = data => {
 	}
 	const expendAllHandler = () => {
 		if (expendedAll) setExpanded({})
-		else setExpanded(data.data.reduce((acc, item) => ({ ...acc, [item.year]: true }), {}))
+		else setExpanded(data.reduce((acc, item) => ({ ...acc, [item.year]: true }), {}))
 	}
 
-	if (data?.data?.length === 0) return null
+	if (data?.length === 0) return null
 	return (
 		<Stack sx={{ height: '100%', maxHeight: 750, overflow: 'auto', mr: -2, pr: 2 }}>
 			<Stack direction={'row'} justifyContent={'center'} mb={2}>
@@ -64,11 +66,10 @@ export const Results: FC<Props> = data => {
 				</Tooltip>
 			</Stack>
 
-			{data.data.map((item, index) => (
+			{data.map(item => (
 				<Accordion
 					key={item.year}
-					defaultExpanded={index === 0}
-					expanded={expanded[item.year] || false}
+					expanded={expanded[item.year]}
 					onChange={() => accordionChangeHandler(item.year)}
 					disableGutters
 					sx={{

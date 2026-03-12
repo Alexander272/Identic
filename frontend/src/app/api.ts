@@ -7,4 +7,7 @@ export const API = {
 	search: {
 		base: `search` as const,
 	},
+	orders: {
+		base: `orders` as const,
+	},
 }
