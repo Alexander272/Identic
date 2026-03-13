@@ -3,6 +3,8 @@ package postgres
 import (
 	"context"
 	"fmt"
+	"regexp"
+	"strings"
 
 	"github.com/Alexander272/Identic/backend/internal/models"
 	"github.com/google/uuid"
@@ -22,8 +24,19 @@ func NewOrderRepo(db *pgxpool.Pool, tr Transaction) *OrderRepo {
 	}
 }
 
+var reCamelCase = regexp.MustCompile("([a-z0-9])([0-9A-Z])")
+var allowedFields = map[string]struct{}{
+	"customer": {},
+	"consumer": {},
+	"manager":  {},
+	"year":     {},
+	"date":     {},
+	"notes":    {},
+}
+
 type Orders interface {
 	GetById(ctx context.Context, req *models.GetOrderByIdDTO) (*models.Order, error)
+	GetUniqueData(ctx context.Context, req *models.GetUniqueDTO) ([]string, error)
 	Create(ctx context.Context, tx Tx, dto *models.OrderDTO) error
 	CreateSeveral(ctx context.Context, tx Tx, dto []*models.OrderDTO) error
 	Update(ctx context.Context, tx Tx, dto *models.OrderDTO) error
@@ -47,6 +60,29 @@ func (r *OrderRepo) GetById(ctx context.Context, req *models.GetOrderByIdDTO) (*
 	}
 	return order, nil
 
+}
+
+func (r *OrderRepo) GetUniqueData(ctx context.Context, req *models.GetUniqueDTO) ([]string, error) {
+	snake := reCamelCase.ReplaceAllString(req.Field, "${1}_${2}")
+	req.Field = strings.ToLower(snake)
+
+	if _, exist := allowedFields[req.Field]; !exist {
+		return nil, models.ErrFieldNotAllowed
+	}
+
+	query := fmt.Sprintf(`SELECT DISTINCT(%s) AS item FROM %s WHERE %s::text!='' AND %s IS NOT NULL`,
+		req.Field, OrdersTable, req.Field,
+	)
+	var data []string
+
+	err := r.db.QueryRow(ctx, query).Scan(&data)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return nil, models.ErrNoRows
+		}
+		return nil, fmt.Errorf("failed to execute query. error: %w", err)
+	}
+	return data, nil
 }
 
 func (r *OrderRepo) Create(ctx context.Context, tx Tx, dto *models.OrderDTO) error {

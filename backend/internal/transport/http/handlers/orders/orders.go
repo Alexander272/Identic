@@ -28,7 +28,7 @@ func Register(api *gin.RouterGroup, service services.Orders) {
 	{
 		// orders.GET("", handler.getAll)
 		orders.GET("/:id", handler.getById)
-		// orders.POST("", handler.create)
+		orders.POST("", handler.create)
 	}
 }
 
@@ -47,4 +47,19 @@ func (h *Handler) getById(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, &response.DataResponse{Data: order})
+}
+
+func (h *Handler) create(c *gin.Context) {
+	dto := &models.OrderDTO{}
+	if err := c.BindJSON(dto); err != nil {
+		response.NewErrorResponse(c, http.StatusBadRequest, err.Error(), "Некорректные данные")
+		return
+	}
+
+	if err := h.service.Create(c, dto); err != nil {
+		response.NewErrorResponse(c, http.StatusInternalServerError, err.Error(), "Произошла ошибка: "+err.Error())
+		error_bot.Send(c, err.Error(), dto)
+		return
+	}
+	c.JSON(http.StatusOK, &response.IdResponse{Id: dto.Id, Message: "Заказ успешно создан"})
 }

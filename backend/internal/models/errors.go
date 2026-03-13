@@ -11,4 +11,6 @@ var (
 	ErrNotValid = errors.New("data is not valid")
 
 	ErrNoData = errors.New("no data")
+
+	ErrFieldNotAllowed = errors.New("field is not allowed")
 )

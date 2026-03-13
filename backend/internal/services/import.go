@@ -196,6 +196,7 @@ func (s *ImportService) parseSheet(ctx context.Context, excel *excelize.File, sh
 	return ordersBuffer, nil
 }
 
+// ! Deprecated
 func (s *ImportService) loadSheet(ctx context.Context, tx postgres.Tx, sheet string, excel *excelize.File) error {
 	rows, err := excel.Rows(sheet)
 	if err != nil {
@@ -326,6 +327,11 @@ type rowData struct {
 
 var reNumbers = regexp.MustCompile(`[0-9,.]+`)
 var reNum = regexp.MustCompile(`\d+(?:[.,]\d+)?`)
+var reCount = regexp.MustCompile(`^\d+[.)]\s*`)
+var reWithUnit = regexp.MustCompile(`(?i)(\d+)\s*(?:шт|кг)|(?:шт|кг)\.?\s*(\d+)`)
+var reStandards = regexp.MustCompile(`(?i)(ОСТ|ГОСТ|ТУ|ASME|B)\s*[\d\.\-]+$`)
+var reEndDigits = regexp.MustCompile(`\s+(\d+)$`)
+var reSpace = regexp.MustCompile(`\s+`)
 
 func (s *ImportService) parseRow(row []string, t *models.ImportTemplate, rowNum, rowInOrder int) (*rowData, error) {
 	date := time.Time{}
@@ -359,7 +365,7 @@ func (s *ImportService) parseRow(row []string, t *models.ImportTemplate, rowNum,
 	match = strings.ReplaceAll(match, ",", ".")
 
 	if match == "" {
-		name, quantity = s.parseLine(row[t.NameColumn])
+		name, quantity = s.extractQuantity(row[t.NameColumn])
 	} else {
 		var err error
 		quantity, err = strconv.ParseFloat(match, 64)
@@ -412,10 +418,55 @@ func (s *ImportService) parseLine(line string) (name string, quantity float64) {
 		name = strings.TrimRight(name, " -–штШТ. ")
 
 		// (Опционально) Убираем порядковый номер в начале: "2. "
-		name = regexp.MustCompile(`^\d+[.)]\s*`).ReplaceAllString(name, "")
+		name = reCount.ReplaceAllString(name, "")
 	} else {
 		name = line
 	}
 
 	return name, quantity
+}
+
+func (s *ImportService) extractQuantity(input string) (string, float64) {
+	// 1. Очищаем строку от лишних пробелов по краям
+	line := strings.TrimSpace(input)
+
+	// Убираем порядковый номер в начале: "2. "
+	line = reCount.ReplaceAllString(line, "")
+
+	// Регулярное выражение для поиска количества.
+	// Оно ищет число (\d+), которое:
+	// - Либо стоит перед/после "шт" (с точкой или без)
+	// - Либо стоит в конце строки или перед стандартом
+
+	// Вариант А: Ищем паттерны с "шт"
+	matches := reWithUnit.FindStringSubmatch(line)
+
+	if len(matches) > 0 {
+		qtyStr := ""
+		if matches[1] != "" {
+			qtyStr = matches[1]
+		} else {
+			qtyStr = matches[2]
+		}
+		qty, _ := strconv.ParseFloat(qtyStr, 64)
+
+		// Удаляем найденное количество из названия
+		name := reWithUnit.ReplaceAllString(line, "")
+		name = reSpace.ReplaceAllString(name, " ")
+		return strings.TrimSpace(name), qty
+	}
+
+	// Вариант Б: Если "шт" нет, ищем число в конце, которое не похоже на ГОСТ/ОСТ
+	// Проверяем, не заканчивается ли строка на стандарт
+	isStandard := reStandards.MatchString(line)
+
+	if !isStandard {
+		if m := reEndDigits.FindStringSubmatch(line); m != nil {
+			qty, _ := strconv.ParseFloat(m[1], 64)
+			name := reEndDigits.ReplaceAllString(line, "")
+			name = reSpace.ReplaceAllString(name, " ")
+			return strings.TrimSpace(name), qty
+		}
+	}
+	return line, 0
 }

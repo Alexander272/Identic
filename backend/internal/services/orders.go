@@ -53,6 +53,9 @@ func (s *OrdersService) Create(ctx context.Context, dto *models.OrderDTO) error 
 		if err := s.repo.Create(ctx, tx, dto); err != nil {
 			return fmt.Errorf("failed to create order. error: %w", err)
 		}
+		for i := range dto.Positions {
+			dto.Positions[i].OrderId = dto.Id
+		}
 		if err := s.positions.Create(ctx, tx, dto.Positions); err != nil {
 			return fmt.Errorf("failed to create positions. error: %w", err)
 		}

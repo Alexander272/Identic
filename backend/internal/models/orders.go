@@ -6,16 +6,21 @@ type GetOrderByIdDTO struct {
 	Id string `json:"id" db:"id"`
 }
 
+type GetUniqueDTO struct {
+	Field string `json:"field"`
+}
+
 type Order struct {
-	Id        string      `json:"id" db:"id"`
-	Customer  string      `json:"customer" db:"customer"`
-	Consumer  string      `json:"consumer" db:"consumer"`
-	Manager   string      `json:"manager" db:"manager"`
-	Bill      string      `json:"bill" db:"bill"`
-	Date      time.Time   `json:"date" db:"date"`
-	Notes     string      `json:"notes" db:"notes"`
-	CreatedAt time.Time   `json:"createdAt" db:"created_at"`
-	Positions []*Position `json:"positions"`
+	Id            string      `json:"id" db:"id"`
+	Customer      string      `json:"customer" db:"customer"`
+	Consumer      string      `json:"consumer" db:"consumer"`
+	Manager       string      `json:"manager" db:"manager"`
+	Bill          string      `json:"bill" db:"bill"`
+	Date          time.Time   `json:"date" db:"date"`
+	Notes         string      `json:"notes" db:"notes"`
+	PositionCount int         `json:"positionCount" db:"position_count"`
+	CreatedAt     time.Time   `json:"createdAt" db:"created_at"`
+	Positions     []*Position `json:"positions"`
 }
 
 type OrderDTO struct {
