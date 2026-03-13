@@ -23,70 +23,63 @@ export const Header: FC<Props> = ({ order }) => {
 			spacing={4}
 			sx={{ mx: 4, mt: 2 }}
 		>
-			{/* БЛОК 1: КОНТРАГЕНТЫ */}
-			<Box sx={{ flex: 1.25 }}>
-				<Stack spacing={2}>
-					{order.consumer && (
-						<Box>
-							<Typography
-								variant='caption'
-								color='text.secondary'
-								sx={{ fontWeight: 700, display: 'block', mb: 0.5 }}
-							>
-								Конечник
+			<Box sx={{ flex: 1.6 }}>
+				<Stack spacing={3} direction={'row'}>
+					<Box>
+						<Typography
+							variant='caption'
+							color='text.secondary'
+							sx={{ fontWeight: 700, display: 'block', mb: 0.5 }}
+						>
+							Конечник
+						</Typography>
+						<Stack direction='row' spacing={1} alignItems='center'>
+							<BusinessIcon fontSize='16px' fill={palette.primary.main} />
+							<Typography variant='body1' sx={{ fontWeight: 600 }}>
+								{order.consumer || '-'}
 							</Typography>
-							<Stack direction='row' spacing={1} alignItems='center'>
-								<BusinessIcon fontSize='16px' fill={palette.primary.main} />
-								<Typography variant='body1' sx={{ fontWeight: 600 }}>
-									{order.consumer}
-								</Typography>
-							</Stack>
-						</Box>
-					)}
+						</Stack>
+					</Box>
 
-					{order.customer && (
-						<Box>
-							<Typography
-								variant='caption'
-								color='text.secondary'
-								sx={{ fontWeight: 700, display: 'block', mb: 0.5 }}
-							>
-								Заказчик
-							</Typography>
-							<Typography variant='body2' color='text.primary' fontWeight={'bold'}>
-								{order.customer}
-							</Typography>
-						</Box>
-					)}
+					<Box>
+						<Typography
+							variant='caption'
+							color='text.secondary'
+							sx={{ fontWeight: 700, display: 'block', mb: 0.5 }}
+						>
+							Заказчик
+						</Typography>
+						<Typography variant='body2' color='text.primary' fontWeight={'bold'}>
+							{order.customer || '-'}
+						</Typography>
+					</Box>
 				</Stack>
 			</Box>
 
-			{order.notes && (
-				<Box sx={{ flex: 2.25 }}>
-					<Typography
-						variant='caption'
-						color='text.secondary'
-						align='center'
-						sx={{ fontWeight: 700, display: 'block', mb: 0.5 }}
-					>
-						Примечание
-					</Typography>
-					<Typography
-						sx={{
-							fontSize: '13px',
-							color: '#303030',
-							bgcolor: '#f9f9f9',
-							p: 1.5,
-							borderRadius: 2,
-							border: '1px solid #eee',
-						}}
-					>
-						{order.notes}
-					</Typography>
-				</Box>
-			)}
+			<Box sx={{ flex: 2.4 }}>
+				<Typography
+					variant='caption'
+					color='text.secondary'
+					align='center'
+					sx={{ fontWeight: 700, display: 'block', mb: 0.5 }}
+				>
+					Примечание
+				</Typography>
+				<Typography
+					sx={{
+						fontSize: '14px',
+						color: '#303030',
+						bgcolor: '#f9f9f9',
+						py: 0.5,
+						px: 1.5,
+						borderRadius: 2,
+						border: '1px solid #eee',
+					}}
+				>
+					{order.notes || '-'}
+				</Typography>
+			</Box>
 
-			{/* БЛОК 2: ОТВЕТСТВЕННЫЕ */}
 			<Box sx={{ flex: 1.25 }}>
 				<Typography
 					variant='caption'
@@ -98,26 +91,23 @@ export const Header: FC<Props> = ({ order }) => {
 				</Typography>
 				<Stack spacing={1} alignItems={'center'}>
 					<Stack direction='row' spacing={1} alignItems='center'>
-						{/* <UserDataIcon fontSize={28} fill={palette.primary.main} /> */}
-						<Typography sx={{ px: 2, py: 0.5, borderRadius: 2, bgcolor: '#e3f2fd' }}>{manager}</Typography>
-						<Typography sx={{ px: 2, py: 0.5, borderRadius: 2, bgcolor: '#e6e6e6' }}>
-							{assistant}
-						</Typography>
-
-						{/* <Typography variant='body2'>
-							<strong>Менеджер:</strong> {manager || '—'}
-						</Typography> */}
+						{manager || assistant ? (
+							<>
+								<Typography sx={{ px: 2, py: 0.5, borderRadius: 2, bgcolor: '#e3f2fd' }}>
+									{manager}
+								</Typography>
+								<Typography sx={{ px: 2, py: 0.5, borderRadius: 2, bgcolor: '#e6e6e6' }}>
+									{assistant}
+								</Typography>
+							</>
+						) : (
+							<Typography fontSize={14}>Менеджер не указан</Typography>
+						)}
 					</Stack>
-					{/* {assistant && (
-						<Typography variant='body2' sx={{ ml: 4, color: 'text.secondary' }}>
-							Помощник: {assistant}
-						</Typography>
-					)} */}
 				</Stack>
 			</Box>
 
-			{/* БЛОК 3: ДОКУМЕНТЫ */}
-			<Box sx={{ flex: 1.25, textAlign: { md: 'right' } }}>
+			<Box sx={{ flex: 0.75, textAlign: { md: 'right' } }}>
 				<Typography
 					variant='caption'
 					color='text.secondary'

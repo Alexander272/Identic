@@ -1,7 +1,7 @@
 import { toast } from 'react-toastify'
 
 import type { IBaseFetchError } from '@/app/types/error'
-import type { IOrder } from './types/order'
+import type { IOrder, IOrderCreate } from './types/order'
 import { API } from '@/app/api'
 import { apiSlice } from '@/app/apiSlice'
 
@@ -18,13 +18,21 @@ export const orderApiSlice = apiSlice.injectEndpoints({
 				try {
 					await api.queryFulfilled
 				} catch (error) {
-					console.log(error)
 					const fetchError = (error as IBaseFetchError).error
 					toast.error(fetchError.data.message, { autoClose: false })
 				}
 			},
 		}),
+
+		createOrder: builder.mutation<{ id: string }, IOrderCreate>({
+			query: order => ({
+				url: `${API.orders.base}`,
+				method: 'POST',
+				body: order,
+			}),
+			invalidatesTags: ['Orders'],
+		}),
 	}),
 })
 
-export const { useGetOrderByIdQuery } = orderApiSlice
+export const { useGetOrderByIdQuery, useCreateOrderMutation } = orderApiSlice

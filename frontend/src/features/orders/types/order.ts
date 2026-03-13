@@ -1,21 +1,23 @@
+import type { IPosition, IPositionCreate } from './positions'
+
 export interface IOrder {
 	id: string
 	customer: string
 	consumer: string
 	manager: string
 	bill: string
-	date: Date
+	date: string
 	notes: string
-	createdAt: Date
+	createdAt: string
 	positions: IPosition[]
 }
 
-export interface IPosition {
-	id: string
-	orderId: string
-	rowNumber: number
-	name: string
-	quantity: number
+export interface IOrderCreate {
+	customer: string
+	consumer: string
+	manager: string
+	bill: string
+	date: string
 	notes: string
-	createdAt: Date
+	positions: IPositionCreate[]
 }

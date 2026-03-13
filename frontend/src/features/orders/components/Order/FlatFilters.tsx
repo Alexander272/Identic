@@ -8,9 +8,10 @@ import { SearchIcon } from '@/components/Icons/SearchIcon'
 type Props = {
 	filters: IFilter
 	onChange: (name: string, value: unknown) => void
+	showFound?: boolean
 }
 
-export const Filter: FC<Props> = ({ filters, onChange }) => {
+export const Filter: FC<Props> = ({ filters, onChange, showFound }) => {
 	const [search, setSearch] = useState(filters.search)
 
 	const debounce = useDebounceFunc(value => {
@@ -46,19 +47,21 @@ export const Filter: FC<Props> = ({ filters, onChange }) => {
 				}}
 			/>
 
-			<FormControlLabel
-				control={<Checkbox name='found' checked={filters.found} onChange={checkboxHandler} />}
-				label='Показать только найденное'
-				sx={{
-					mb: 1,
-					ml: 0,
-					pl: 0.5,
-					transition: 'background-color 0.2s ease-in-out',
-					borderRadius: 2,
-					flexGrow: 1,
-					':hover': { backgroundColor: '#eff8ff' },
-				}}
-			/>
+			{showFound && (
+				<FormControlLabel
+					control={<Checkbox name='found' checked={filters.found} onChange={checkboxHandler} />}
+					label='Показать только найденное'
+					sx={{
+						mb: 1,
+						ml: 0,
+						pl: 0.5,
+						transition: 'background-color 0.2s ease-in-out',
+						borderRadius: 2,
+						flexGrow: 1,
+						':hover': { backgroundColor: '#eff8ff' },
+					}}
+				/>
+			)}
 		</Stack>
 	)
 }

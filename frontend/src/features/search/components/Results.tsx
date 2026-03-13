@@ -24,53 +24,63 @@ import { CalendarIcon } from '@/components/Icons/CalendarIcon'
 import { UnfoldMoreIcon } from '@/components/Icons/UnfoldMoreIcon'
 import { UnfoldLessIcon } from '@/components/Icons/UnfoldLessIcon'
 
+import NotFoundImage from '@/assets/not-found.png'
+
 type Props = {
 	data: ISearchResults[]
 }
 
 export const Results: FC<Props> = ({ data }) => {
-	const [expanded, setExpanded] = useState<{ [key: number]: boolean }>(
+	const [expanded, setExpanded] = useState<{ [key: number]: boolean }>(() =>
 		data.reduce((acc, item, i) => ({ ...acc, [item.year]: i === 0 }), {}),
 	)
-	const expendedAll = Object.keys(expanded)?.length === data.length
+	const isAllExpanded = Object.values(expanded).every(val => val === true)
 
-	const accordionChangeHandler = (year: number) => {
-		setExpanded(prevState => ({
-			...prevState,
-			[year]: !prevState[year],
-		}))
-	}
 	const expendAllHandler = () => {
-		if (expendedAll) setExpanded({})
-		else setExpanded(data.reduce((acc, item) => ({ ...acc, [item.year]: true }), {}))
+		const newState = data.reduce((acc, item) => ({ ...acc, [item.year]: !isAllExpanded }), {})
+		setExpanded(newState)
 	}
 
-	if (data?.length === 0) return null
+	const accordionChangeHandler = (year: number, isExpanded: boolean) => {
+		setExpanded(prevState => ({ ...prevState, [year]: isExpanded }))
+	}
+
 	return (
 		<Stack sx={{ height: '100%', maxHeight: 750, overflow: 'auto', mr: -2, pr: 2 }}>
-			<Stack direction={'row'} justifyContent={'center'} mb={2}>
-				<Typography component='h2' variant='h5' ml={'auto'}>
+			<Stack direction={'row'} justifyContent={'center'} mb={2} position={'relative'}>
+				<Typography component='h2' variant='h5'>
 					Результаты
 				</Typography>
 
-				<Tooltip title={expendedAll ? 'Свернуть все' : 'Развернуть все'}>
-					<Button
-						onClick={expendAllHandler}
-						variant='outlined'
-						size='small'
-						color='inherit'
-						sx={{ minWidth: 48, borderColor: '#3f3f3f', ml: 'auto', mr: 1 }}
-					>
-						{expendedAll ? <UnfoldLessIcon /> : <UnfoldMoreIcon />}
-					</Button>
-				</Tooltip>
+				{data.length > 0 && (
+					<Tooltip title={isAllExpanded ? 'Свернуть все' : 'Раскрыть все'}>
+						<Button
+							onClick={expendAllHandler}
+							variant='outlined'
+							size='small'
+							color='inherit'
+							sx={{ minWidth: 48, borderColor: '#3f3f3f', position: 'absolute', right: 8 }}
+						>
+							{isAllExpanded ? <UnfoldLessIcon /> : <UnfoldMoreIcon />}
+						</Button>
+					</Tooltip>
+				)}
 			</Stack>
+
+			{data.length === 0 && (
+				<Stack alignItems={'center'} justifyContent={'center'} height={'100%'} width={400}>
+					<Box component='img' src={NotFoundImage} alt='not found' width={192} height={192} mb={-2} />
+					<Typography align='center' fontSize={'1.3rem'} fontWeight={'bold'}>
+						Ничего не найдено
+					</Typography>
+				</Stack>
+			)}
 
 			{data.map(item => (
 				<Accordion
 					key={item.year}
-					expanded={expanded[item.year]}
-					onChange={() => accordionChangeHandler(item.year)}
+					expanded={!!expanded[item.year]}
+					onChange={(_event, expanded) => accordionChangeHandler(item.year, expanded)}
 					disableGutters
 					sx={{
 						mb: 1,
@@ -204,7 +214,7 @@ export const Results: FC<Props> = ({ data }) => {
 											{order.matchedCount}/{order.totalCount}
 										</TableCell>
 										<TableCell width={120} align='right'>
-											<Link to={order.link} target='__blank'>
+											<Link to={order.link} target='_blank' rel='noopener noreferrer'>
 												<Button
 													color='inherit'
 													sx={{ textTransform: 'inherit', color: 'black' }}

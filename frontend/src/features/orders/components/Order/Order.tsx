@@ -16,6 +16,7 @@ import { useGetOrderByIdQuery } from '../../orderApiSlice'
 import { BoxFallback } from '@/components/Fallback/BoxFallback'
 import { Filter } from './FlatFilters'
 import { Header } from './Header'
+import dayjs from 'dayjs'
 
 type Props = {
 	id: string
@@ -59,8 +60,11 @@ export const Order: FC<Props> = ({ id, positionIds }) => {
 		<Stack position={'relative'} sx={{ mr: -2 }}>
 			{isFetching ? <BoxFallback /> : null}
 
-			<Typography component='h2' variant='h5' align='center'>
-				Заказ
+			<Typography component='h2' variant='h6' align='center'>
+				Заказ от{' '}
+				<Typography component='span' fontWeight={'bold'} variant='h6'>
+					{data?.data?.date ? dayjs(data?.data?.date).format('DD.MM.YYYY') : '...'}
+				</Typography>
 			</Typography>
 
 			<Stack mb={3} pr={2}>
@@ -104,7 +108,7 @@ export const Order: FC<Props> = ({ id, positionIds }) => {
 					Позиции
 				</Typography>
 
-				<Filter filters={filters} onChange={updateFilter} />
+				<Filter filters={filters} onChange={updateFilter} showFound={positionIds.length > 0} />
 			</Stack>
 
 			<TableContainer sx={{ height: 570, overflow: 'auto', pr: 2 }}>

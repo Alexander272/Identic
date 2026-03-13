@@ -1,10 +1,11 @@
 import { useState } from 'react'
-import { Button, FormControlLabel, Stack, Tooltip, Typography, useTheme, Checkbox, Box, Divider } from '@mui/material'
+import { Button, FormControlLabel, Stack, Tooltip, Typography, useTheme, Checkbox, Divider } from '@mui/material'
 import { DataSheetGrid, floatColumn, keyColumn, textColumn, type Column } from 'react-datasheet-grid'
 import { toast } from 'react-toastify'
 
 import type { ISearchItem, ISearchResults } from '../types/search'
 import { useLazyFindOrdersQuery } from '../searchApiSlice'
+import { extractQuantity } from '@/utils/extract'
 import { ContextMenu } from '@/components/DataSheet/ContextMenu'
 import { AddRow } from '@/components/DataSheet/AddRow'
 import { BoxFallback } from '@/components/Fallback/BoxFallback'
@@ -12,9 +13,32 @@ import { SearchIcon } from '@/components/Icons/SearchIcon'
 import { RefreshIcon } from '@/components/Icons/RefreshIcon'
 import { Results } from './Results'
 
-import NotFoundImage from '@/assets/not-found.png'
-
 const defaultData = [{ name: '', quantity: null }]
+
+const columns: Column<ISearchItem>[] = [
+	{
+		...keyColumn<ISearchItem, 'name'>('name', textColumn),
+		title: 'Наименование',
+		pasteValue: ({ rowData, value }) => {
+			// 1. Если в колонке "Количество" уже есть данные (например, вставили 2 колонки из Excel),
+			// то не пытаемся парсить наименование, просто обновляем имя.
+			if (rowData.quantity) {
+				return { ...rowData, name: value }
+			}
+
+			// 2. Если количество пустое, запускаем наш парсер
+			const { name, quantity } = extractQuantity(value)
+
+			// 3. Возвращаем ОБНОВЛЕННЫЙ объект всей строки
+			return {
+				...rowData,
+				name: name,
+				quantity: quantity ?? rowData.quantity, // берем из парсера или оставляем старое
+			}
+		},
+	},
+	{ ...keyColumn<ISearchItem, 'quantity'>('quantity', floatColumn), title: 'Количество', width: 0.5 },
+]
 
 export const Search = () => {
 	const { palette } = useTheme()
@@ -24,22 +48,13 @@ export const Search = () => {
 
 	const [findOrders, { isFetching, isSuccess }] = useLazyFindOrdersQuery()
 
-	const columns: Column<ISearchItem>[] = [
-		{ ...keyColumn<ISearchItem, 'name'>('name', textColumn), title: 'Наименование' },
-		{ ...keyColumn<ISearchItem, 'quantity'>('quantity', floatColumn), title: 'Количество', width: 0.5 },
-	]
-
 	const clearHandler = () => {
 		setData(defaultData)
 	}
 
 	const findHandler = async () => {
-		const items = []
-		for (let i = 0; i < data.length; i++) {
-			if (Boolean(data[i].name) && data[i].quantity !== null) {
-				items.push(data[i])
-			}
-		}
+		const items = data.filter(item => Boolean(item.name) && item.quantity !== null)
+
 		if (items.length === 0) {
 			toast.error('Заполните хотя бы одну строку')
 			return
@@ -127,15 +142,10 @@ export const Search = () => {
 			{isSuccess && (
 				<>
 					<Divider orientation='vertical' flexItem sx={{ mx: 2 }} />
-					{results?.length == 0 ? (
-						<Stack alignItems={'center'} justifyContent={'center'}>
-							<Box component='img' src={NotFoundImage} alt='not found' width={192} height={192} mb={-2} />
-							<Typography align='center' fontSize={'1.3rem'} fontWeight={'bold'}>
-								Ничего не найдено
-							</Typography>
-						</Stack>
-					) : null}
-					<Results data={results} />
+					{/* {!results || results?.length == 0 ? (
+						
+					) : null} */}
+					<Results data={results || []} />
 				</>
 			)}
 		</Stack>
