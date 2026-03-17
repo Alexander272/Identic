@@ -1,5 +1,9 @@
 import type { IPosition, IPositionCreate } from './positions'
 
+export interface IOrderSocketMessage extends IOrder {
+	action: 'INSERT' | 'UPDATE' | 'DELETE'
+}
+
 export interface IOrder {
 	id: string
 	customer: string
@@ -9,6 +13,7 @@ export interface IOrder {
 	date: string
 	notes: string
 	createdAt: string
+	positionCount: number
 	positions: IPosition[]
 }
 

@@ -1,14 +1,17 @@
 import { Box } from '@mui/material'
-import { useLocation } from 'react-router'
+import { useParams, useSearchParams } from 'react-router'
 
 import { Order } from '@/features/orders/components/Order/Order'
 import { PageBox } from '@/components/PageBox/PageBox'
 
 export default function OrderPage() {
-	const location = useLocation()
+	const [searchParams] = useSearchParams()
 
-	const id = location.pathname.split('/').pop() || ''
-	const positionIds = location.search.split('positions=')[1]?.split(',') || []
+	const { id } = useParams()
+	const positionIds = searchParams.get('positions')?.split(',') || []
+
+	// console.log('id', id)
+	console.log('positionIds', positionIds)
 
 	return (
 		<PageBox>
@@ -27,7 +30,7 @@ export default function OrderPage() {
 				flexDirection={'column'}
 				sx={{ backgroundColor: '#fff' }}
 			>
-				<Order id={id} positionIds={positionIds} />
+				<Order id={id || ''} positionIds={positionIds} />
 			</Box>
 		</PageBox>
 	)

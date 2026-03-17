@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { Button, Divider, Stack, TextField, Tooltip, Typography, useTheme } from '@mui/material'
-import { DatePicker } from '@mui/x-date-pickers'
-import { Controller, useForm } from 'react-hook-form'
+import { Controller, FormProvider, useForm } from 'react-hook-form'
 import { DataSheetGrid, floatColumn, keyColumn, textColumn, type Column } from 'react-datasheet-grid'
 import { toast } from 'react-toastify'
 import dayjs from 'dayjs'
@@ -11,12 +10,13 @@ import type { IOrderCreate } from '../../types/order'
 import type { IPositionCreate } from '../../types/positions'
 import { useCreateOrderMutation } from '../../orderApiSlice'
 import { extractQuantity } from '@/utils/extract'
-import { DateTextField } from '@/components/DatePicker/DatePicker'
 import { AddRow } from '@/components/DataSheet/AddRow'
 import { ContextMenu } from '@/components/DataSheet/ContextMenu'
+import { DateField } from '@/components/Form/DateField'
 import { SaveIcon } from '@/components/Icons/SaveIcon'
 import { RefreshIcon } from '@/components/Icons/RefreshIcon'
 import { HyperlinkIcon } from '@/components/Icons/HyperlinkIcon'
+import { AutocompleteInput } from './AutocompleteInput'
 
 const defaultValues: IOrderCreate = {
 	customer: '',
@@ -59,12 +59,13 @@ export const CreateOrderForm = () => {
 
 	const [link, setLink] = useState('')
 	const [data, setData] = useState<IPositionCreate[]>(defaultValues.positions)
+	const methods = useForm<IOrderCreate>({ defaultValues })
 	const {
 		control,
 		handleSubmit,
 		reset,
 		formState: { isDirty },
-	} = useForm<IOrderCreate>({ defaultValues })
+	} = methods
 
 	const [create, { isLoading }] = useCreateOrderMutation()
 
@@ -116,68 +117,77 @@ export const CreateOrderForm = () => {
 				Создание заказа
 			</Typography>
 
-			<Stack direction={'row'} spacing={2} px={2} mb={2}>
-				<Stack spacing={2} width={'50%'}>
-					<Typography fontSize={'1.1rem'}>Контрагенты</Typography>
+			<FormProvider {...methods}>
+				<Stack direction={'row'} spacing={2} px={2} mb={2}>
+					<Stack spacing={2} width={'50%'}>
+						<Typography fontSize={'1.1rem'}>Контрагенты</Typography>
 
-					<Controller
-						control={control}
-						name={`customer`}
-						render={({ field }) => <TextField {...field} label='Заказчик' fullWidth />}
-					/>
-					<Controller
-						control={control}
-						name={`consumer`}
-						render={({ field }) => <TextField {...field} label='Конечник' fullWidth />}
-					/>
+						{/* <Controller
+							control={control}
+							name={`customer`}
+							render={({ field }) => <TextField {...field} label='Заказчик' fullWidth />}
+						/> 
+						<Controller
+							control={control}
+							name={`consumer`}
+							render={({ field }) => <TextField {...field} label='Конечник' fullWidth />}
+						/>*/}
+						<AutocompleteInput field={{ name: 'customer', label: 'Заказчик', type: 'list' }} />
+						<AutocompleteInput field={{ name: 'consumer', label: 'Конечник', type: 'list' }} />
+					</Stack>
+
+					<Stack spacing={2} width={'50%'}>
+						<Typography fontSize={'1.1rem'}>Детали заказа</Typography>
+
+						{/* <Controller
+							control={control}
+							name={`date`}
+							rules={{ required: true }}
+							render={({ field, fieldState: { error } }) => (
+								<DatePicker
+									{...field}
+									value={field.value ? dayjs(field.value) : null}
+									onChange={value => field.onChange(value?.startOf('d').toISOString())}
+									label={'Дата'}
+									showDaysOutsideCurrentMonth
+									fixedWeekNumber={6}
+									slots={{
+										textField: DateTextField,
+									}}
+									slotProps={{
+										textField: {
+											error: Boolean(error),
+										},
+									}}
+									minDate={dayjs('01-01-2010')}
+									sx={{ width: '100%' }}
+								/>
+							)}
+						/> 
+                        
+                        <Controller
+							control={control}
+							name={`manager`}
+							render={({ field }) => <TextField {...field} label='Менеджер / Помощник' fullWidth />}
+						/>*/}
+
+						<DateField data={{ name: 'date', label: 'Дата', isRequired: true, type: 'date' }} />
+						<AutocompleteInput field={{ name: 'manager', label: 'Менеджер / Помощник', type: 'list' }} />
+						<Controller
+							control={control}
+							name={`bill`}
+							render={({ field }) => <TextField {...field} label='Счет в 1С' fullWidth />}
+						/>
+					</Stack>
 				</Stack>
-
-				<Stack spacing={2} width={'50%'}>
-					<Typography fontSize={'1.1rem'}>Детали заказа</Typography>
-
-					<Controller
-						control={control}
-						name={`date`}
-						rules={{ required: true }}
-						render={({ field, fieldState: { error } }) => (
-							<DatePicker
-								{...field}
-								value={field.value ? dayjs(field.value) : null}
-								onChange={value => field.onChange(value?.startOf('d').toISOString())}
-								label={'Дата'}
-								showDaysOutsideCurrentMonth
-								fixedWeekNumber={6}
-								slots={{
-									textField: DateTextField,
-								}}
-								slotProps={{
-									textField: {
-										error: Boolean(error),
-									},
-								}}
-								minDate={dayjs('01-01-2010')}
-								sx={{ width: '100%' }}
-							/>
-						)}
-					/>
-
-					<Controller
-						control={control}
-						name={`manager`}
-						render={({ field }) => <TextField {...field} label='Менеджер / Помощник' fullWidth />}
-					/>
-					<Controller
-						control={control}
-						name={`bill`}
-						render={({ field }) => <TextField {...field} label='Счет в 1С' fullWidth />}
-					/>
-				</Stack>
-			</Stack>
-			<Controller
-				control={control}
-				name={`notes`}
-				render={({ field }) => <TextField {...field} label='Примечание' multiline minRows={2} sx={{ mx: 2 }} />}
-			/>
+				<Controller
+					control={control}
+					name={`notes`}
+					render={({ field }) => (
+						<TextField {...field} label='Примечание' multiline minRows={2} sx={{ mx: 2 }} />
+					)}
+				/>
+			</FormProvider>
 
 			<Divider sx={{ mt: 3, mb: 2 }} />
 

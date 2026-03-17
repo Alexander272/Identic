@@ -5,6 +5,7 @@ import { AppRoutes } from '@/pages/router/routes'
 
 import Logo from '@/assets/logo.webp'
 import { AddFileIcon } from '../Icons/AddFileIcon'
+import { SearchIcon } from '../Icons/SearchIcon'
 
 export const LayoutHeader = () => {
 	const { palette } = useTheme()
@@ -25,11 +26,18 @@ export const LayoutHeader = () => {
 					</Stack>
 				</Link>
 
-				<Stack ml={'auto'} direction={'row'}>
+				<Stack ml={'auto'} direction={'row'} spacing={0.5}>
 					<Link to={AppRoutes.CreateOrder} aria-label='roles page'>
 						<Tooltip title='Добавить заказ' disableInteractive>
 							<NavBox sx={{ ':hover': { svg: { fill: palette.primary.main } } }}>
-								<AddFileIcon fill={'#000'} fontSize={30} transition={'0.3s all ease-in-out'} />
+								<AddFileIcon fill={'#000'} fontSize={26} transition={'0.3s all ease-in-out'} />
+							</NavBox>
+						</Tooltip>
+					</Link>
+					<Link to={AppRoutes.Search} aria-label='roles page'>
+						<Tooltip title='Поиск' disableInteractive>
+							<NavBox sx={{ ':hover': { svg: { fill: palette.primary.main } } }}>
+								<SearchIcon fill={'#000'} fontSize={24} transition={'0.3s all ease-in-out'} />
 							</NavBox>
 						</Tooltip>
 					</Link>

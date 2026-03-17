@@ -6,6 +6,7 @@ import { NotFound } from '@/pages/notFound/NotFoundLazy'
 import { Home } from '@/pages/home/HomeLazy'
 import { Order } from '@/pages/order/OrderLazy'
 import { CreateOrder } from '@/pages/createOrder/CreateOrderLazy'
+import { Search } from '@/pages/search/SearchLazy'
 
 const config: RouteObject[] = [
 	{
@@ -23,6 +24,10 @@ const config: RouteObject[] = [
 			{
 				path: AppRoutes.CreateOrder,
 				element: <CreateOrder />,
+			},
+			{
+				path: AppRoutes.Search,
+				element: <Search />,
 			},
 		],
 	},

@@ -53,7 +53,11 @@ export default defineConfig({
 	},
 	server: {
 		proxy: {
-			'/api': 'http://localhost:9000',
+			'/api': {
+				target: 'http://localhost:9000',
+				changeOrigin: true,
+				ws: true, // Включает проксирование веб-сокетов
+			},
 		},
 	},
 	build: {

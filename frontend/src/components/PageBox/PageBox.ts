@@ -8,6 +8,6 @@ export const PageBox = styled(Box)<BoxProps>(({ theme }) => ({
 	flexDirection: 'column',
 	flexGrow: 1,
 	// overflow: 'hidden',
-	marginTop: theme.spacing(11),
+	marginTop: theme.spacing(3),
 	padding: '0 18px',
 })) as typeof Box

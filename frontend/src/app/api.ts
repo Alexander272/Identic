@@ -9,5 +9,7 @@ export const API = {
 	},
 	orders: {
 		base: `orders` as const,
+		byYear: (year: string) => `orders/by-year/${year}` as const,
+		unique: (field: string) => `orders/unique/${field}` as const,
 	},
 }
