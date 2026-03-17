@@ -6,8 +6,13 @@ type GetOrderByIdDTO struct {
 	Id string `json:"id" db:"id"`
 }
 
+type GetOrderByYearDTO struct {
+	Year int `json:"year" db:"year"`
+}
+
 type GetUniqueDTO struct {
 	Field string `json:"field"`
+	Sort  string `json:"sort"`
 }
 
 type Order struct {

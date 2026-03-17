@@ -27,6 +27,7 @@ type (
 		ReadTimeout        time.Duration `yaml:"read_timeout" env:"READ_TIMEOUT" env-default:"10s"`
 		WriteTimeout       time.Duration `yaml:"write_timeout" env:"WRITE_TIMEOUT" env-default:"10s"`
 		MaxHeaderMegabytes int           `yaml:"max_header_bytes" env-default:"1"`
+		AllowedOrigins     []string      `yaml:"allowed_origins" env:"ALLOWED_ORIGINS"`
 	}
 
 	// RedisConfig struct {

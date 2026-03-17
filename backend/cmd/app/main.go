@@ -16,6 +16,7 @@ import (
 	"github.com/Alexander272/Identic/backend/internal/server"
 	"github.com/Alexander272/Identic/backend/internal/services"
 	transport "github.com/Alexander272/Identic/backend/internal/transport/http"
+	"github.com/Alexander272/Identic/backend/internal/transport/ws"
 	"github.com/Alexander272/Identic/backend/pkg/database/postgres"
 	"github.com/Alexander272/Identic/backend/pkg/logger"
 	"github.com/subosito/gotenv"
@@ -51,11 +52,15 @@ func main() {
 		log.Fatalf("failed to migrate: %s", err.Error())
 	}
 
+	hub := ws.NewWebsocketHub()
+	go hub.Run()
+
 	//* Services, Repos & API Handlers
 	repo := repository.NewRepository(db)
-	services := services.NewServices(&services.Deps{
+	service := services.NewServices(&services.Deps{
 		Repo:  repo,
 		Links: conf.Links,
+		Hub:   hub,
 		// Keycloak:      keycloak,
 		// MostClient:    mostClient,
 		// CheckUsedConf: conf.Notification.CheckUsed,
@@ -63,12 +68,26 @@ func main() {
 		// BotUrl:   conf.Bot.Url,
 	})
 
-	handlers := transport.NewHandler(nil, services)
+	handlers := transport.NewHandler(nil, service, hub)
 
 	//* HTTP Server
 	// if err := services.Scheduler.Start(&conf.Scheduler); err != nil {
 	// 	log.Fatalf("failed to start scheduler. error: %s\n", err.Error())
 	// }
+
+	// Контекст для управления всеми фоновыми процессами
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Запускаем все Runner'ы
+	for _, runner := range service.GetRunners() {
+		go func(r services.Runner) {
+			if err := r.Run(ctx); err != nil && !errors.Is(err, context.Canceled) {
+				log.Printf("Runner error: %v", err)
+				// Тут можно реализовать логику паники или уведомления в телеграм
+			}
+		}(runner)
+	}
 
 	srv := server.NewServer(conf, handlers.Init(conf))
 	go func() {

@@ -37,9 +37,6 @@ func (r *PositionRepo) GetByOrder(ctx context.Context, req *models.GetPositionsB
 	var positions []*models.Position
 	rows, err := r.db.Query(ctx, query, req.OrderId)
 	if err != nil {
-		if err == pgx.ErrNoRows {
-			return nil, models.ErrNoRows
-		}
 		return nil, fmt.Errorf("failed to execute query. error: %w", err)
 	}
 	defer rows.Close()
@@ -50,6 +47,9 @@ func (r *PositionRepo) GetByOrder(ctx context.Context, req *models.GetPositionsB
 			return nil, fmt.Errorf("failed to scan row. error: %w", err)
 		}
 		positions = append(positions, tmp)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error during rows iteration: %w", err)
 	}
 	return positions, nil
 }

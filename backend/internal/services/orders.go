@@ -26,6 +26,8 @@ func NewOrdersService(repo repository.Orders, txManager TransactionManager, posi
 
 type Orders interface {
 	GetById(ctx context.Context, req *models.GetOrderByIdDTO) (*models.Order, error)
+	GetByYear(ctx context.Context, req *models.GetOrderByYearDTO) ([]*models.Order, error)
+	GetUniqueData(ctx context.Context, req *models.GetUniqueDTO) ([]string, error)
 	Create(ctx context.Context, dto *models.OrderDTO) error
 	CreateSeveral(ctx context.Context, tx postgres.Tx, dto []*models.OrderDTO) error
 	Update(ctx context.Context, dto *models.OrderDTO) error
@@ -45,6 +47,22 @@ func (s *OrdersService) GetById(ctx context.Context, req *models.GetOrderByIdDTO
 	}
 	data.Positions = positions
 
+	return data, nil
+}
+
+func (s *OrdersService) GetByYear(ctx context.Context, req *models.GetOrderByYearDTO) ([]*models.Order, error) {
+	data, err := s.repo.GetByYear(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get orders. error: %w", err)
+	}
+	return data, nil
+}
+
+func (s *OrdersService) GetUniqueData(ctx context.Context, req *models.GetUniqueDTO) ([]string, error) {
+	data, err := s.repo.GetUniqueData(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get unique data. error: %w", err)
+	}
 	return data, nil
 }
 

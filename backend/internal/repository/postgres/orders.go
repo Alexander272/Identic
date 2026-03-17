@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"slices"
 	"strings"
 
 	"github.com/Alexander272/Identic/backend/internal/models"
@@ -36,6 +37,7 @@ var allowedFields = map[string]struct{}{
 
 type Orders interface {
 	GetById(ctx context.Context, req *models.GetOrderByIdDTO) (*models.Order, error)
+	GetByYear(ctx context.Context, req *models.GetOrderByYearDTO) ([]*models.Order, error)
 	GetUniqueData(ctx context.Context, req *models.GetUniqueDTO) ([]string, error)
 	Create(ctx context.Context, tx Tx, dto *models.OrderDTO) error
 	CreateSeveral(ctx context.Context, tx Tx, dto []*models.OrderDTO) error
@@ -59,7 +61,35 @@ func (r *OrderRepo) GetById(ctx context.Context, req *models.GetOrderByIdDTO) (*
 		return nil, fmt.Errorf("failed to execute query. error: %w", err)
 	}
 	return order, nil
+}
 
+func (r *OrderRepo) GetByYear(ctx context.Context, req *models.GetOrderByYearDTO) ([]*models.Order, error) {
+	query := fmt.Sprintf(`SELECT o.id, o.customer, o.consumer, o.manager, o.bill, o.date, o.notes, COUNT(p.id) AS position_count
+        FROM %s AS o
+        LEFT JOIN %s AS p ON p.order_id = o.id
+        WHERE o.year = $1
+        GROUP BY o.id ORDER BY o.date DESC, manager, customer, consumer`,
+		OrdersTable, PositionsTable,
+	)
+	var data []*models.Order
+
+	rows, err := r.db.Query(ctx, query, req.Year)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute query. error: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		tmp := &models.Order{}
+		if err := rows.Scan(&tmp.Id, &tmp.Customer, &tmp.Consumer, &tmp.Manager, &tmp.Bill, &tmp.Date, &tmp.Notes, &tmp.PositionCount); err != nil {
+			return nil, fmt.Errorf("failed to scan row. error: %w", err)
+		}
+		data = append(data, tmp)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error during rows iteration: %w", err)
+	}
+	return data, nil
 }
 
 func (r *OrderRepo) GetUniqueData(ctx context.Context, req *models.GetUniqueDTO) ([]string, error) {
@@ -69,19 +99,26 @@ func (r *OrderRepo) GetUniqueData(ctx context.Context, req *models.GetUniqueDTO)
 	if _, exist := allowedFields[req.Field]; !exist {
 		return nil, models.ErrFieldNotAllowed
 	}
+	quotedField := pgx.Identifier{req.Field}.Sanitize()
 
-	query := fmt.Sprintf(`SELECT DISTINCT(%s) AS item FROM %s WHERE %s::text!='' AND %s IS NOT NULL`,
-		req.Field, OrdersTable, req.Field,
+	query := fmt.Sprintf(`SELECT COALESCE(array_agg(DISTINCT %s::text), '{}'::text[]) 
+		FROM %s WHERE %s::text!='' AND %s IS NOT NULL`,
+		quotedField, OrdersTable, quotedField, quotedField,
 	)
 	var data []string
 
 	err := r.db.QueryRow(ctx, query).Scan(&data)
 	if err != nil {
-		if err == pgx.ErrNoRows {
-			return nil, models.ErrNoRows
-		}
 		return nil, fmt.Errorf("failed to execute query. error: %w", err)
 	}
+
+	slices.SortFunc(data, func(a, b string) int {
+		if req.Sort == "DESC" {
+			return strings.Compare(b, a) // Убывание
+		}
+		return strings.Compare(a, b) // Возрастание
+	})
+
 	return data, nil
 }
 

@@ -2,6 +2,7 @@ package orders
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/Alexander272/Identic/backend/internal/models"
 	"github.com/Alexander272/Identic/backend/internal/models/response"
@@ -28,6 +29,8 @@ func Register(api *gin.RouterGroup, service services.Orders) {
 	{
 		// orders.GET("", handler.getAll)
 		orders.GET("/:id", handler.getById)
+		orders.GET("/by-year/:year", handler.getByYear)
+		orders.GET("/unique/:field", handler.getUniqueData)
 		orders.POST("", handler.create)
 	}
 }
@@ -47,6 +50,55 @@ func (h *Handler) getById(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, &response.DataResponse{Data: order})
+}
+
+func (h *Handler) getByYear(c *gin.Context) {
+	yearStr := c.Param("year")
+	if yearStr == "" {
+		response.NewErrorResponse(c, http.StatusBadRequest, "year is empty", "Отправлены некорректные данные")
+		return
+	}
+
+	year, err := strconv.Atoi(yearStr)
+	if err != nil {
+		response.NewErrorResponse(c, http.StatusBadRequest, err.Error(), "Некорректные данные")
+		return
+	}
+
+	req := &models.GetOrderByYearDTO{Year: year}
+
+	data, err := h.service.GetByYear(c, req)
+	if err != nil {
+		response.NewErrorResponse(c, http.StatusInternalServerError, err.Error(), "Произошла ошибка: "+err.Error())
+		error_bot.Send(c, err.Error(), req)
+		return
+	}
+	c.JSON(http.StatusOK, response.DataResponse{Data: data, Total: len(data)})
+}
+
+func (h *Handler) getUniqueData(c *gin.Context) {
+	field := c.Param("field")
+	if field == "" {
+		response.NewErrorResponse(c, http.StatusBadRequest, "field is empty", "Отправлены некорректные данные")
+		return
+	}
+
+	sort := c.Query("sort")
+	if sort == "DESC" {
+		sort = "DESC"
+	} else {
+		sort = "ASC"
+	}
+
+	req := &models.GetUniqueDTO{Field: field, Sort: sort}
+
+	data, err := h.service.GetUniqueData(c, req)
+	if err != nil {
+		response.NewErrorResponse(c, http.StatusInternalServerError, err.Error(), "Произошла ошибка: "+err.Error())
+		error_bot.Send(c, err.Error(), req)
+		return
+	}
+	c.JSON(http.StatusOK, response.DataResponse{Data: data, Total: len(data)})
 }
 
 func (h *Handler) create(c *gin.Context) {

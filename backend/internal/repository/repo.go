@@ -12,6 +12,9 @@ type Transaction interface {
 type Orders interface {
 	postgres.Orders
 }
+type OrdersEvents interface {
+	postgres.OrderEvent
+}
 type Positions interface {
 	postgres.Positions
 }
@@ -23,6 +26,7 @@ type Search interface {
 type Repository struct {
 	Transaction
 	Orders
+	OrdersEvents
 	Positions
 	Search
 }
@@ -31,9 +35,10 @@ func NewRepository(pool *pgxpool.Pool) *Repository {
 	transaction := postgres.NewTransactionRepo(pool)
 
 	return &Repository{
-		Transaction: transaction,
-		Orders:      postgres.NewOrderRepo(pool, transaction),
-		Positions:   postgres.NewPositionRepo(pool, transaction),
-		Search:      postgres.NewSearchRepo(pool),
+		Transaction:  transaction,
+		OrdersEvents: postgres.NewOrderEventRepo(pool),
+		Orders:       postgres.NewOrderRepo(pool, transaction),
+		Positions:    postgres.NewPositionRepo(pool, transaction),
+		Search:       postgres.NewSearchRepo(pool),
 	}
 }
