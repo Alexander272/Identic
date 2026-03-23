@@ -1,5 +1,5 @@
-import { FC } from 'react'
-import { Container, SxProps, Theme } from '@mui/material'
+import type { FC } from 'react'
+import { Container, type SxProps, type Theme } from '@mui/material'
 
 import { Loader } from './Loader'
 

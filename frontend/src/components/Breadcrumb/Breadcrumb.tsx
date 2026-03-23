@@ -1,5 +1,5 @@
-import { FC, PropsWithChildren } from 'react'
-import { SxProps, Theme, Typography, useTheme } from '@mui/material'
+import type { FC, PropsWithChildren } from 'react'
+import { type SxProps, type Theme, Typography, useTheme } from '@mui/material'
 
 import { BreadLink } from './Link'
 

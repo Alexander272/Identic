@@ -1,4 +1,4 @@
-import { ChangeEvent, FC } from 'react'
+import type { ChangeEvent, FC } from 'react'
 import { Field, Input, Label, Svg } from './checkbox.style'
 
 type Props = {

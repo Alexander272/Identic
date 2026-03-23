@@ -10,7 +10,7 @@ export const BreadLink = styled(Link)(({ theme }) => ({
 	paddingBottom: theme.spacing(0.5),
 	marginRight: `-${theme.spacing(0.8)}`,
 	marginLeft: `-${theme.spacing(0.8)}`,
-	borderRadius: 4 * theme.shape.borderRadius,
+	borderRadius: 4 * (+theme.shape.borderRadius || 1),
 	transition: 'all .3s ease-in-out',
 
 	'&:hover, &:focus': {

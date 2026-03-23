@@ -1,5 +1,5 @@
 import { Tooltip, Typography } from '@mui/material'
-import { FC, useEffect, useRef, useState } from 'react'
+import { type FC, useEffect, useRef, useState } from 'react'
 
 type Props = {
 	value: string

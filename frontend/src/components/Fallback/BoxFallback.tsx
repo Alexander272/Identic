@@ -1,4 +1,5 @@
 import { Box } from '@mui/material'
+
 import { Fallback } from './Fallback'
 
 export const BoxFallback = () => {
