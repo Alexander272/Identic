@@ -26,6 +26,7 @@ func NewOrdersService(repo repository.Orders, txManager TransactionManager, posi
 
 type Orders interface {
 	GetById(ctx context.Context, req *models.GetOrderByIdDTO) (*models.Order, error)
+	GetInfoById(ctx context.Context, req *models.GetOrderByIdDTO) (*models.Order, error)
 	GetByYear(ctx context.Context, req *models.GetOrderByYearDTO) ([]*models.Order, error)
 	GetUniqueData(ctx context.Context, req *models.GetUniqueDTO) ([]string, error)
 	Create(ctx context.Context, dto *models.OrderDTO) error
@@ -46,6 +47,26 @@ func (s *OrdersService) GetById(ctx context.Context, req *models.GetOrderByIdDTO
 		return nil, err
 	}
 	data.Positions = positions
+
+	return data, nil
+}
+
+func (s *OrdersService) GetInfoById(ctx context.Context, req *models.GetOrderByIdDTO) (*models.Order, error) {
+	data, err := s.repo.GetById(ctx, req)
+	if err != nil {
+		if err == models.ErrNoRows {
+			return nil, err
+		}
+		return nil, fmt.Errorf("failed to get order info. error: %w", err)
+	}
+
+	if len(req.PositionIds) > 0 {
+		positions, err := s.positions.GetByIds(ctx, &models.GetPositionsByIds{Ids: req.PositionIds})
+		if err != nil {
+			return nil, err
+		}
+		data.Positions = positions
+	}
 
 	return data, nil
 }

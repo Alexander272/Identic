@@ -3,6 +3,7 @@ package orders
 import (
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/Alexander272/Identic/backend/internal/models"
 	"github.com/Alexander272/Identic/backend/internal/models/response"
@@ -29,6 +30,7 @@ func Register(api *gin.RouterGroup, service services.Orders) {
 	{
 		// orders.GET("", handler.getAll)
 		orders.GET("/:id", handler.getById)
+		orders.GET("/info/:id", handler.getInfo)
 		orders.GET("/by-year/:year", handler.getByYear)
 		orders.GET("/unique/:field", handler.getUniqueData)
 		orders.POST("", handler.create)
@@ -44,6 +46,28 @@ func (h *Handler) getById(c *gin.Context) {
 	req := &models.GetOrderByIdDTO{Id: id}
 
 	order, err := h.service.GetById(c, req)
+	if err != nil {
+		response.NewErrorResponse(c, http.StatusInternalServerError, err.Error(), "Произошла ошибка: "+err.Error())
+		error_bot.Send(c, err.Error(), req)
+		return
+	}
+	c.JSON(http.StatusOK, &response.DataResponse{Data: order})
+}
+
+func (h *Handler) getInfo(c *gin.Context) {
+	id := c.Param("id")
+	if err := uuid.Validate(id); err != nil {
+		response.NewErrorResponse(c, http.StatusBadRequest, err.Error(), "Некорректные данные")
+		return
+	}
+	req := &models.GetOrderByIdDTO{Id: id}
+
+	positionIds := c.Query("positions")
+	if positionIds != "" {
+		req.PositionIds = strings.Split(positionIds, ",")
+	}
+
+	order, err := h.service.GetInfoById(c, req)
 	if err != nil {
 		response.NewErrorResponse(c, http.StatusInternalServerError, err.Error(), "Произошла ошибка: "+err.Error())
 		error_bot.Send(c, err.Error(), req)

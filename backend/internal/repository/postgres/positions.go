@@ -24,6 +24,7 @@ func NewPositionRepo(db *pgxpool.Pool, tr Transaction) *PositionRepo {
 
 type Positions interface {
 	GetByOrder(ctx context.Context, req *models.GetPositionsByOrderIdDTO) ([]*models.Position, error)
+	GetByIds(ctx context.Context, req *models.GetPositionsByIds) ([]*models.Position, error)
 	Create(ctx context.Context, tx Tx, dto []*models.PositionDTO) error
 	Update(ctx context.Context, tx Tx, dto []*models.PositionDTO) error
 	Delete(ctx context.Context, tx Tx, dto []*models.DeletePositionDTO) error
@@ -36,6 +37,36 @@ func (r *PositionRepo) GetByOrder(ctx context.Context, req *models.GetPositionsB
 
 	var positions []*models.Position
 	rows, err := r.db.Query(ctx, query, req.OrderId)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute query. error: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		tmp := &models.Position{}
+		if err := rows.Scan(&tmp.Id, &tmp.OrderId, &tmp.RowNumber, &tmp.Name, &tmp.Quantity, &tmp.Notes); err != nil {
+			return nil, fmt.Errorf("failed to scan row. error: %w", err)
+		}
+		positions = append(positions, tmp)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error during rows iteration: %w", err)
+	}
+
+	// for i  := range positions {
+	// 	positions[i].Quantity = math.Round(positions[i].Quantity * 100) / 100
+	// }
+
+	return positions, nil
+}
+
+func (r *PositionRepo) GetByIds(ctx context.Context, req *models.GetPositionsByIds) ([]*models.Position, error) {
+	query := fmt.Sprintf(`SELECT id, order_id, row_number, name, quantity, notes FROM %s WHERE id = ANY($1::uuid[]) ORDER BY row_number ASC`,
+		PositionsTable,
+	)
+
+	positions := make([]*models.Position, 0, len(req.Ids))
+	rows, err := r.db.Query(ctx, query, req.Ids)
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute query. error: %w", err)
 	}
@@ -129,7 +160,7 @@ func (r *PositionRepo) Update(ctx context.Context, tx Tx, dto []*models.Position
 	ids := make([]string, len(dto))
 	names := make([]string, len(dto))
 	search := make([]string, len(dto))
-	quantities := make([]float64, len(dto))
+	quantities := make([]float32, len(dto))
 	notes := make([]string, len(dto))
 
 	for i, v := range dto {

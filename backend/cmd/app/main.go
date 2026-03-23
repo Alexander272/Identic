@@ -15,10 +15,10 @@ import (
 	"github.com/Alexander272/Identic/backend/internal/repository"
 	"github.com/Alexander272/Identic/backend/internal/server"
 	"github.com/Alexander272/Identic/backend/internal/services"
-	transport "github.com/Alexander272/Identic/backend/internal/transport/http"
-	"github.com/Alexander272/Identic/backend/internal/transport/ws"
+	transport "github.com/Alexander272/Identic/backend/internal/transport"
 	"github.com/Alexander272/Identic/backend/pkg/database/postgres"
 	"github.com/Alexander272/Identic/backend/pkg/logger"
+	"github.com/Alexander272/Identic/backend/pkg/ws_hub"
 	"github.com/subosito/gotenv"
 )
 
@@ -52,8 +52,12 @@ func main() {
 		log.Fatalf("failed to migrate: %s", err.Error())
 	}
 
-	hub := ws.NewWebsocketHub()
-	go hub.Run()
+	// Контекст для управления всеми фоновыми процессами
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	hub := ws_hub.NewWebsocketHub()
+	go hub.Run(ctx)
 
 	//* Services, Repos & API Handlers
 	repo := repository.NewRepository(db)
@@ -74,10 +78,6 @@ func main() {
 	// if err := services.Scheduler.Start(&conf.Scheduler); err != nil {
 	// 	log.Fatalf("failed to start scheduler. error: %s\n", err.Error())
 	// }
-
-	// Контекст для управления всеми фоновыми процессами
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 
 	// Запускаем все Runner'ы
 	for _, runner := range service.GetRunners() {
@@ -114,4 +114,6 @@ func main() {
 	if err := srv.Stop(ctx); err != nil {
 		logger.Error("failed to stop server:", logger.ErrAttr(err))
 	}
+
+	hub.Stop()
 }

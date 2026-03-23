@@ -5,11 +5,8 @@ import (
 	"log"
 
 	"github.com/Alexander272/Identic/backend/internal/repository"
+	"github.com/Alexander272/Identic/backend/pkg/logger"
 )
-
-type MessageBroadcaster interface {
-	Broadcast(data []byte)
-}
 
 type OrderStreamService struct {
 	repo repository.OrdersEvents
@@ -37,7 +34,7 @@ func (u *OrderStreamService) StartStreaming(ctx context.Context) {
 	// Читаем из канала и отправляем в хаб
 	go func() {
 		for msg := range events {
-			u.hub.Broadcast(msg)
+			u.hub.BroadcastMessage("orders", msg)
 		}
 	}()
 }
@@ -49,7 +46,7 @@ func (u *OrderStreamService) Run(ctx context.Context) error {
 	// Передаем контекст, чтобы репозиторий тоже знал об остановке.
 	go u.repo.ListenOrders(ctx, events)
 
-	log.Println("Order stream runner started")
+	logger.Info("Order stream runner started")
 
 	for {
 		select {
@@ -58,7 +55,7 @@ func (u *OrderStreamService) Run(ctx context.Context) error {
 			return ctx.Err() // Возвращаем причину остановки
 		case data := <-events:
 			// Ваша бизнес-логика трансляции в сокеты
-			u.hub.Broadcast(data)
+			u.hub.BroadcastMessage("orders", data) // Отправляем данные в хаб
 		}
 	}
 }

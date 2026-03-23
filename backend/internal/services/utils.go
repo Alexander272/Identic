@@ -9,7 +9,8 @@ import (
 var (
 	// Оставляем только буквы, цифры и базовые разделители
 	// reCleanSymbols = regexp.MustCompile(`[^a-zA-Zа-яА-Я0-9\s\.,/№]`)
-	reCleanSymbols = regexp.MustCompile(`[^a-zа-я0-9]+`)
+	// reCleanSymbols = regexp.MustCompile(`[^a-zа-я0-9]+`)
+	reCleanSymbols = regexp.MustCompile(`[^a-zA-Zа-яА-Я0-9]+`)
 	reMultiSpace   = regexp.MustCompile(`\s+`)
 	reStd          = regexp.MustCompile(`(?:гост|ост|ту)[\s\-]*[\d\.\-]+`)
 )
@@ -36,7 +37,7 @@ func NormalizeString(name string) string {
 
 	//// 3. Удаляем запрещенные спецсимволы (оставляем только разрешенные: №, /, -, ., ,)
 	//3. Удаляем все символы кроме букв, цифр
-	name = reCleanSymbols.ReplaceAllString(name, "")
+	name = reCleanSymbols.ReplaceAllString(name, " ")
 
 	// // 4. Замена латиницы на кириллицу (самые коварные символы)
 	// replacer := strings.NewReplacer(

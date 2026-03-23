@@ -3,8 +3,12 @@ package services
 import (
 	"github.com/Alexander272/Identic/backend/internal/config"
 	"github.com/Alexander272/Identic/backend/internal/repository"
-	"github.com/Alexander272/Identic/backend/internal/transport/ws"
+	"github.com/Alexander272/Identic/backend/pkg/ws_hub"
 )
+
+type MessageBroadcaster interface {
+	BroadcastMessage(topic string, data []byte)
+}
 
 type Services struct {
 	Import
@@ -12,12 +16,13 @@ type Services struct {
 	OrdersStream
 	Positions
 	Search
+	SearchStream
 }
 
 type Deps struct {
 	Repo  *repository.Repository
 	Links config.LinksConfig
-	Hub   *ws.Hub
+	Hub   *ws_hub.Hub
 }
 
 func NewServices(deps *Deps) *Services {
@@ -30,6 +35,7 @@ func NewServices(deps *Deps) *Services {
 	ordersStream := NewOrderStreamService(deps.Repo.OrdersEvents, deps.Hub)
 
 	search := NewSearchService(deps.Repo.Search, deps.Links.Orders)
+	searchStream := NewSearchStreamService(search, deps.Hub)
 
 	return &Services{
 		Import:       import_file,
@@ -37,5 +43,6 @@ func NewServices(deps *Deps) *Services {
 		OrdersStream: ordersStream,
 		Positions:    positions,
 		Search:       search,
+		SearchStream: searchStream,
 	}
 }

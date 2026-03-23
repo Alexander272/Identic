@@ -23,6 +23,7 @@ func NewPositionsService(repo repository.Positions, txManager TransactionManager
 
 type Positions interface {
 	GetByOrder(ctx context.Context, req *models.GetPositionsByOrderIdDTO) ([]*models.Position, error)
+	GetByIds(ctx context.Context, req *models.GetPositionsByIds) ([]*models.Position, error)
 	Create(ctx context.Context, tx postgres.Tx, dto []*models.PositionDTO) error
 	Update(ctx context.Context, tx postgres.Tx, dto []*models.PositionDTO) error
 	Delete(ctx context.Context, tx postgres.Tx, dto []*models.DeletePositionDTO) error
@@ -34,6 +35,14 @@ func (s *PositionsService) GetByOrder(ctx context.Context, req *models.GetPositi
 		if err == models.ErrNoRows {
 			return nil, err
 		}
+		return nil, fmt.Errorf("failed to get positions. error: %w", err)
+	}
+	return data, nil
+}
+
+func (s *PositionsService) GetByIds(ctx context.Context, req *models.GetPositionsByIds) ([]*models.Position, error) {
+	data, err := s.repo.GetByIds(ctx, req)
+	if err != nil {
 		return nil, fmt.Errorf("failed to get positions. error: %w", err)
 	}
 	return data, nil

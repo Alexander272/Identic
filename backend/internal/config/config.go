@@ -28,6 +28,10 @@ type (
 		WriteTimeout       time.Duration `yaml:"write_timeout" env:"WRITE_TIMEOUT" env-default:"10s"`
 		MaxHeaderMegabytes int           `yaml:"max_header_bytes" env-default:"1"`
 		AllowedOrigins     []string      `yaml:"allowed_origins" env:"ALLOWED_ORIGINS"`
+		WriteWait          time.Duration `yaml:"write_wait" env-default:"10s"`
+		PongWait           time.Duration `yaml:"pong_wait" env-default:"60s"`
+		PingPeriod         time.Duration `yaml:"ping_period" env-default:"54s"`
+		MaxMessageSize     int64         `yaml:"max_message_size" env-default:"10240"`
 	}
 
 	// RedisConfig struct {

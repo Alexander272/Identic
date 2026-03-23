@@ -3,7 +3,8 @@ package models
 import "time"
 
 type GetOrderByIdDTO struct {
-	Id string `json:"id" db:"id"`
+	Id          string   `json:"id" db:"id"`
+	PositionIds []string `json:"positionIds"`
 }
 
 type GetOrderByYearDTO struct {
@@ -42,4 +43,10 @@ type OrderDTO struct {
 
 type DeleteOrderDTO struct {
 	Id string `json:"id" db:"id"`
+}
+
+type OrderUpdateEvent struct {
+	Action string   `json:"action"` // "INSERT_MANY"
+	Count  int      `json:"count"`
+	IDs    []string `json:"ids"` // Список ID созданных заказов
 }

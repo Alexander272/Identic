@@ -13,16 +13,17 @@ import (
 	"github.com/Alexander272/Identic/backend/pkg/auth"
 	"github.com/Alexander272/Identic/backend/pkg/error_bot"
 	"github.com/Alexander272/Identic/backend/pkg/limiter"
+	"github.com/Alexander272/Identic/backend/pkg/ws_hub"
 	"github.com/gin-gonic/gin"
 )
 
 type Handler struct {
 	keycloak *auth.KeycloakClient
 	services *services.Services
-	hub      *ws.Hub
+	hub      *ws_hub.Hub
 }
 
-func NewHandler(keycloak *auth.KeycloakClient, services *services.Services, hub *ws.Hub) *Handler {
+func NewHandler(keycloak *auth.KeycloakClient, services *services.Services, hub *ws_hub.Hub) *Handler {
 	return &Handler{
 		keycloak: keycloak,
 		services: services,
@@ -57,12 +58,13 @@ func (h *Handler) ErrorHandler(c *gin.Context, origErr any) {
 func (h *Handler) initAPI(router *gin.Engine, conf *config.Config) {
 	// middleware := middleware.NewMiddleware(h.services, conf.Auth, h.keycloak)
 	// handler := handlers.NewHandler(&handlers.Deps{Services: h.services, Conf: conf, Middleware: middleware})
-	handler := handlers.NewHandler(&handlers.Deps{Services: h.services, Conf: conf})
+	handler := handlers.NewHandler(&handlers.Deps{Services: h.services, Conf: conf, Hub: h.hub})
+	wsHandler := ws.NewWsHandler(h.hub, conf.Http, h.services)
 
 	api := router.Group("/api")
 	handler.Init(api)
 
 	api.GET("/ws", func(c *gin.Context) {
-		ws.HandleWS(h.hub, conf.Http, c.Writer, c.Request)
+		wsHandler.HandleWS(c)
 	})
 }

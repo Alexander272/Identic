@@ -2,14 +2,16 @@ package models
 
 // SearchItem - позиция, которую мы ищем (входящий запрос)
 type SearchItem struct {
+	Id       int     `json:"id"`
 	Name     string  `json:"name"`
 	Quantity float64 `json:"quantity"`
 }
 
 // SearchRequest - весь запрос на поиск похожего заказа
 type SearchRequest struct {
-	Items   []SearchItem `json:"items"`
-	IsFuzzy bool         `json:"isFuzzy"`
+	Items    []SearchItem `json:"items"`
+	IsFuzzy  bool         `json:"isFuzzy"`
+	SearchId string
 }
 
 // MatchedPosition - структура, соответствующая таблице positions
@@ -25,19 +27,67 @@ type MatchedPosition struct {
 
 // OrderMatchResult - результат поиска по одному заказу
 type OrderMatchResult struct {
-	OrderId      string   `json:"orderId"`
-	Customer     string   `json:"customer"`
-	Consumer     string   `json:"consumer"`
-	Year         int      `json:"year"`
-	Link         string   `json:"link"`
-	Score        float64  `json:"score"`        // Общий процент совпадения (0-100)
-	MatchedCount int      `json:"matchedCount"` // Сколько позиций совпало
-	TotalCount   int      `json:"totalCount"`   // Сколько позиций в запросе
-	PositionIds  []string `json:"positionIds"`
+	OrderId      string  `json:"orderId"`
+	Customer     string  `json:"customer"`
+	Consumer     string  `json:"consumer"`
+	Year         int     `json:"year"`
+	Link         string  `json:"link"`
+	Score        float64 `json:"score"`        // Общий процент совпадения (0-100)
+	MatchedPos   int     `json:"matchedPos"`   // Сколько позиций совпало
+	MatchedQuant int     `json:"matchedQuant"` // Сколько позиций + количество совпало
+	TotalCount   int     `json:"totalCount"`   // Сколько позиций в запросе
+	// PositionIds  []string `json:"positionIds"`
+	Positions []*MatchPosition `json:"positions"`
+}
+type MatchPosition struct {
+	Id         string `json:"id"`
+	ReqId      string `json:"reqId"`
+	QuantEqual bool   `json:"quantEqual"`
 }
 
 type Results struct {
 	Year   int                 `json:"year"`
 	Count  int                 `json:"count"`
 	Orders []*OrderMatchResult `json:"orders"`
+}
+
+type MatchInfo struct {
+	PosID     string
+	ReqID     string
+	ItemScore float64 // Совокупный балл (текст + количество)
+	ReqQty    float64
+	DbQty     float64
+}
+
+type OrderInfo struct {
+	Id       string
+	Year     int
+	Customer string
+	Consumer string
+	Matches  map[string]MatchInfo
+}
+
+type RawMatch struct {
+	OrderId    string // UUID из базы
+	YearInt    int
+	Customer   string
+	Consumer   string
+	ReqId      string   // ID позиции из запроса (номер по порядку)
+	PosId      string   // UUID позиции в базе
+	PSearch    string   // Название товара в базе
+	ReqTokens  []string // Токены (только для Fuzzy)
+	ReqQty     float64  // Сколько просил пользователь
+	DbQty      float64  // Сколько реально в базе
+	Similarity float64  // 1.0 для точного поиска, 0.3-1.0 для Fuzzy
+}
+
+type SearchResultPart struct {
+	Items  []*OrderMatchResult `json:"items"`
+	IsLast bool                `json:"isLast"`
+	Total  int                 `json:"total"`
+}
+
+type SearchErrorPayload struct {
+	SearchId string `json:"searchId"`
+	Message  string `json:"message"`
 }

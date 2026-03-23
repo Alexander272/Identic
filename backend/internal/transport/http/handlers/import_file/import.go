@@ -32,7 +32,6 @@ func Register(api *gin.RouterGroup, service services.Import) {
 }
 
 func (h *Handler) load(c *gin.Context) {
-
 	form, err := c.MultipartForm()
 	if err != nil {
 		response.NewErrorResponse(c, http.StatusBadRequest, err.Error(), "Не удалось получить файлы")
