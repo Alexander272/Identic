@@ -1,7 +1,7 @@
 import type { IPosition, IPositionCreate } from './positions'
 
 export interface IOrderSocketMessage extends IOrder {
-	action: 'INSERT' | 'UPDATE' | 'DELETE'
+	years: number[]
 }
 
 export interface IOrder {

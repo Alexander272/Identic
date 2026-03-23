@@ -1,9 +1,9 @@
-import { useState } from 'react'
-import { Button, FormControlLabel, Stack, Tooltip, Typography, useTheme, Checkbox, Divider } from '@mui/material'
+import { useCallback, useState } from 'react'
+import { Button, FormControlLabel, Stack, Tooltip, Typography, useTheme, Checkbox } from '@mui/material'
 import { DataSheetGrid, floatColumn, keyColumn, textColumn, type Column } from 'react-datasheet-grid'
 import { toast } from 'react-toastify'
 
-import type { ISearchItem, ISearchResults } from '../types/search'
+import type { ISearchItem } from '../types/search'
 import { useLazyFindOrdersQuery } from '../searchApiSlice'
 import { extractQuantity } from '@/utils/extract'
 import { ContextMenu } from '@/components/DataSheet/ContextMenu'
@@ -12,8 +12,9 @@ import { BoxFallback } from '@/components/Fallback/BoxFallback'
 import { SearchIcon } from '@/components/Icons/SearchIcon'
 import { RefreshIcon } from '@/components/Icons/RefreshIcon'
 import { Results } from './Results'
+import { useSearchHotkeys } from '../hooks/search'
 
-const defaultData = [{ name: '', quantity: null }]
+const defaultData = [{ id: 0, name: '', quantity: null }]
 
 const columns: Column<ISearchItem>[] = [
 	{
@@ -37,38 +38,80 @@ const columns: Column<ISearchItem>[] = [
 			}
 		},
 	},
-	{ ...keyColumn<ISearchItem, 'quantity'>('quantity', floatColumn), title: 'Количество', width: 0.5 },
+	{ ...keyColumn<ISearchItem, 'quantity'>('quantity', floatColumn), title: 'Количество', width: 0.25 },
 ]
 
 export const Search = () => {
 	const { palette } = useTheme()
 	const [useFuzzy, setUseFuzzy] = useState(false)
 	const [data, setData] = useState<ISearchItem[]>(defaultData)
-	const [results, setResults] = useState<ISearchResults[]>([])
+	// const [results, setResults] = useState<IOrderMatchResult[]>([])
+	// const dispatch = useAppDispatch()
 
-	const [findOrders, { isFetching, isSuccess }] = useLazyFindOrdersQuery()
+	const [findOrders, { data: searchResponse, isFetching, isSuccess }] = useLazyFindOrdersQuery()
 
-	const clearHandler = () => {
+	const results = searchResponse?.data || []
+	const isSearching = isFetching || searchResponse?.isProcessing
+
+	function clearHandler() {
 		setData(defaultData)
 	}
 
-	const findHandler = async () => {
-		const items = data.filter(item => Boolean(item.name) && item.quantity !== null)
+	const findHandler = useCallback(
+		(mode?: 'exact' | 'fuzzy') => async () => {
+			const items = data
+				.map((item, idx) => ({ ...item, id: idx }))
+				.filter(item => Boolean(item.name) && item.quantity !== null)
 
-		if (items.length === 0) {
-			toast.error('Заполните хотя бы одну строку')
-			return
-		}
+			if (items.length === 0) {
+				toast.error('Заполните хотя бы одну строку')
+				return
+			}
 
-		const payload = await findOrders({ items: items, isFuzzy: useFuzzy }).unwrap()
-		setResults(payload.data)
-	}
+			const isFuzzy = mode ? mode === 'fuzzy' : useFuzzy
+			if (mode && (mode === 'fuzzy') !== useFuzzy) {
+				setUseFuzzy(mode === 'fuzzy')
+			}
+
+			findOrders({ items: items, isFuzzy, sessionId: Date.now().toString() }, false)
+			// 	const payload = await findOrders({ items: items, isFuzzy: useFuzzy }).unwrap()
+			// 	console.log('payload', payload)
+
+			// 	setResults(payload)
+		},
+		[data, useFuzzy, findOrders],
+	)
+
+	useSearchHotkeys(newMode => {
+		if (isSearching) return
+		findHandler(newMode)()
+	})
+
+	// const сancelHandler = () => {
+	// 	if (originalArgs?.sessionId) {
+	// 		// 1. Посылаем сигнал серверу прекратить расчеты
+	// 		wsService.send('CANCEL_SEARCH', { sessionId: originalArgs.sessionId })
+
+	// 		// 2. Локально выключаем лоадер в кэше
+	// 		dispatch(
+	// 			searchApiSlice.util.updateQueryData('findOrders', originalArgs, draft => {
+	// 				draft.isProcessing = false
+	// 			}),
+	// 		)
+	// 	}
+	// }
 
 	return (
-		<Stack direction={'row'} position={'relative'} height={'100%'}>
-			{isFetching ? <BoxFallback /> : null}
+		<Stack direction={'row'} position={'relative'} height={'100%'} justifyContent={'center'} spacing={1}>
+			{isSearching ? <BoxFallback /> : null}
 
-			<Stack>
+			<Stack
+				borderRadius={3}
+				paddingX={2}
+				paddingY={1}
+				border={'1px solid rgba(0, 0, 0, 0.12)'}
+				sx={{ background: '#fff' }}
+			>
 				<Typography align='center' variant='h5'>
 					Множественный поиск
 				</Typography>
@@ -101,7 +144,7 @@ export const Search = () => {
 					<Stack direction={'row'} spacing={1} sx={{ position: 'absolute', right: 8, bottom: 6 }}>
 						<Tooltip title='Найти'>
 							<Button
-								onClick={findHandler}
+								onClick={findHandler()}
 								color='inherit'
 								disabled={isFetching}
 								sx={{
@@ -139,15 +182,7 @@ export const Search = () => {
 				</Stack>
 			</Stack>
 
-			{isSuccess && (
-				<>
-					<Divider orientation='vertical' flexItem sx={{ mx: 2 }} />
-					{/* {!results || results?.length == 0 ? (
-						
-					) : null} */}
-					<Results data={results || []} />
-				</>
-			)}
+			{isSuccess ? <Results data={results || []} search={data} isLoading={isSearching} /> : null}
 		</Stack>
 	)
 }

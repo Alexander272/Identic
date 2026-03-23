@@ -17,6 +17,7 @@ import { BoxFallback } from '@/components/Fallback/BoxFallback'
 import { Filter } from './FlatFilters'
 import { Header } from './Header'
 import dayjs from 'dayjs'
+import { numberFormat } from '@/utils/format'
 
 type Props = {
 	id: string
@@ -130,10 +131,10 @@ export const Order: FC<Props> = ({ id, positionIds }) => {
 							return (
 								<TableRow key={pos.id} hover sx={{ bgcolor: bgcolor }}>
 									<TableCell sx={{ borderTopLeftRadius: 8, borderBottomLeftRadius: 8 }}>
-										{pos.rowNumber}
+										{numberFormat(pos.rowNumber)}
 									</TableCell>
 									<TableCell>{pos.name}</TableCell>
-									<TableCell align='center'>{pos.quantity}</TableCell>
+									<TableCell align='center'>{numberFormat(pos.quantity)}</TableCell>
 									<TableCell sx={{ borderTopRightRadius: 8, borderBottomRightRadius: 8 }}>
 										{pos.notes}
 									</TableCell>

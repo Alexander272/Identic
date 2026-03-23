@@ -12,25 +12,20 @@ export default function Home() {
 				borderRadius={3}
 				paddingX={2}
 				paddingY={1}
-				// width={'80%'}
-				alignSelf={'center'}
+				width={'100%'}
 				border={'1px solid rgba(0, 0, 0, 0.12)'}
-				flexGrow={1}
-				height={'fit-content'}
-				minHeight={600}
-				display={'flex'}
-				flexDirection={'column'}
+				mb={1}
 				sx={{ backgroundColor: '#fff', userSelect: 'none' }}
 			>
-				<Breadcrumbs aria-label='breadcrumb' sx={{ mb: -1 }}>
+				<Breadcrumbs aria-label='breadcrumb'>
 					<Breadcrumb to={AppRoutes.Home}>Главная</Breadcrumb>
 					<Breadcrumb to={AppRoutes.Search} active>
 						Поиск
 					</Breadcrumb>
 				</Breadcrumbs>
-
-				<Search />
 			</Box>
+
+			<Search />
 		</PageBox>
 	)
 }

@@ -1,4 +1,5 @@
 export interface ISearchItem {
+	id: number
 	name: string | null
 	quantity: number | null
 }
@@ -6,6 +7,7 @@ export interface ISearchItem {
 export interface ISearch {
 	items: ISearchItem[]
 	isFuzzy: boolean
+	sessionId: string
 }
 
 export interface IOrderMatchResult {
@@ -15,12 +17,25 @@ export interface IOrderMatchResult {
 	year: number
 	link: string
 	score: number // Общий процент совпадения (0-100)
-	matchedCount: number // Сколько позиций совпало
+	matchedPos: number // Сколько позиций совпало
+	matchedQuant: number // Сколько позиций + количество совпало
 	totalCount: number // Сколько позиций в запросе
+	// positionIds: string[]
+	positions: IMatchPosition[]
+}
+export interface IMatchPosition {
+	id: string
+	reqId: string
+	quantEqual: boolean
 }
 
 export interface ISearchResults {
 	year: number
 	count: number
 	orders: IOrderMatchResult[]
+}
+
+export interface ISearchError {
+	searchId: string
+	message: string
 }

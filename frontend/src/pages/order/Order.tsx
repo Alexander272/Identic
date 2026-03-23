@@ -19,8 +19,7 @@ export default function OrderPage() {
 				borderRadius={3}
 				paddingX={2}
 				paddingY={1}
-				width={'80%'}
-				alignSelf={'center'}
+				minWidth={'80%'}
 				border={'1px solid rgba(0, 0, 0, 0.12)'}
 				// flexGrow={1}
 				height={'fit-content'}

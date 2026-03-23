@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import { Box, Divider, Stack, Typography, useTheme } from '@mui/material'
+import { Box, Divider, Stack, Tooltip, Typography, useTheme } from '@mui/material'
 
 import type { IOrder } from '../../types/order'
 import { BusinessIcon } from '@/components/Icons/BusinessIcon'
@@ -65,7 +65,30 @@ export const Header: FC<Props> = ({ order }) => {
 				>
 					Примечание
 				</Typography>
-				<Typography
+				<Tooltip title={order.notes || ''} arrow disableHoverListener={!order.notes}>
+					<Typography
+						sx={{
+							fontSize: '14px',
+							color: '#303030',
+							bgcolor: '#f9f9f9',
+							py: 0.5,
+							px: 1.5,
+							borderRadius: 2,
+							border: '1px solid #eee',
+
+							// Стили для обрезки текста:
+							display: 'block',
+							whiteSpace: 'nowrap',
+							overflow: 'hidden',
+							textOverflow: 'ellipsis',
+							width: '100%',
+							cursor: 'pointer',
+						}}
+					>
+						{order.notes || '-'}
+					</Typography>
+				</Tooltip>
+				{/* <Typography
 					sx={{
 						fontSize: '14px',
 						color: '#303030',
@@ -77,7 +100,7 @@ export const Header: FC<Props> = ({ order }) => {
 					}}
 				>
 					{order.notes || '-'}
-				</Typography>
+				</Typography> */}
 			</Box>
 
 			<Box sx={{ flex: 1.25 }}>
@@ -107,7 +130,7 @@ export const Header: FC<Props> = ({ order }) => {
 				</Stack>
 			</Box>
 
-			<Box sx={{ flex: 0.75, textAlign: { md: 'right' } }}>
+			<Box sx={{ flex: 0.5, textAlign: { md: 'right' } }}>
 				<Typography
 					variant='caption'
 					color='text.secondary'
@@ -115,8 +138,31 @@ export const Header: FC<Props> = ({ order }) => {
 				>
 					Счет в 1С
 				</Typography>
-				<Typography color='primary' display={'flex'} alignItems={'center'} justifyContent={'flex-end'}>
-					<FileIcon fontSize={16} fill={palette.primary.main} mr={1} /> Счет № {order.bill || 'Н/Д'}
+				<Typography
+					color='primary'
+					display={'flex'}
+					alignItems={'center'}
+					justifyContent={'flex-end'}
+					sx={{ minWidth: 0 }}
+				>
+					<FileIcon fontSize={16} fill={palette.primary.main} mr={1} flexShrink={0} />
+					<Tooltip title={order.bill || ''} arrow disableHoverListener={!order.bill}>
+						<Typography
+							component={'span'}
+							textAlign={'left'}
+							sx={{
+								// Стили для обрезки текста:
+								display: 'block',
+								whiteSpace: 'nowrap',
+								overflow: 'hidden',
+								textOverflow: 'ellipsis',
+								maxWidth: '100%',
+								cursor: 'pointer',
+							}}
+						>
+							{order.bill || '-'}
+						</Typography>
+					</Tooltip>
 				</Typography>
 			</Box>
 		</Stack>
