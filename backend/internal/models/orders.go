@@ -24,6 +24,7 @@ type Order struct {
 	Bill          string      `json:"bill" db:"bill"`
 	Date          time.Time   `json:"date" db:"date"`
 	Notes         string      `json:"notes" db:"notes"`
+	Year          int         `json:"year" db:"year"`
 	PositionCount int         `json:"positionCount" db:"position_count"`
 	CreatedAt     time.Time   `json:"createdAt" db:"created_at"`
 	Positions     []*Position `json:"positions"`

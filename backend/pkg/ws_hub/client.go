@@ -24,8 +24,8 @@ func NewClient(conn *websocket.Conn, hub *Hub) *Client {
 }
 
 type WSMessage struct {
-	Type string      `json:"type"`
-	Data interface{} `json:"data"`
+	Action string      `json:"action"`
+	Data   interface{} `json:"data"`
 }
 
 // Метод для внешнего мира: подписать клиента
@@ -48,8 +48,8 @@ func (c *Client) Close() {
 
 func (c *Client) SendJSON(msgType string, payload interface{}) error {
 	message := WSMessage{
-		Type: msgType,
-		Data: payload,
+		Action: msgType,
+		Data:   payload,
 	}
 
 	data, err := json.Marshal(message)

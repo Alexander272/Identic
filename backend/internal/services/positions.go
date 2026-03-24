@@ -63,6 +63,10 @@ func (s *PositionsService) Create(ctx context.Context, tx postgres.Tx, dto []*mo
 	return s.executeCreate(ctx, tx, dto)
 }
 func (s *PositionsService) executeCreate(ctx context.Context, tx postgres.Tx, dto []*models.PositionDTO) error {
+	for i := range dto {
+		dto[i].Search = NormalizeString(dto[i].Name)
+	}
+
 	if err := s.repo.Create(ctx, tx, dto); err != nil {
 		return fmt.Errorf("failed to create positions. error: %w", err)
 	}
@@ -84,6 +88,10 @@ func (s *PositionsService) Update(ctx context.Context, tx postgres.Tx, dto []*mo
 	return s.executeUpdate(ctx, tx, dto)
 }
 func (s *PositionsService) executeUpdate(ctx context.Context, tx postgres.Tx, dto []*models.PositionDTO) error {
+	for i := range dto {
+		dto[i].Search = NormalizeString(dto[i].Search)
+	}
+
 	if err := s.repo.Update(ctx, tx, dto); err != nil {
 		return fmt.Errorf("failed to update positions. error: %w", err)
 	}

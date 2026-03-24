@@ -49,8 +49,8 @@ func (s *SearchStreamService) Streaming(ctx context.Context, req *models.SearchR
 		}
 
 		msg := ws_hub.WSMessage{
-			Type: "SEARCH_RESULT_PART",
-			Data: payload,
+			Action: "SEARCH_RESULT_PART",
+			Data:   payload,
 		}
 
 		data, err := json.Marshal(msg)
@@ -75,8 +75,8 @@ func (s *SearchStreamService) sendError(searchId string, err error) {
 	}
 
 	msg := ws_hub.WSMessage{
-		Type: "SEARCH_ERROR",
-		Data: payload,
+		Action: "SEARCH_ERROR",
+		Data:   payload,
 	}
 
 	data, err := json.Marshal(msg)

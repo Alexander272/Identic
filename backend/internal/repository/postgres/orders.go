@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/Alexander272/Identic/backend/internal/models"
+	"github.com/Alexander272/Identic/backend/pkg/ws_hub"
 	"github.com/goccy/go-json"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -70,7 +71,7 @@ func (r *OrderRepo) GetByYear(ctx context.Context, req *models.GetOrderByYearDTO
         FROM %s AS o
         LEFT JOIN %s AS p ON p.order_id = o.id
         WHERE o.year = $1
-        GROUP BY o.id ORDER BY o.date DESC, manager, customer, consumer`,
+        GROUP BY o.id ORDER BY o.date DESC, o.created_at DESC, manager, customer, consumer`,
 		OrdersTable, PositionsTable,
 	)
 	var data []*models.Order
@@ -132,24 +133,28 @@ func (r *OrderRepo) Create(ctx context.Context, tx Tx, dto *models.OrderDTO) err
 	if dto.Id == "" {
 		dto.Id = uuid.NewString()
 	}
+	dto.Year = dto.Date.Year()
 
 	_, err := r.getExec(tx).Exec(ctx, query,
-		dto.Id, dto.Customer, dto.Consumer, dto.Manager, dto.Bill, dto.Date, dto.Date.Year(), dto.Notes,
+		dto.Id, dto.Customer, dto.Consumer, dto.Manager, dto.Bill, dto.Date, dto.Year, dto.Notes,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to execute query. error: %w", err)
 	}
 
-	payload, _ := json.Marshal(map[string]interface{}{
-		"action":   "ORDER_INSERTED",
-		"id":       dto.Id,
-		"customer": dto.Customer,
-		"consumer": dto.Consumer,
-		"manager":  dto.Manager,
-		"bill":     dto.Bill,
-		"date":     dto.Date,
-		"year":     dto.Date.Year(),
-		"notes":    dto.Notes,
+	payload, _ := json.Marshal(ws_hub.WSMessage{
+		Action: "ORDER_INSERTED",
+		Data: models.Order{
+			Id:            dto.Id,
+			Customer:      dto.Customer,
+			Consumer:      dto.Consumer,
+			Manager:       dto.Manager,
+			Bill:          dto.Bill,
+			Date:          dto.Date,
+			Year:          dto.Year,
+			Notes:         dto.Notes,
+			PositionCount: len(dto.Positions),
+		},
 	})
 	_, err = r.getExec(tx).Exec(ctx, "SELECT pg_notify('order_updates', $1)", string(payload))
 	if err != nil {
@@ -198,11 +203,11 @@ func (r *OrderRepo) CreateSeveral(ctx context.Context, tx Tx, dto []*models.Orde
 	}
 
 	// 3. Отправка уведомления через pg_notify
-	payload, _ := json.Marshal(map[string]interface{}{
-		"action": "ORDERS_BULK_INSERTED",
-		"years":  affectedYears,
-		// "count":  len(ids),
-		// "ids":    ids,
+	payload, _ := json.Marshal(ws_hub.WSMessage{
+		Action: "ORDER_BULK_INSERTED",
+		Data: map[string]interface{}{
+			"years": affectedYears,
+		},
 	})
 
 	// Выполняем NOTIFY. Важно делать это в той же транзакции (tx),
@@ -224,24 +229,28 @@ func (r *OrderRepo) Update(ctx context.Context, tx Tx, dto *models.OrderDTO) err
 		WHERE id = $1`,
 		OrdersTable,
 	)
+	dto.Year = dto.Date.Year()
 
 	_, err := r.getExec(tx).Exec(ctx, query,
-		dto.Id, dto.Customer, dto.Consumer, dto.Manager, dto.Bill, dto.Date, dto.Date.Year(), dto.Notes,
+		dto.Id, dto.Customer, dto.Consumer, dto.Manager, dto.Bill, dto.Date, dto.Year, dto.Notes,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to execute query. error: %w", err)
 	}
 
-	payload, _ := json.Marshal(map[string]interface{}{
-		"action":   "ORDER_UPDATED",
-		"id":       dto.Id,
-		"customer": dto.Customer,
-		"consumer": dto.Consumer,
-		"manager":  dto.Manager,
-		"bill":     dto.Bill,
-		"date":     dto.Date,
-		"year":     dto.Date.Year(),
-		"notes":    dto.Notes,
+	payload, _ := json.Marshal(ws_hub.WSMessage{
+		Action: "ORDER_UPDATED",
+		Data: models.Order{
+			Id:            dto.Id,
+			Customer:      dto.Customer,
+			Consumer:      dto.Consumer,
+			Manager:       dto.Manager,
+			Bill:          dto.Bill,
+			Date:          dto.Date,
+			Year:          dto.Year,
+			Notes:         dto.Notes,
+			PositionCount: len(dto.Positions),
+		},
 	})
 
 	_, err = r.getExec(tx).Exec(ctx, "SELECT pg_notify('order_updates', $1)", string(payload))
@@ -264,10 +273,12 @@ func (r *OrderRepo) Delete(ctx context.Context, tx Tx, dto *models.DeleteOrderDT
 		return fmt.Errorf("failed to execute query. error: %w", err)
 	}
 
-	payload, _ := json.Marshal(map[string]interface{}{
-		"action": "ORDER_DELETED",
-		"id":     dto.Id,
-		"year":   year,
+	payload, _ := json.Marshal(ws_hub.WSMessage{
+		Action: "ORDER_DELETED",
+		Data: map[string]interface{}{
+			"id":   dto.Id,
+			"year": year,
+		},
 	})
 
 	_, err = r.getExec(tx).Exec(ctx, "SELECT pg_notify('order_updates', $1)", string(payload))
