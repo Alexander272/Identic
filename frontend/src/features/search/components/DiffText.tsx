@@ -12,7 +12,7 @@ export const DiffText: React.FC<DiffTextProps> = ({ expected, actual }) => {
 	const diff = diffWords(expected, actual)
 
 	return (
-		<Typography variant='body2'>
+		<Typography>
 			{diff.map((part, index) => {
 				// part.added — символы, которые есть в базе, но нет в запросе (лишние/другие)
 				// part.removed — символы, которые были в запросе, но нет в базе
@@ -38,7 +38,7 @@ export const DiffText: React.FC<DiffTextProps> = ({ expected, actual }) => {
 							backgroundColor: bgcolor,
 							px: '1px',
 							borderRadius: '4px',
-							fontWeight: 'bold',
+							fontSize: '1rem',
 						}}
 					>
 						{part.value}

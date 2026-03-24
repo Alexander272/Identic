@@ -20,11 +20,11 @@ export const Header: FC<Props> = ({ order }) => {
 		<Stack
 			direction={{ xs: 'column', md: 'row' }}
 			divider={<Divider orientation='vertical' flexItem />}
-			spacing={4}
+			spacing={{ xs: 1, md: 4 }}
 			sx={{ mx: 4, mt: 2 }}
 		>
 			<Box sx={{ flex: 1.6 }}>
-				<Stack spacing={3} direction={'row'}>
+				<Stack spacing={3} direction={'row'} justifyContent={'space-around'}>
 					<Box>
 						<Typography
 							variant='caption'

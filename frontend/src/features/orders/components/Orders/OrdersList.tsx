@@ -37,11 +37,14 @@ const TableComponents = {
 	),
 	TableHead: forwardRef<HTMLTableSectionElement>((props, ref) => <TableHead {...props} ref={ref} />),
 	TableRow: (props: TableRowProps & { item: IOrder }) => {
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
-		const { item: _, ...rest } = props
+		const { item, ...rest } = props
 		return (
 			<TableRow
 				{...rest}
+				onClick={() => {
+					const url = `/orders/${item.id}`
+					window.open(url, '_blank', 'noopener,noreferrer')
+				}}
 				sx={{
 					'&:nth-of-type(even)': { backgroundColor: '#fafafa' },
 					'&:hover': { backgroundColor: '#f0f4f8 !important' },
@@ -76,10 +79,10 @@ export const OrdersList: FC<Props> = ({ year }) => {
 								Дата
 							</TableCell>
 							<TableCell width={400} sx={{ fontWeight: 'bold' }}>
-								Заказчик
+								Конечник
 							</TableCell>
 							<TableCell width={400} sx={{ fontWeight: 'bold' }}>
-								Конечник
+								Заказчик
 							</TableCell>
 							<TableCell width={140} align='right' sx={{ fontWeight: 'bold' }}>
 								Кол-во позиций
@@ -100,8 +103,8 @@ export const OrdersList: FC<Props> = ({ year }) => {
 						<>
 							<TableCell sx={{ borderTopLeftRadius: 8, borderBottomLeftRadius: 8 }}>{idx + 1}</TableCell>
 							<TableCell align='center'>{dayjs(d.date).format('DD.MM.YYYY')}</TableCell>
-							<TableCell>{d.customer || '—'}</TableCell>
 							<TableCell>{d.consumer || '—'}</TableCell>
+							<TableCell>{d.customer || '—'}</TableCell>
 							<TableCell align='right'>{d.positionCount}</TableCell>
 							<TableCell>{renderManagers(d.manager)}</TableCell>
 							<TableCell>{d.bill || '—'}</TableCell>
@@ -124,73 +127,6 @@ export const OrdersList: FC<Props> = ({ year }) => {
 						</>
 					)}
 				/>
-				{/* <Table size='small' stickyHeader>
-					<TableHead>
-						<TableRow>
-							<TableCell width={60} sx={{ fontWeight: 'bold' }}>
-								№
-							</TableCell>
-							<TableCell width={130} align='center' sx={{ fontWeight: 'bold' }}>
-								Дата
-							</TableCell>
-							<TableCell width={400} sx={{ fontWeight: 'bold' }}>
-								Заказчик
-							</TableCell>
-							<TableCell width={400} sx={{ fontWeight: 'bold' }}>
-								Конечник
-							</TableCell>
-							<TableCell width={140} align='right' sx={{ fontWeight: 'bold' }}>
-								Кол-во позиций
-							</TableCell>
-							<TableCell width={160} sx={{ fontWeight: 'bold' }}>
-								Менеджер / помощник
-							</TableCell>
-							<TableCell width={120} sx={{ fontWeight: 'bold' }}>
-								Счет в 1С
-							</TableCell>
-							<TableCell width={300} sx={{ fontWeight: 'bold' }}>
-								Примечание
-							</TableCell>
-							<TableCell width={40} />
-						</TableRow>
-					</TableHead>
-
-					<TableBody>
-						{data?.data.map((d, idx) => {
-							const bgcolor = idx % 2 === 1 ? '#fafafa' : '#fff'
-
-							return (
-								<TableRow key={d.id} hover sx={{ bgcolor: bgcolor }}>
-									<TableCell width={30} sx={{ borderTopLeftRadius: 8, borderBottomLeftRadius: 8 }}>
-										{idx + 1}
-									</TableCell>
-									<TableCell align='center'>{dayjs(d.date).format('DD.MM.YYYY')}</TableCell>
-									<TableCell>{d.customer || '—'}</TableCell>
-									<TableCell>{d.consumer || '—'}</TableCell>
-									<TableCell align='right'>{d.positionCount}</TableCell>
-									<TableCell>{renderManagers(d.manager)}</TableCell>
-									<TableCell>{d.bill || '—'}</TableCell>
-									<TableCell>{d.notes || '—'}</TableCell>
-									<TableCell sx={{ borderTopRightRadius: 8, borderBottomRightRadius: 8 }}>
-										<Link to={`/orders/${d.id}`} target='_blank' rel='noopener noreferrer'>
-											<Tooltip title='Перейти к заказу'>
-												<Button
-													sx={{
-														minWidth: 48,
-														borderRadius: '6px',
-														':hover': { svg: { fill: palette.secondary.main } },
-													}}
-												>
-													<PopupLinkIcon fontSize={14} />
-												</Button>
-											</Tooltip>
-										</Link>
-									</TableCell>
-								</TableRow>
-							)
-						})}
-					</TableBody>
-				</Table> */}
 			</TableContainer>
 		</Stack>
 	)

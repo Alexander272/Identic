@@ -112,9 +112,9 @@ class WebSocketService {
 			// console.log('📥 WS Raw Data:', event.data)
 			try {
 				const data = JSON.parse(event.data) as WSEvent
-				if (!data.type) return
+				if (!data.action) return
 
-				const handlers = this.listeners[data.type]
+				const handlers = this.listeners[data.action]
 				if (handlers) {
 					const genericHandlers = handlers as unknown as Set<Listener<unknown>>
 
@@ -135,10 +135,10 @@ class WebSocketService {
 		this.ws.onerror = () => this.ws?.close()
 	}
 
-	send<K extends keyof WSEventMap>(type: K, payload: unknown) {
-		console.log('📡 WS Sending:', type, payload)
+	send<K extends keyof WSEventMap>(action: K, payload: unknown) {
+		console.log('📡 WS Sending:', action, payload)
 		if (this.ws?.readyState === WebSocket.OPEN) {
-			this.ws.send(JSON.stringify({ action: type, payload }))
+			this.ws.send(JSON.stringify({ action, payload }))
 		}
 	}
 

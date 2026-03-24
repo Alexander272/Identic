@@ -68,7 +68,7 @@ export const Order: FC<Props> = ({ id, positionIds }) => {
 				</Typography>
 			</Typography>
 
-			<Stack mb={3} pr={2}>
+			<Stack mb={2} pr={2}>
 				{/* <Table size='small'>
 					<TableHead>
 						<TableRow>
@@ -105,9 +105,9 @@ export const Order: FC<Props> = ({ id, positionIds }) => {
 			</Stack>
 
 			<Stack justifyContent={'center'} alignItems={'center'} mb={2}>
-				<Typography component='h5' fontSize={'1.2rem'}>
+				{/* <Typography component='h5' fontSize={'1.2rem'}>
 					Позиции
-				</Typography>
+				</Typography> */}
 
 				<Filter filters={filters} onChange={updateFilter} showFound={positionIds.length > 0} />
 			</Stack>

@@ -103,12 +103,12 @@ export const Search = () => {
 
 	return (
 		<Stack
-			direction={'row'}
+			direction={{ xl: 'row' }}
 			position={'relative'}
 			height={'100%'}
 			justifyContent={'center'}
-			spacing={1}
-			sx={{ height: '100%', maxHeight: 750 }}
+			// spacing={1}
+			sx={{ height: '100%', maxHeight: 750, minWidth: 900 }}
 		>
 			{isSearching ? <BoxFallback /> : null}
 
@@ -116,6 +116,8 @@ export const Search = () => {
 				borderRadius={3}
 				paddingX={2}
 				paddingY={1}
+				mr={{ xl: 1, md: 0 }}
+				mb={{ xl: 0, md: 1 }}
 				border={'1px solid rgba(0, 0, 0, 0.12)'}
 				sx={{ background: '#fff' }}
 			>

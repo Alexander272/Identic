@@ -170,10 +170,15 @@ export const orderApiSlice = apiSlice.injectEndpoints({
 
 					const unsubs: Array<() => void> = []
 
+					// Подписываемся на топик
+					wsService.send('SUBSCRIBE', { topic: 'orders' })
+
 					// 1. Слушаем новые заказы
 					unsubs.push(
 						wsService.subscribe('ORDER_INSERTED', order => {
-							if (new Date(order.createdAt).getFullYear().toString() === year) {
+							console.log('insert order', order)
+
+							if (order.year.toString() === year) {
 								updateCachedData(draft => {
 									draft.data.unshift(order)
 								})
@@ -190,10 +195,10 @@ export const orderApiSlice = apiSlice.injectEndpoints({
 					)
 					// 3. Слушаем удаления
 					unsubs.push(
-						wsService.subscribe('ORDER_DELETED', ({ id, createdAt }) => {
-							if (new Date(createdAt).getFullYear().toString() === year) {
+						wsService.subscribe('ORDER_DELETED', order => {
+							if (order.year.toString() === year) {
 								updateCachedData(draft => {
-									draft.data = draft.data.filter(o => o.id !== id)
+									draft.data = draft.data.filter(o => o.id !== order.id)
 								})
 							}
 						}),
@@ -201,7 +206,7 @@ export const orderApiSlice = apiSlice.injectEndpoints({
 					// 4. Слушаем обновления
 					unsubs.push(
 						wsService.subscribe('ORDER_UPDATED', order => {
-							if (new Date(order.createdAt).getFullYear().toString() === year) {
+							if (order.year.toString() === year) {
 								updateCachedData(draft => {
 									const index = draft.data.findIndex(o => o.id === order.id)
 									if (index !== -1) {
@@ -213,6 +218,8 @@ export const orderApiSlice = apiSlice.injectEndpoints({
 					)
 
 					await cacheEntryRemoved
+					// Отписываемся
+					wsService.send('UNSUBSCRIBE', { topic: 'orders' })
 					unsubs.forEach(u => u())
 				} catch (e) {
 					console.error('Socket sync error:', e)

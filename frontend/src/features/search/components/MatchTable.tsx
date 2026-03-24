@@ -1,23 +1,14 @@
 import { useState, type FC } from 'react'
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableContainer,
-	TableRow,
-	Paper,
-	Typography,
-	Box,
-	Stack,
-	ButtonGroup,
-	Button,
-} from '@mui/material'
+import { Paper, Typography, Box, Stack, ButtonGroup, Button, useTheme, useMediaQuery } from '@mui/material'
+import { Link } from 'react-router'
 
 import type { IOrderMatchResult, ISearchItem } from '../types/search'
 import type { IPosition } from '@/features/orders/types/positions'
+import { normalize } from '../utils/normalize'
 import { VerifiedIcon } from '@/components/Icons/VerifiedIcon'
 import { WarnIcon } from '@/components/Icons/WarnIcon'
 import { CloseRoundIcon } from '@/components/Icons/CloseRoundIcon'
+import { PopupLinkIcon } from '@/components/Icons/PopupLinkIcon'
 import { DiffText } from './DiffText'
 
 // --- Константы цветов и стилей ---
@@ -77,12 +68,15 @@ type Props = {
 
 // --- Основной компонент ---
 export const MatchTable: FC<Props> = ({ request, result, foundPositions }) => {
+	const { palette, breakpoints } = useTheme()
+	const isMobile = useMediaQuery(breakpoints.down('md'))
+
 	const [filter, setFilter] = useState<'all' | 'found' | 'not_found'>('all')
 
 	// Логика определения статуса и данных для строки
 	const getRowData = (index: number) => {
 		// 1. Берем то, что пользователь ввел в поиске
-		const requestedItem = request[index]
+		const requestedItem = { ...request[index] }
 
 		// 2. Ищем в результате поиска, есть ли связь для этого индекса
 		const match = result.positions.find(p => p.reqId === index.toString())
@@ -107,8 +101,11 @@ export const MatchTable: FC<Props> = ({ request, result, foundPositions }) => {
 			return { status: 'not_found', foundItem: null }
 		}
 
+		const foundName = normalize(foundItem.name)
+		const reqName = requestedItem?.name ? normalize(requestedItem.name) : ''
+
 		const diff = {
-			name: foundItem.name.trim() !== requestedItem.name?.trim(),
+			name: foundName !== reqName,
 			qty: foundQty !== reqQty,
 		}
 
@@ -141,194 +138,200 @@ export const MatchTable: FC<Props> = ({ request, result, foundPositions }) => {
 
 	return (
 		<Box>
-			<Stack direction='row' justifyContent='space-between' alignItems='center' mb={1}>
+			<Stack
+				direction={{ md: 'row' }}
+				spacing={{ md: 0, sm: 1 }}
+				justifyContent='space-between'
+				alignItems='center'
+				mb={1.5}
+			>
 				<Typography fontSize={'1.2rem'} fontWeight='bold'>
 					Детализация позиций поиска
 				</Typography>
-				<ButtonGroup variant='outlined' size='small'>
-					<Button onClick={() => setFilter('all')} variant={filter === 'all' ? 'contained' : 'outlined'}>
-						Все ({request.length})
-					</Button>
-					<Button onClick={() => setFilter('found')} variant={filter === 'found' ? 'contained' : 'outlined'}>
-						Найдено ({result.matchedPos})
-					</Button>
-					<Button
-						onClick={() => setFilter('not_found')}
-						variant={filter === 'not_found' ? 'contained' : 'outlined'}
-					>
-						Не найдено ({request.length - result.matchedPos})
-					</Button>
-				</ButtonGroup>
+
+				<Stack direction='row' alignItems='center' gap={2}>
+					<Link to={result.link} target='_blank' rel='noopener noreferrer'>
+						<Button
+							variant='outlined'
+							size='small'
+							sx={{ px: 2, textTransform: 'inherit' }}
+							endIcon={<PopupLinkIcon fontSize={'14px !important'} fill={palette.primary.main} />}
+						>
+							Открыть заказ
+						</Button>
+					</Link>
+
+					<ButtonGroup variant='outlined' size='small'>
+						<Button onClick={() => setFilter('all')} variant={filter === 'all' ? 'contained' : 'outlined'}>
+							Все ({request.length})
+						</Button>
+						<Button
+							onClick={() => setFilter('found')}
+							variant={filter === 'found' ? 'contained' : 'outlined'}
+						>
+							Найдено ({result.matchedPos})
+						</Button>
+						<Button
+							onClick={() => setFilter('not_found')}
+							variant={filter === 'not_found' ? 'contained' : 'outlined'}
+						>
+							Не найдено ({request.length - result.matchedPos})
+						</Button>
+					</ButtonGroup>
+				</Stack>
 			</Stack>
 
-			<TableContainer
-				component={Paper}
+			<Box
 				sx={{
-					boxShadow: 'none',
-					border: 'none',
-					// backgroundColor: 'transparent',
 					maxHeight: 700,
 					overflow: 'auto',
+					display: 'flex',
+					flexDirection: 'column',
 					pr: 0.5,
 				}}
 			>
-				<Table sx={{ borderCollapse: 'separate', borderSpacing: '0 8px' }}>
-					{/* Отступы между строками */}
-					<TableBody>
-						{filteredIndices.map(index => {
-							const item = request[index]
-							const { status, foundItem, mismatch } = getRowData(index as number)
+				{filteredIndices.map(index => {
+					const item = request[index]
+					const { status, foundItem, mismatch } = getRowData(index as number)
 
-							let rowStyle
-							if (status === 'found') rowStyle = tableRowStyles(colors.success, colors.successBorder)
-							else if (status === 'partial')
-								rowStyle = tableRowStyles(colors.warning, colors.warningBorder)
-							else rowStyle = tableRowStyles(colors.error, colors.errorBorder)
+					let rowColorStyles
+					let statusColor
+					switch (status) {
+						case 'found':
+							rowColorStyles = tableRowStyles(colors.success, colors.successBorder)
+							statusColor = colors.successBorder
+							break
+						case 'partial':
+							rowColorStyles = tableRowStyles(colors.warning, colors.warningBorder)
+							statusColor = colors.warningBorder
+							break
+						default:
+							rowColorStyles = tableRowStyles(colors.error, colors.errorBorder)
+							statusColor = colors.errorBorder
+							break
+					}
 
-							return (
-								<TableRow key={index} sx={rowStyle}>
-									{/* # Ячейка с индексом */}
-									<TableCell sx={{ border: 'none', width: '30px', padding: '0 8px' }}>
-										<Typography variant='body2' color='textSecondary'>
-											{index + 1}
-										</Typography>
-									</TableCell>
+					return (
+						<Paper
+							key={index}
+							sx={{
+								...rowColorStyles,
+								display: 'flex',
+								flexDirection: isMobile ? 'column' : 'row',
+								alignItems: isMobile ? 'flex-start' : 'center',
+								p: isMobile ? 2 : '8px 16px',
+								minHeight: isMobile ? 'auto' : '64px',
+								gap: isMobile ? 1.5 : 0,
+								boxShadow: 'none',
+							}}
+						>
+							{/* --- БЛОК 1: СЛУЖЕБНЫЙ (Номер, Иконка, Статус-текст) --- */}
+							<Stack
+								direction='row'
+								spacing={2}
+								alignItems='center'
+								sx={{ minWidth: isMobile ? '100%' : '70px' }}
+							>
+								<Typography variant='body2' color='textSecondary'>
+									{index + 1}
+								</Typography>
 
-									<TableCell
-										sx={{
-											border: 'none',
-											width: '30px',
-											padding: '0',
-											flexShrink: 0,
-											display: 'flex',
-											alignItems: 'center',
-											justifyContent: 'center',
-											alignSelf: 'stretch', // Ячейка займет всю высоту строки
-										}}
+								<StatusIcon status={status as 'found' | 'partial' | 'not_found'} />
+
+								{isMobile && (
+									<Typography variant='caption' fontWeight='bold' color={statusColor}>
+										{status === 'found' && '— Полное совпадение —'}
+										{status === 'partial' && '— Частичное совпадение —'}
+										{status === 'not_found' && '— Не найдено в заказе —'}
+									</Typography>
+								)}
+							</Stack>
+
+							{/* --- БЛОК 2: ЗАПРОС (Наименование/Кол-во пользователя) --- */}
+							<Box sx={{ flex: 1, width: '100%' }}>
+								{isMobile && (
+									<Typography variant='caption' color='textSecondary'>
+										Запрос:
+									</Typography>
+								)}
+								<Typography>{item.name}</Typography>
+								<Typography color='textSecondary'>{item.quantity ?? 0} шт.</Typography>
+							</Box>
+
+							{!isMobile && status === 'partial' && (
+								<Typography variant='caption' color={colors.warningBorder} fontWeight='bold'>
+									Частичное совпадение
+								</Typography>
+							)}
+
+							{/* --- БЛОК 3: РЕЗУЛЬТАТ (Найденное в заказе) --- */}
+							<Box
+								sx={{
+									flex: 1,
+									width: '100%',
+									textAlign: isMobile ? 'left' : 'right',
+									borderTop:
+										isMobile && status !== 'found' ? `1px dashed ${palette.divider}` : 'none',
+									pt: isMobile && status !== 'found' ? 1 : 0,
+								}}
+							>
+								{/* На десктопе выводим статусы здесь, как в оригинале */}
+								{!isMobile && status === 'found' && (
+									<Typography
+										variant='body1'
+										color={colors.successBorder}
+										fontWeight='bold'
+										textAlign={'center'}
 									>
-										<StatusIcon status={status as 'found' | 'partial' | 'not_found'} />
-									</TableCell>
+										— Полное совпадение —
+									</Typography>
+								)}
+								{!isMobile && status === 'not_found' && (
+									<Typography
+										variant='body1'
+										color={colors.errorBorder}
+										fontWeight='bold'
+										textAlign={'center'}
+									>
+										— Не найдено в заказе —
+									</Typography>
+								)}
 
-									{/* Ячейка с запросом */}
-									<TableCell sx={{ border: 'none', width: 750, padding: '0 16px' }}>
-										<Box>
-											<Typography variant='body1' fontWeight='bold'>
-												{item.name}
+								{/* Содержимое для частичного совпадения */}
+								{status === 'partial' && (
+									<Stack alignItems={isMobile ? 'flex-start' : 'flex-end'}>
+										{isMobile && (
+											<Typography variant='caption' color='textSecondary'>
+												Найдено:
 											</Typography>
-											<Typography variant='body2' color='textSecondary'>
-												{item.quantity ?? 0} шт.
-											</Typography>
-										</Box>
-									</TableCell>
-
-									<TableCell sx={{ border: 'none', width: '30px', padding: '0 8px' }}>
-										{status === 'partial' ? (
-											<Typography variant='body1' color='textSecondary'>
-												→
-											</Typography>
-										) : null}
-									</TableCell>
-
-									{status === 'not_found' ? (
-										<TableCell
-											colSpan={2}
-											sx={{ border: 'none', flex: 1, padding: '0 16px', textAlign: 'center' }}
-										>
-											<Typography variant='body1' color={colors.errorBorder} fontWeight='bold'>
-												— Не найдено в заказе —
-											</Typography>
-										</TableCell>
-									) : null}
-									{status === 'found' ? (
-										<TableCell
-											colSpan={2}
-											sx={{ border: 'none', flex: 1, padding: '0 16px', textAlign: 'center' }}
-										>
-											<Typography variant='body1' color={colors.successBorder} fontWeight='bold'>
-												— Полное совпадение —
-											</Typography>
-										</TableCell>
-									) : null}
-
-									{/* Ячейка с результатом (или "Не найдено") */}
-									{status === 'partial' ? (
-										<>
-											<TableCell
+										)}
+										{mismatch?.name ? (
+											<DiffText expected={item.name || ''} actual={foundItem.name} />
+										) : (
+											<Typography>{foundItem?.name}</Typography>
+										)}
+										<Typography color='textSecondary'>
+											<Box
+												component='span'
 												sx={{
-													border: 'none',
-													width: 200,
-													textAlign: 'center',
+													p: '1px 4px',
+													borderRadius: '1px',
+													bgcolor: mismatch?.qty ? colors.errorBg : 'transparent',
+													color: mismatch?.qty ? '#000' : 'inherit',
+													mr: 0.5,
 												}}
 											>
-												{/* <Typography variant='body1' fontWeight='bold'>
-													Найдено:
-												</Typography> */}
-
-												{status === 'partial' && (
-													<Typography
-														variant='caption'
-														color={colors.warningBorder}
-														fontWeight='bold'
-													>
-														Частичное совпадение
-													</Typography>
-												)}
-											</TableCell>
-
-											<TableCell
-												sx={{
-													border: 'none',
-													width: 750,
-													padding: '0 16px',
-													textAlign: 'right',
-												}}
-											>
-												<Stack
-													direction='row'
-													alignItems='center'
-													spacing={1}
-													justifyContent='flex-end'
-												>
-													<Box textAlign='right'>
-														{mismatch?.name ? (
-															<DiffText
-																expected={request[index].name || ''} // То, что ввел юзер в строку
-																actual={foundItem.name} // То, что вернул findOrders
-															/>
-														) : (
-															<Typography variant='body2'>{item.name}</Typography>
-														)}
-														<Typography variant='body2' color='textSecondary'>
-															<Typography
-																component={'span'}
-																mr={0.5}
-																sx={{
-																	px: '1px',
-																	borderRadius: '4px',
-																	backgroundColor: mismatch?.qty
-																		? colors.errorBg
-																		: 'transparent',
-																	color: mismatch?.qty ? '#000' : undefined,
-																}}
-															>
-																{foundItem?.quantity ?? 0}
-															</Typography>
-															шт.
-														</Typography>
-														{/* <Typography variant='body1' fontWeight='bold'>
-															Найдено: {item.name} ({foundQuant} шт.)
-														</Typography> */}
-													</Box>
-												</Stack>
-											</TableCell>
-										</>
-									) : null}
-								</TableRow>
-							)
-						})}
-					</TableBody>
-				</Table>
-			</TableContainer>
+												{foundItem?.quantity ?? 0}
+											</Box>
+											шт.
+										</Typography>
+									</Stack>
+								)}
+							</Box>
+						</Paper>
+					)
+				})}
+			</Box>
 		</Box>
 	)
 }

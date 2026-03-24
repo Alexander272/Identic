@@ -3,7 +3,7 @@ import type { IOrderMatchResult, ISearchError, ISearchItem } from '@/features/se
 
 // Базовый интерфейс сообщения
 export interface ISocketEnvelope<T = unknown> {
-	type: string
+	action: string
 	data: T
 }
 
@@ -18,36 +18,36 @@ export interface BaseWSMessage {
 }
 
 export interface OrderWSMessage extends BaseWSMessage {
-	type: OrderAction
+	action: OrderAction
 	data: IOrderSocketMessage
 }
 
 export interface SearchWSMessage extends BaseWSMessage {
-	type: SearchAction
+	action: SearchAction
 	data: IOrderMatchResult[]
 }
 
 export type WSMessage = OrderWSMessage | SearchWSMessage
 
 export type WSEvent =
-	| { type: 'SYSTEM_CONNECTED'; data: null }
-	| { type: 'SYSTEM_DISCONNECTED'; data: null }
-	| { type: 'SYSTEM_RECONNECTING'; data: null }
-	| { type: 'ORDER_INSERTED'; data: IOrder }
-	| { type: 'ORDER_UPDATED'; data: IOrder }
-	| { type: 'ORDER_DELETED'; data: { id: string; createdAt: string } }
-	| { type: 'ORDERS_BULK_INSERTED'; data: { years: number[] } }
-	| { type: 'SEARCH_STREAM'; data: ISearchItem[] }
-	| { type: 'SEARCH_RESULT'; data: IOrderMatchResult[] }
-	| { type: 'SEARCH_RESULT_PART'; data: { items: IOrderMatchResult[]; isLast: boolean; total: number } }
-	| { type: 'SEARCH_ERROR'; data: ISearchError }
-	| { type: 'CANCEL_SEARCH'; data: null }
-	| { type: 'SUBSCRIBE'; data: null }
-	| { type: 'UNSUBSCRIBE'; data: null }
+	| { action: 'SYSTEM_CONNECTED'; data: null }
+	| { action: 'SYSTEM_DISCONNECTED'; data: null }
+	| { action: 'SYSTEM_RECONNECTING'; data: null }
+	| { action: 'ORDER_INSERTED'; data: IOrder }
+	| { action: 'ORDER_UPDATED'; data: IOrder }
+	| { action: 'ORDER_DELETED'; data: { id: string; year: number } }
+	| { action: 'ORDERS_BULK_INSERTED'; data: { years: number[] } }
+	| { action: 'SEARCH_STREAM'; data: ISearchItem[] }
+	| { action: 'SEARCH_RESULT'; data: IOrderMatchResult[] }
+	| { action: 'SEARCH_RESULT_PART'; data: { items: IOrderMatchResult[]; isLast: boolean; total: number } }
+	| { action: 'SEARCH_ERROR'; data: ISearchError }
+	| { action: 'CANCEL_SEARCH'; data: null }
+	| { action: 'SUBSCRIBE'; data: null }
+	| { action: 'UNSUBSCRIBE'; data: null }
 
 // Превращаем Union в Map для сервиса
 export type WSEventMap = {
-	[E in WSEvent as E['type']]: E['data']
+	[E in WSEvent as E['action']]: E['data']
 }
 
 export type Listener<T> = (data: T) => void

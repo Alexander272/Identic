@@ -19,7 +19,7 @@ export const Results: FC<Props> = ({ data, search, isLoading }) => {
 			paddingX={2}
 			paddingY={1}
 			border={'1px solid rgba(0, 0, 0, 0.12)'}
-			sx={{ background: '#fff', height: '100%', flexGrow: 1, maxHeight: 750, overflow: 'auto', mr: -2, pr: 2 }}
+			sx={{ background: '#fff', height: '100%', flexGrow: 1, maxHeight: 750, overflow: 'auto', pr: 2 }}
 		>
 			<Stack direction={'row'} justifyContent={'center'} mb={2} position={'relative'}>
 				<Typography component='h2' variant='h5'>

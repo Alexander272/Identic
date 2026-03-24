@@ -12,6 +12,7 @@ export interface IOrder {
 	bill: string
 	date: string
 	notes: string
+	year: number
 	createdAt: string
 	positionCount: number
 	positions: IPosition[]
