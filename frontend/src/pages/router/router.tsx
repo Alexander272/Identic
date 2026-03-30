@@ -6,6 +6,7 @@ import { NotFound } from '@/pages/notFound/NotFoundLazy'
 import { Home } from '@/pages/home/HomeLazy'
 import { Order } from '@/pages/order/OrderLazy'
 import { CreateOrder } from '@/pages/createOrder/CreateOrderLazy'
+import { EditOrder } from '@/pages/editOrder/EditOrderLazy'
 import { OrdersList } from '@/pages/ordersList/OrdersListLazy'
 import { Search } from '@/pages/search/SearchLazy'
 
@@ -25,6 +26,10 @@ const config: RouteObject[] = [
 			{
 				path: AppRoutes.CreateOrder,
 				element: <CreateOrder />,
+			},
+			{
+				path: AppRoutes.EditOrder,
+				element: <EditOrder />,
 			},
 			{
 				path: AppRoutes.OrdersList,

@@ -2,7 +2,7 @@ import { useState, type FC } from 'react'
 import { createFilterOptions } from '@mui/material'
 
 import type { Field } from '@/components/Form/type'
-import { useGetUniqueDataQuery } from '../../orderApiSlice'
+import { useGetUniqueDataQuery } from '../../features/orders/orderApiSlice'
 import { AutocompleteField } from '@/components/Form/AutocompleteField'
 
 const filterOptions = createFilterOptions<string>({

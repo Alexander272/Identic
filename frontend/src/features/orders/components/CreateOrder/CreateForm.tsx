@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Button, Divider, Stack, TextField, Tooltip, Typography, useTheme } from '@mui/material'
+import { Box, Button, Divider, Stack, TextField, Tooltip, Typography, useTheme } from '@mui/material'
 import { Controller, FormProvider, useForm } from 'react-hook-form'
 import { DataSheetGrid, floatColumn, keyColumn, textColumn, type Column } from 'react-datasheet-grid'
 import { toast } from 'react-toastify'
@@ -13,10 +13,10 @@ import { extractQuantity } from '@/utils/extract'
 import { AddRow } from '@/components/DataSheet/AddRow'
 import { ContextMenu } from '@/components/DataSheet/ContextMenu'
 import { DateField } from '@/components/Form/DateField'
+import { AutocompleteInput } from '@/components/Autocomplete/AutocompleteInput'
 import { SaveIcon } from '@/components/Icons/SaveIcon'
 import { RefreshIcon } from '@/components/Icons/RefreshIcon'
 import { HyperlinkIcon } from '@/components/Icons/HyperlinkIcon'
-import { AutocompleteInput } from './AutocompleteInput'
 
 const defaultValues: IOrderCreate = {
 	customer: '',
@@ -223,40 +223,46 @@ export const CreateOrderForm = () => {
 						Сохранить
 					</Button>
 
-					<Tooltip title='Скопировать ссылку'>
-						<Button
-							onClick={copyHandler}
-							disabled={!link}
-							sx={{
-								minWidth: 48,
-								background: '#fff',
-								border: '1px solid #dcdcdc',
-								borderRadius: '6px',
-								padding: '4px 10px',
-								':disabled': { svg: { fill: palette.action.disabled } },
-								':hover': { svg: { fill: palette.secondary.main } },
-							}}
-						>
-							<HyperlinkIcon fontSize={18} />
-						</Button>
+					<Tooltip title={link ? 'Скопировать ссылку' : ''}>
+						<Box>
+							<Button
+								onClick={copyHandler}
+								disabled={!link}
+								sx={{
+									minWidth: 48,
+									height: '100%',
+									background: '#fff',
+									border: '1px solid #dcdcdc',
+									borderRadius: '6px',
+									padding: '4px 10px',
+									':disabled': { svg: { fill: palette.action.disabled } },
+									':hover': { svg: { fill: palette.secondary.main } },
+								}}
+							>
+								<HyperlinkIcon fontSize={18} />
+							</Button>
+						</Box>
 					</Tooltip>
 
-					<Tooltip title='Очистить форму'>
-						<Button
-							onClick={clearHandler}
-							disabled={!isDirty || isLoading}
-							sx={{
-								minWidth: 48,
-								background: '#fff',
-								border: '1px solid #dcdcdc',
-								borderRadius: '6px',
-								padding: '4px 10px',
-								':disabled': { svg: { fill: palette.action.disabled } },
-								':hover': { svg: { fill: palette.secondary.main } },
-							}}
-						>
-							<RefreshIcon fontSize={18} />
-						</Button>
+					<Tooltip title={!isDirty || isLoading ? 'Очистить форму' : ''}>
+						<Box>
+							<Button
+								onClick={clearHandler}
+								disabled={!isDirty || isLoading}
+								sx={{
+									minWidth: 48,
+									height: '100%',
+									background: '#fff',
+									border: '1px solid #dcdcdc',
+									borderRadius: '6px',
+									padding: '4px 10px',
+									':disabled': { svg: { fill: palette.action.disabled } },
+									':hover': { svg: { fill: palette.secondary.main } },
+								}}
+							>
+								<RefreshIcon fontSize={18} />
+							</Button>
+						</Box>
 					</Tooltip>
 				</Stack>
 			</Stack>

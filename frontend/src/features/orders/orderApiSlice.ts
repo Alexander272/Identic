@@ -1,7 +1,7 @@
 import { toast } from 'react-toastify'
 
 import type { IBaseFetchError } from '@/app/types/error'
-import type { IFlatOrder, IGetFlatOrders, IOrder, IOrderCreate } from './types/order'
+import type { IFlatOrder, IGetFlatOrders, IOrder, IOrderCreate, IOrderUpdate } from './types/order'
 import { API } from '@/app/api'
 import { apiSlice } from '@/app/apiSlice'
 import { wsService } from '@/app/services/socket'
@@ -285,6 +285,14 @@ export const orderApiSlice = apiSlice.injectEndpoints({
 			}),
 			invalidatesTags: ['Orders'],
 		}),
+		updateOrder: builder.mutation<{ id: string }, IOrderUpdate>({
+			query: order => ({
+				url: `${API.orders.base}/${order.id}`,
+				method: 'PUT',
+				body: order,
+			}),
+			invalidatesTags: ['Orders'],
+		}),
 	}),
 })
 
@@ -297,4 +305,5 @@ export const {
 	useGetFlatOrderQuery,
 	useLazyGetFlatOrderQuery,
 	useCreateOrderMutation,
+	useUpdateOrderMutation,
 } = orderApiSlice

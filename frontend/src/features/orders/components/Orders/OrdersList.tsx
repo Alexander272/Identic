@@ -15,13 +15,13 @@ import {
 	type TableRowProps,
 } from '@mui/material'
 import { TableVirtuoso } from 'react-virtuoso'
-import { Link } from 'react-router'
+import { useNavigate } from 'react-router'
 import dayjs from 'dayjs'
 
 import type { IOrder } from '../../types/order'
 import { useGetOrdersByYearQuery } from '../../orderApiSlice'
 import { BoxFallback } from '@/components/Fallback/BoxFallback'
-import { PopupLinkIcon } from '@/components/Icons/PopupLinkIcon'
+import { ModifyIcon } from '@/components/Icons/ModifyIcon'
 import { ManagerChip } from './ManagerChip'
 
 type Props = {
@@ -58,8 +58,16 @@ const TableComponents = {
 
 export const OrdersList: FC<Props> = ({ year }) => {
 	const { palette } = useTheme()
+	const navigate = useNavigate()
 
 	const { data, isFetching } = useGetOrdersByYearQuery(year.toString(), { skip: !year })
+
+	const editHandler = (id: string) => (e: React.MouseEvent) => {
+		e.stopPropagation()
+		e.preventDefault()
+
+		navigate(`/orders/edit/${id}`)
+	}
 
 	return (
 		<Stack sx={{ mr: -2 }}>
@@ -96,7 +104,7 @@ export const OrdersList: FC<Props> = ({ year }) => {
 							<TableCell width={280} sx={{ fontWeight: 'bold' }}>
 								Примечание
 							</TableCell>
-							<TableCell width={60} />
+							<TableCell width={40} />
 						</TableRow>
 					)}
 					itemContent={(idx, d) => (
@@ -109,12 +117,28 @@ export const OrdersList: FC<Props> = ({ year }) => {
 							<TableCell>{renderManagers(d.manager)}</TableCell>
 							<TableCell>{d.bill || '—'}</TableCell>
 							<TableCell>{d.notes || '—'}</TableCell>
-							<TableCell sx={{ borderTopRightRadius: 8, borderBottomRightRadius: 8 }}>
+							<TableCell sx={{ padding: 0, borderTopRightRadius: 8, borderBottomRightRadius: 8 }}>
+								<Tooltip title=' Редактировать заказ'>
+									<Button
+										onClick={editHandler(d.id)}
+										sx={{
+											minWidth: 40,
+											minHeight: 38,
+											borderRadius: '6px',
+											':hover': { svg: { fill: palette.secondary.main } },
+										}}
+									>
+										<ModifyIcon sx={{ fontSize: 18 }} />
+									</Button>
+								</Tooltip>
+							</TableCell>
+							{/* <TableCell sx={{ padding: 0, borderTopRightRadius: 8, borderBottomRightRadius: 8 }}>
 								<Link to={`/orders/${d.id}`} target='_blank' rel='noopener noreferrer'>
 									<Tooltip title='Перейти к заказу'>
 										<Button
 											sx={{
-												minWidth: 48,
+												minWidth: 40,
+												minHeight: 38,
 												borderRadius: '6px',
 												':hover': { svg: { fill: palette.secondary.main } },
 											}}
@@ -123,7 +147,7 @@ export const OrdersList: FC<Props> = ({ year }) => {
 										</Button>
 									</Tooltip>
 								</Link>
-							</TableCell>
+							</TableCell> */}
 						</>
 					)}
 				/>

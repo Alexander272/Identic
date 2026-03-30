@@ -27,6 +27,16 @@ export interface IOrderCreate {
 	notes: string
 	positions: IPositionCreate[]
 }
+export interface IOrderUpdate {
+	id: string
+	customer: string
+	consumer: string
+	manager: string
+	bill: string
+	date: string
+	notes: string
+	positions: IPositionCreate[]
+}
 
 export interface IFlatOrder {
 	id: string
