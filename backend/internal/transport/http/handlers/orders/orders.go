@@ -35,6 +35,8 @@ func Register(api *gin.RouterGroup, service services.Orders) {
 		orders.GET("/unique/:field", handler.getUniqueData)
 		orders.GET("/flat", handler.getFlatData)
 		orders.POST("", handler.create)
+		orders.PUT("/:id", handler.update)
+		// orders.DELETE("/:id", handler.delete)
 	}
 }
 
@@ -187,4 +189,28 @@ func (h *Handler) create(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, &response.IdResponse{Id: dto.Id, Message: "Заказ успешно создан"})
+}
+
+func (h *Handler) update(c *gin.Context) {
+	id := c.Param("id")
+	if err := uuid.Validate(id); err != nil {
+		response.NewErrorResponse(c, http.StatusBadRequest, err.Error(), "Некорректные данные")
+		return
+	}
+	dto := &models.OrderDTO{}
+	if err := c.BindJSON(dto); err != nil {
+		response.NewErrorResponse(c, http.StatusBadRequest, err.Error(), "Некорректные данные")
+		return
+	}
+	if id != dto.Id {
+		response.NewErrorResponse(c, http.StatusBadRequest, "id is not equal to dto.Id", "Некорректные данные")
+		return
+	}
+
+	if err := h.service.Update(c, dto); err != nil {
+		response.NewErrorResponse(c, http.StatusInternalServerError, err.Error(), "Произошла ошибка: "+err.Error())
+		error_bot.Send(c, err.Error(), dto)
+		return
+	}
+	c.JSON(http.StatusOK, &response.IdResponse{Id: dto.Id, Message: "Заказ успешно обновлен"})
 }

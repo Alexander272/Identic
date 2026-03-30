@@ -170,14 +170,13 @@ func (r *PositionRepo) Update(ctx context.Context, tx Tx, dto []*models.Position
 		notes[i] = v.Notes
 	}
 
-	query := fmt.Sprintf(`UPDATE %s SET name = $2, search = $3, quantity = $4, notes = $5
-		SET name = s.name, search = s.search, quantity = s.quantity, notes = s.notes 
+	query := fmt.Sprintf(`UPDATE %s AS t SET name = s.name, search = s.search, quantity = s.quantity, notes = s.notes 
 		FROM (
 			SELECT UNNEST($1::uuid[]) as id, 
 				   UNNEST($2::text[]) as name, 
 				   UNNEST($3::text[]) as search,
-				   UNNEST($3::real[]) as quantity,
-				   UNNEST($4::text[]) as notes
+				   UNNEST($4::real[]) as quantity,
+				   UNNEST($5::text[]) as notes
 		) AS s 
 		WHERE t.id = s.id`,
 		PositionsTable,
