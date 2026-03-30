@@ -42,6 +42,7 @@ type Orders interface {
 	GetById(ctx context.Context, req *models.GetOrderByIdDTO) (*models.Order, error)
 	GetByYear(ctx context.Context, req *models.GetOrderByYearDTO) ([]*models.Order, error)
 	GetUniqueData(ctx context.Context, req *models.GetUniqueDTO) ([]string, error)
+	GetFlatData(ctx context.Context, req *models.GetFlatOrderDTO) (*models.FlatOrderRes, error)
 	Create(ctx context.Context, tx Tx, dto *models.OrderDTO) error
 	CreateSeveral(ctx context.Context, tx Tx, dto []*models.OrderDTO) error
 	Update(ctx context.Context, tx Tx, dto *models.OrderDTO) error
@@ -123,6 +124,170 @@ func (r *OrderRepo) GetUniqueData(ctx context.Context, req *models.GetUniqueDTO)
 	})
 
 	return data, nil
+}
+
+func (r *OrderRepo) GetFlatData(ctx context.Context, req *models.GetFlatOrderDTO) (*models.FlatOrderRes, error) {
+	baseQuery := fmt.Sprintf(`SELECT p.id, customer, consumer, manager, bill, date, o.notes, 
+		row_number, name, quantity, p.notes AS pos_notes
+		FROM %s AS o
+		JOIN %s AS p ON p.order_id = o.id`,
+		OrdersTable, PositionsTable,
+	)
+	qb := NewQueryBuilder(baseQuery)
+
+	searchFields := []string{}
+
+	if req.Search != nil {
+		for _, f := range req.Search.Fields {
+			searchFields = append(searchFields, pgx.Identifier{f}.Sanitize())
+		}
+		qb.AddMultiSearch(searchFields, req.Search.Value) // поиск
+	}
+
+	sortFields := []SortField{
+		{Field: "date", Desc: true},
+		{Field: "customer", Desc: false},
+		{Field: "consumer", Desc: false},
+		{Field: "row_number", Desc: false},
+	}
+
+	if req.Sort != nil {
+		sortFields = []SortField{
+			{Field: pgx.Identifier{req.Sort.Field}.Sanitize(), Desc: req.Sort.Type == "DESC"},
+		}
+	}
+	sortFields = append(sortFields, SortField{Field: "p.id", Desc: false})
+	qb.SetMultiSort(sortFields) // сортировка
+
+	// parts := strings.Split(req.Cursor, "|")
+	// if len(parts) == 2 {
+	// 	cursorDate := parts[0]
+	// 	cursorID := parts[1]
+	// 	qb.SetCompositeCursor(sortField, cursorDate, cursorID, sortDesc)
+	// }
+	// parts := strings.Split(req.Cursor, "|")
+	// if len(parts) >= 2 {
+	// 	cursorDate := parts[0]
+	// 	cursorOrderID := parts[1]
+
+	// 	fields := []string{"date", "p.id"}
+	// 	values := []interface{}{cursorDate, cursorOrderID}
+	// 	descSlice := []bool{true, false} // должно совпадать с сортировкой!
+
+	// 	qb.SetMultiCompositeCursor(fields, values, descSlice)
+	// }
+
+	if req.Cursor != "" {
+		cursorState, err := DecodeCursor(req.Cursor)
+		if err != nil {
+			return nil, fmt.Errorf("invalid cursor: %w", err)
+		}
+
+		// Проверяем, что курсор соответствует текущей сортировке
+		// (опционально, но полезно для отладки)
+		// ...
+
+		// Парсим значения с учётом типов
+		values, err := cursorState.ParseCursorValues()
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse cursor: %w", err)
+		}
+
+		// Извлекаем поля и направления из курсора или берём из sortConfig
+		fields := make([]string, 0, len(cursorState.Types))
+		desc := cursorState.Desc
+		if len(desc) == 0 {
+			// fallback: берём из sortConfig
+			for _, sf := range sortFields {
+				desc = append(desc, sf.Desc)
+			}
+		}
+		// Поля должны совпадать с теми, что в сортировке
+		// Здесь можно добавить валидацию
+
+		// Для простоты: берём поля из sortConfig
+		for _, sf := range sortFields {
+			fields = append(fields, sf.Field)
+		}
+
+		qb.SetMultiCompositeCursor(fields, values, desc)
+	}
+
+	limit := 0
+	if req.Page != nil {
+		limit = req.Page.Limit
+		qb.SetLimit(limit + 1)
+	}
+
+	query, args := qb.Build()
+
+	var data []*models.FlatOrder
+
+	rows, err := r.db.Query(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute query. error: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		tmp := &models.FlatOrder{}
+		if err := rows.Scan(
+			&tmp.Id, &tmp.Customer, &tmp.Consumer, &tmp.Manager, &tmp.Bill, &tmp.Date, &tmp.Notes,
+			&tmp.RowNumber, &tmp.Name, &tmp.Quantity, &tmp.PositionNotes,
+		); err != nil {
+			return nil, fmt.Errorf("failed to scan row. error: %w", err)
+		}
+		data = append(data, tmp)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error during rows iteration: %w", err)
+	}
+
+	hasMore := false
+	if limit > 0 && len(data) > limit {
+		hasMore = true
+		data = data[:limit] // отрезаем лишнюю запись
+	}
+
+	// var lastDate time.Time
+	// var lastID string
+	// if len(data) > 0 {
+	// 	lastDate = data[len(data)-1].Date
+	// 	lastID = data[len(data)-1].Id
+	// }
+
+	var nextCursor string
+	if hasMore && len(data) > 0 {
+		last := data[len(data)-1]
+
+		// Формируем значения в порядке полей сортировки
+		rowValues := make([]interface{}, 0, len(sortFields))
+		fieldTypes := make([]string, 0, len(sortFields))
+		desc := make([]bool, 0, len(sortFields))
+
+		for _, sf := range sortFields {
+			val, typ, ok := last.CursorValue(sf.Field)
+			if !ok {
+				return nil, fmt.Errorf("unknown cursor field: %s", sf.Field)
+			}
+
+			rowValues = append(rowValues, val)
+			fieldTypes = append(fieldTypes, typ)
+			desc = append(desc, sf.Desc)
+		}
+
+		nextCursor, err = BuildCursorFromRow(rowValues, fieldTypes, desc)
+		if err != nil {
+			return nil, fmt.Errorf("failed to build cursor: %w", err)
+		}
+	}
+
+	res := &models.FlatOrderRes{
+		Orders:  data,
+		Cursor:  nextCursor,
+		HasMore: hasMore,
+	}
+	return res, nil
 }
 
 func (r *OrderRepo) Create(ctx context.Context, tx Tx, dto *models.OrderDTO) error {

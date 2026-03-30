@@ -29,6 +29,7 @@ type Orders interface {
 	GetInfoById(ctx context.Context, req *models.GetOrderByIdDTO) (*models.Order, error)
 	GetByYear(ctx context.Context, req *models.GetOrderByYearDTO) ([]*models.Order, error)
 	GetUniqueData(ctx context.Context, req *models.GetUniqueDTO) ([]string, error)
+	GetFlatData(ctx context.Context, req *models.GetFlatOrderDTO) (*models.FlatOrderRes, error)
 	Create(ctx context.Context, dto *models.OrderDTO) error
 	CreateSeveral(ctx context.Context, tx postgres.Tx, dto []*models.OrderDTO) error
 	Update(ctx context.Context, dto *models.OrderDTO) error
@@ -83,6 +84,14 @@ func (s *OrdersService) GetUniqueData(ctx context.Context, req *models.GetUnique
 	data, err := s.repo.GetUniqueData(ctx, req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get unique data. error: %w", err)
+	}
+	return data, nil
+}
+
+func (s *OrdersService) GetFlatData(ctx context.Context, req *models.GetFlatOrderDTO) (*models.FlatOrderRes, error) {
+	data, err := s.repo.GetFlatData(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get flat data. error: %w", err)
 	}
 	return data, nil
 }

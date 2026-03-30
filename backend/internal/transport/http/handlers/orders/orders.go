@@ -33,6 +33,7 @@ func Register(api *gin.RouterGroup, service services.Orders) {
 		orders.GET("/info/:id", handler.getInfo)
 		orders.GET("/by-year/:year", handler.getByYear)
 		orders.GET("/unique/:field", handler.getUniqueData)
+		orders.GET("/flat", handler.getFlatData)
 		orders.POST("", handler.create)
 	}
 }
@@ -123,6 +124,54 @@ func (h *Handler) getUniqueData(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, response.DataResponse{Data: data, Total: len(data)})
+}
+
+func (h *Handler) getFlatData(c *gin.Context) {
+	req := &models.GetFlatOrderDTO{}
+
+	for fields, val := range c.QueryMap("search") {
+		req.Search = &models.Search{
+			Value:  val,
+			Fields: strings.Split(fields, ","),
+		}
+		break
+	}
+
+	sortLine := c.Query("sort")
+	if sortLine != "" {
+		sort, found := strings.CutPrefix(sortLine, "-")
+		order := "ASC"
+		if found {
+			order = "DESC"
+		}
+		req.Sort = &models.Sort{
+			Field: sort,
+			Type:  order,
+		}
+	}
+
+	cursorLine := c.Query("cursor")
+	if cursorLine != "" && cursorLine != "null" {
+		req.Cursor = cursorLine
+	}
+
+	limit := 50
+	limitStr := c.Query("limit")
+	if limitStr != "" {
+		limit, _ = strconv.Atoi(limitStr)
+	}
+	req.Page = &models.Page{
+		Limit:  limit,
+		Offset: 0,
+	}
+
+	data, err := h.service.GetFlatData(c, req)
+	if err != nil {
+		response.NewErrorResponse(c, http.StatusInternalServerError, err.Error(), "Произошла ошибка: "+err.Error())
+		error_bot.Send(c, err.Error(), req)
+		return
+	}
+	c.JSON(http.StatusOK, response.DataResponse{Data: data})
 }
 
 func (h *Handler) create(c *gin.Context) {

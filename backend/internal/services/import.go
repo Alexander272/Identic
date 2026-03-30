@@ -193,6 +193,11 @@ func (s *ImportService) parseSheet(ctx context.Context, excel *excelize.File, sh
 		}
 	}
 
+	if currentOrder != nil {
+		totalPositionsInBuffer += len(currentOrder.Positions)
+		ordersBuffer = append(ordersBuffer, currentOrder)
+	}
+
 	return ordersBuffer, nil
 }
 
