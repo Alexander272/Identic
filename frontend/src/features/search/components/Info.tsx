@@ -1,54 +1,54 @@
-import { useCallback, useState, type FC } from 'react'
-import { Button, Dialog, DialogContent, DialogTitle, Divider, Stack, Tooltip, useTheme } from '@mui/material'
+import { useEffect, type FC, type MouseEvent } from 'react'
+import { Button, Dialog, DialogContent, DialogTitle, Divider, Stack, useTheme } from '@mui/material'
 import dayjs from 'dayjs'
 
 import type { IOrderMatchResult, ISearchItem } from '../types/search'
 import { useLazyGetOrderInfoQuery } from '@/features/orders/orderApiSlice'
 import { Header } from '@/features/orders/components/Order/Header'
 import { BoxFallback } from '@/components/Fallback/BoxFallback'
-import { IndexingPageIcon } from '@/components/Icons/IndexingPageIcon'
 import { TimesIcon } from '@/components/Icons/TimesIcon'
 import { MatchTable } from './MatchTable'
 
 type Props = {
 	data: IOrderMatchResult
 	search: ISearchItem[]
+	open: boolean
+	onClose: (e: MouseEvent) => void
 }
 
-export const Info: FC<Props> = ({ data, search }) => {
+export const Info: FC<Props> = ({ data, search, open, onClose }) => {
 	const { palette } = useTheme()
-	const [open, setOpen] = useState(false)
+	// const [open, setOpen] = useState(false)
 
 	const [getOrder, { data: order, isFetching }] = useLazyGetOrderInfoQuery()
 
-	const toggleHandler = () => {
-		const isOpen = open
-		setOpen(prev => !prev)
-		if (!isOpen && !order) fetchOrder()
+	useEffect(() => {
+		if (open && !order) {
+			getOrder({ id: data.orderId, positions: data.positions?.map(p => p.id) })
+		}
+	}, [open, data.orderId, data.positions, getOrder, order])
+
+	const closeHandler = (e: React.MouseEvent, reason?: string) => {
+		if (reason === 'backdropClick') return
+
+		e.stopPropagation?.()
+		onClose(e)
 	}
 
-	const fetchOrder = useCallback(async () => {
-		await getOrder({ id: data.orderId, positions: data.positions?.map(p => p.id) })
-	}, [data.orderId, data.positions, getOrder])
+	// const toggleHandler = (e: MouseEvent) => {
+	// 	e.stopPropagation()
+
+	// 	if (!open && !order) fetchOrder()
+	// 	onClose(e)
+	// }
+
+	// const fetchOrder = useCallback(async () => {
+	// 	await getOrder({ id: data.orderId, positions: data.positions?.map(p => p.id) })
+	// }, [data.orderId, data.positions, getOrder])
 
 	return (
 		<>
-			<Tooltip title='Подробнее'>
-				<Button
-					onClick={toggleHandler}
-					sx={{
-						minWidth: 48,
-						minHeight: 48,
-						borderRadius: '6px',
-						height: '100%',
-						':hover': { svg: { fill: palette.secondary.main } },
-					}}
-				>
-					<IndexingPageIcon fontSize={22} />
-				</Button>
-			</Tooltip>
-
-			<Dialog open={open} onClose={toggleHandler} fullScreen>
+			<Dialog open={open} onClose={closeHandler} fullScreen>
 				<Stack direction={'row'} width={'100%'} justifyContent={'space-between'} alignItems={'center'}>
 					<DialogTitle sx={{ fontWeight: 'bold' }}>
 						Информация о заказе от{' '}
@@ -56,7 +56,7 @@ export const Info: FC<Props> = ({ data, search }) => {
 					</DialogTitle>
 
 					<Button
-						onClick={toggleHandler}
+						onClick={closeHandler}
 						sx={{
 							minWidth: 40,
 							minHeight: 40,

@@ -13,5 +13,6 @@ export const API = {
 		info: (id: string) => `orders/info/${id}` as const,
 		byYear: (year: string) => `orders/by-year/${year}` as const,
 		unique: (field: string) => `orders/unique/${field}` as const,
+		flat: `orders/flat` as const,
 	},
 }

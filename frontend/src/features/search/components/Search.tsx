@@ -134,9 +134,10 @@ export const Search = () => {
 					sx={{
 						mb: 1,
 						ml: 0.5,
-						pl: 1,
+						pr: 1,
 						transition: 'background-color 0.2s ease-in-out',
 						borderRadius: 2,
+						justifyContent: 'flex-end',
 						':hover': { backgroundColor: '#eff8ff' },
 					}}
 				/>

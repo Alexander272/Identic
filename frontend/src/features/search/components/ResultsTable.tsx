@@ -1,4 +1,4 @@
-import type { FC } from 'react'
+import { useState, type FC, type MouseEvent } from 'react'
 import {
 	Stack,
 	Table,
@@ -19,6 +19,7 @@ import { Link } from 'react-router'
 import type { IOrderMatchResult, ISearchItem } from '../types/search'
 import { PopupLinkIcon } from '@/components/Icons/PopupLinkIcon'
 import { Info } from './Info'
+import { IndexingPageIcon } from '@/components/Icons/IndexingPageIcon'
 
 type Props = {
 	data: IOrderMatchResult[]
@@ -26,8 +27,6 @@ type Props = {
 }
 
 export const ResultsTable: FC<Props> = ({ data, search }) => {
-	const { palette } = useTheme()
-
 	return (
 		<Table size='small'>
 			<TableHead>
@@ -80,87 +79,129 @@ export const ResultsTable: FC<Props> = ({ data, search }) => {
 			</TableHead>
 			<TableBody>
 				{data.map(order => (
-					<TableRow key={order.orderId}>
-						<TableCell align='center' sx={{ fontWeight: 'bold' }}>
-							{order.year}
-						</TableCell>
-						<TableCell>
-							<Typography>Конечник: {order.consumer || '-'}</Typography>
-							<Typography variant='body2' color='text.secondary'>
-								Заказчик: {order.customer || '-'}
-							</Typography>
-						</TableCell>
-						{/* <TableCell>{order.customer}</TableCell> */}
-						{/* <TableCell>{order.consumer}</TableCell> */}
-						<TableCell align='center'>
-							<Box
-								sx={{
-									display: 'grid',
-									gridTemplateColumns: '1fr 24px',
-									alignItems: 'center',
-									gap: 1,
-								}}
-							>
-								<Typography fontWeight={'bold'}>{order.score}%</Typography>
-								<CircularProgress
-									variant='determinate'
-									value={order.score}
-									size={22}
-									thickness={6}
-									disableShrink
-									enableTrackSlot
-									sx={theme => ({
-										color: () => {
-											if (order.score >= 100) return theme.palette.success.main
-											if (order.score >= 70) return '#8bc34a' // Кастомный светло-зеленый
-											if (order.score >= 50) return theme.palette.info.main
-											if (order.score >= 25) return theme.palette.warning.main
-											return theme.palette.error.main
-										},
-										// Стилизация подложки (трека), если включен enableTrackSlot
-										'& .MuiCircularProgress-circle': {
-											strokeLinecap: 'round', // Делает концы прогресса закругленными
-										},
-										[`& .${circularProgressClasses.track}`]: {
-											opacity: 1,
-											stroke: (theme.vars || theme).palette.grey[300],
-										},
-									})}
-								/>
-							</Box>
-						</TableCell>
-						<TableCell align='center'>
-							{order.matchedPos}/{order.totalCount}
-						</TableCell>
-						<TableCell align='center'>
-							{order.matchedQuant}/{order.totalCount}
-						</TableCell>
-						<TableCell width={96} align='right' sx={{ padding: 0 }}>
-							<Stack direction={'row'} justifyContent={'flex-end'} sx={{ height: '100%' }}>
-								<Info data={order} search={search} />
-
-								<Link to={order.link} target='_blank' rel='noopener noreferrer'>
-									{/* <Button color='inherit' sx={{ textTransform: 'inherit', color: 'black' }}>
-										Подробнее <DoubleRightIcon fontSize={10} ml={1} />
-									</Button> */}
-									<Tooltip title='Перейти к заказу'>
-										<Button
-											sx={{
-												minWidth: 48,
-												borderRadius: '6px',
-												height: '100%',
-												':hover': { svg: { fill: palette.secondary.main } },
-											}}
-										>
-											<PopupLinkIcon fontSize={16} />
-										</Button>
-									</Tooltip>
-								</Link>
-							</Stack>
-						</TableCell>
-					</TableRow>
+					<ResultRow key={order.orderId} order={order} search={search} />
 				))}
 			</TableBody>
 		</Table>
+	)
+}
+
+const ResultRow: FC<{ order: IOrderMatchResult; search: ISearchItem[] }> = ({ order, search }) => {
+	const { palette } = useTheme()
+	const [open, setOpen] = useState(false)
+
+	const openHandler = (event: MouseEvent) => {
+		event.stopPropagation()
+		setOpen(!open)
+	}
+	const closeHandler = (event: MouseEvent) => {
+		event.stopPropagation()
+		setOpen(false)
+	}
+
+	return (
+		<TableRow
+			key={order.orderId}
+			onClick={openHandler}
+			hover
+			sx={{ cursor: 'pointer', transition: '0.2s all ease-in-out' }}
+		>
+			<TableCell align='center' sx={{ fontWeight: 'bold' }}>
+				{order.year}
+			</TableCell>
+			<TableCell>
+				<Typography>Конечник: {order.consumer || '-'}</Typography>
+				<Typography variant='body2' color='text.secondary'>
+					Заказчик: {order.customer || '-'}
+				</Typography>
+			</TableCell>
+			{/* <TableCell>{order.customer}</TableCell> */}
+			{/* <TableCell>{order.consumer}</TableCell> */}
+			<TableCell align='center'>
+				<Box
+					sx={{
+						display: 'grid',
+						gridTemplateColumns: '1fr 24px',
+						alignItems: 'center',
+						gap: 1,
+					}}
+				>
+					<Typography fontWeight={'bold'}>{order.score}%</Typography>
+					<CircularProgress
+						variant='determinate'
+						value={order.score}
+						size={22}
+						thickness={6}
+						disableShrink
+						enableTrackSlot
+						sx={theme => ({
+							color: () => {
+								if (order.score >= 100) return theme.palette.success.main
+								if (order.score >= 70) return '#8bc34a' // Кастомный светло-зеленый
+								if (order.score >= 50) return theme.palette.info.main
+								if (order.score >= 25) return theme.palette.warning.main
+								return theme.palette.error.main
+							},
+							// Стилизация подложки (трека), если включен enableTrackSlot
+							'& .MuiCircularProgress-circle': {
+								strokeLinecap: 'round', // Делает концы прогресса закругленными
+							},
+							[`& .${circularProgressClasses.track}`]: {
+								opacity: 1,
+								stroke: (theme.vars || theme).palette.grey[300],
+							},
+						})}
+					/>
+				</Box>
+			</TableCell>
+			<TableCell align='center'>
+				{order.matchedPos}/{order.totalCount}
+			</TableCell>
+			<TableCell align='center'>
+				{order.matchedQuant}/{order.totalCount}
+			</TableCell>
+			<TableCell width={96} align='right' sx={{ padding: 0 }}>
+				<Stack direction={'row'} justifyContent={'flex-end'} sx={{ height: '100%' }}>
+					<Tooltip title='Подробнее'>
+						<Button
+							onClick={openHandler}
+							sx={{
+								minWidth: 48,
+								minHeight: 48,
+								borderRadius: '6px',
+								height: '100%',
+								':hover': { svg: { fill: palette.secondary.main } },
+							}}
+						>
+							<IndexingPageIcon fontSize={22} />
+						</Button>
+					</Tooltip>
+					<Info data={order} search={search} open={open} onClose={closeHandler} />
+
+					<Link
+						to={order.link}
+						target='_blank'
+						rel='noopener noreferrer'
+						onClick={(e: MouseEvent) => e.stopPropagation()}
+					>
+						{/* <Button color='inherit' sx={{ textTransform: 'inherit', color: 'black' }}>
+										Подробнее <DoubleRightIcon fontSize={10} ml={1} />
+									</Button> */}
+						<Tooltip title='Перейти к заказу'>
+							<Button
+								sx={{
+									minWidth: 48,
+									borderRadius: '6px',
+									height: '100%',
+									':hover': { svg: { fill: palette.secondary.main } },
+								}}
+							>
+								<PopupLinkIcon fontSize={16} />
+							</Button>
+						</Tooltip>
+					</Link>
+				</Stack>
+			</TableCell>
+		</TableRow>
 	)
 }

@@ -157,7 +157,7 @@ export const MatchTable: FC<Props> = ({ request, result, foundPositions }) => {
 							sx={{ px: 2, textTransform: 'inherit' }}
 							endIcon={<PopupLinkIcon fontSize={'14px !important'} fill={palette.primary.main} />}
 						>
-							Открыть заказ
+							Перейти к заказу
 						</Button>
 					</Link>
 
@@ -259,7 +259,14 @@ export const MatchTable: FC<Props> = ({ request, result, foundPositions }) => {
 							</Box>
 
 							{!isMobile && status === 'partial' && (
-								<Typography variant='caption' color={colors.warningBorder} fontWeight='bold'>
+								<Typography
+									variant='caption'
+									color={colors.warningBorder}
+									fontWeight='bold'
+									px={'16px'}
+									textAlign={'center'}
+									sx={{ width: 100 }}
+								>
 									Частичное совпадение
 								</Typography>
 							)}
@@ -269,7 +276,7 @@ export const MatchTable: FC<Props> = ({ request, result, foundPositions }) => {
 								sx={{
 									flex: 1,
 									width: '100%',
-									textAlign: isMobile ? 'left' : 'right',
+									// textAlign: isMobile ? 'left' : 'right',
 									borderTop:
 										isMobile && status !== 'found' ? `1px dashed ${palette.divider}` : 'none',
 									pt: isMobile && status !== 'found' ? 1 : 0,
@@ -299,7 +306,7 @@ export const MatchTable: FC<Props> = ({ request, result, foundPositions }) => {
 
 								{/* Содержимое для частичного совпадения */}
 								{status === 'partial' && (
-									<Stack alignItems={isMobile ? 'flex-start' : 'flex-end'}>
+									<Stack>
 										{isMobile && (
 											<Typography variant='caption' color='textSecondary'>
 												Найдено:
@@ -315,7 +322,7 @@ export const MatchTable: FC<Props> = ({ request, result, foundPositions }) => {
 												component='span'
 												sx={{
 													p: '1px 4px',
-													borderRadius: '1px',
+													borderRadius: '4px',
 													bgcolor: mismatch?.qty ? colors.errorBg : 'transparent',
 													color: mismatch?.qty ? '#000' : 'inherit',
 													mr: 0.5,

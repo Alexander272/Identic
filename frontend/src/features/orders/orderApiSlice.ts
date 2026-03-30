@@ -1,7 +1,7 @@
 import { toast } from 'react-toastify'
 
 import type { IBaseFetchError } from '@/app/types/error'
-import type { IOrder, IOrderCreate } from './types/order'
+import type { IFlatOrder, IGetFlatOrders, IOrder, IOrderCreate } from './types/order'
 import { API } from '@/app/api'
 import { apiSlice } from '@/app/apiSlice'
 import { wsService } from '@/app/services/socket'
@@ -251,6 +251,31 @@ export const orderApiSlice = apiSlice.injectEndpoints({
 				}
 			},
 		}),
+		getFlatOrder: builder.query<
+			{ data: { orders: IFlatOrder[]; cursor: string; hasMore: boolean } },
+			IGetFlatOrders
+		>({
+			query: req => ({
+				url: API.orders.flat,
+				method: 'GET',
+				params: {
+					// fields: req.fields.join(','),
+					// value: req.value,
+					// sort: `${req.sort.field}_${req.sort.order}`,
+					cursor: req.cursor,
+					limit: req.limit,
+				},
+			}),
+			providesTags: [{ type: 'Orders', id: 'Flat' }],
+			onQueryStarted: async (_arg, api) => {
+				try {
+					await api.queryFulfilled
+				} catch (error) {
+					const fetchError = (error as IBaseFetchError).error
+					toast.error(fetchError.data.message, { autoClose: false })
+				}
+			},
+		}),
 
 		createOrder: builder.mutation<{ id: string }, IOrderCreate>({
 			query: order => ({
@@ -269,5 +294,7 @@ export const {
 	useLazyGetOrderInfoQuery,
 	useGetUniqueDataQuery,
 	useLazyGetUniqueDataQuery,
+	useGetFlatOrderQuery,
+	useLazyGetFlatOrderQuery,
 	useCreateOrderMutation,
 } = orderApiSlice
