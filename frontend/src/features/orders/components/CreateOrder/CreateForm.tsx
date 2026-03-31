@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Box, Button, Divider, Stack, TextField, Tooltip, Typography, useTheme } from '@mui/material'
 import { Controller, FormProvider, useForm } from 'react-hook-form'
 import { DataSheetGrid, floatColumn, keyColumn, textColumn, type Column } from 'react-datasheet-grid'
@@ -68,6 +68,57 @@ export const CreateOrderForm = () => {
 	} = methods
 
 	const [create, { isLoading }] = useCreateOrderMutation()
+
+	useEffect(() => {
+		const handleGlobalPaste = (e: ClipboardEvent) => {
+			// Проверяем наличие clipboardData
+			if (!e.clipboardData) return
+
+			const html = e.clipboardData.getData('text/html')
+
+			// Проверяем, есть ли HTML и не было ли событие уже отменено
+			if (html && !e.defaultPrevented) {
+				const parser = new DOMParser()
+				const doc = parser.parseFromString(html, 'text/html')
+				const divs = doc.querySelectorAll('div')
+
+				const lines = Array.from(divs)
+					.map(div => (div.textContent || '').replace(/\s+/g, ' ').trim())
+					.filter(Boolean)
+
+				if (lines.length === 0) return
+
+				// Останавливаем оригинальное событие на фазе capture
+				e.stopImmediatePropagation()
+				e.preventDefault()
+
+				const cleanedText = lines.join('\n')
+
+				// Создаем "чистый" контейнер данных
+				const dataTransfer = new DataTransfer()
+				dataTransfer.setData('text/plain', cleanedText)
+
+				// Генерируем новое событие paste
+				const newEvent = new ClipboardEvent('paste', {
+					clipboardData: dataTransfer,
+					bubbles: true,
+					cancelable: true,
+				})
+
+				// e.target может быть EventTarget | null, приводим к Node/HTMLElement для dispatch
+				if (e.target instanceof Node) {
+					e.target.dispatchEvent(newEvent)
+				}
+			}
+		}
+
+		// true — использование фазы захвата (capture)
+		window.addEventListener('paste', handleGlobalPaste, true)
+
+		return () => {
+			window.removeEventListener('paste', handleGlobalPaste, true)
+		}
+	}, [])
 
 	const saveHandler = handleSubmit(async form => {
 		if (!isDirty) {

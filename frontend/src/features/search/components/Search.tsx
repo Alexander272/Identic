@@ -1,10 +1,11 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Button, FormControlLabel, Stack, Tooltip, Typography, useTheme, Checkbox } from '@mui/material'
 import { DataSheetGrid, floatColumn, keyColumn, textColumn, type Column } from 'react-datasheet-grid'
 import { toast } from 'react-toastify'
 
 import type { ISearchItem } from '../types/search'
 import { useLazyFindOrdersQuery } from '../searchApiSlice'
+import { useSearchHotkeys } from '../hooks/search'
 import { extractQuantity } from '@/utils/extract'
 import { ContextMenu } from '@/components/DataSheet/ContextMenu'
 import { AddRow } from '@/components/DataSheet/AddRow'
@@ -12,14 +13,21 @@ import { BoxFallback } from '@/components/Fallback/BoxFallback'
 import { SearchIcon } from '@/components/Icons/SearchIcon'
 import { RefreshIcon } from '@/components/Icons/RefreshIcon'
 import { Results } from './Results'
-import { useSearchHotkeys } from '../hooks/search'
 
 const defaultData = [{ id: 0, name: '', quantity: null }]
+
+// const parsePastedText = (rawText: string) => {
+// 	// Разделяем по символу переноса строки
+// 	return rawText.split(/\r?\n/).filter(line => line.trim() !== '')
+// }
 
 const columns: Column<ISearchItem>[] = [
 	{
 		...keyColumn<ISearchItem, 'name'>('name', textColumn),
 		title: 'Наименование',
+		// prePasteValues: values => {
+		// 	return values.flatMap(value => parsePastedText(value))
+		// },
 		pasteValue: ({ rowData, value }) => {
 			// 1. Если в колонке "Количество" уже есть данные (например, вставили 2 колонки из Excel),
 			// то не пытаемся парсить наименование, просто обновляем имя.
@@ -27,7 +35,7 @@ const columns: Column<ISearchItem>[] = [
 				return { ...rowData, name: value }
 			}
 
-			// 2. Если количество пустое, запускаем наш парсер
+			// 2. Если количество пустое, запускаем парсер
 			const { name, quantity } = extractQuantity(value)
 
 			// 3. Возвращаем ОБНОВЛЕННЫЙ объект всей строки
@@ -52,6 +60,57 @@ export const Search = () => {
 
 	const results = searchResponse?.data || []
 	const isSearching = isFetching || searchResponse?.isProcessing
+
+	useEffect(() => {
+		const handleGlobalPaste = (e: ClipboardEvent) => {
+			// Проверяем наличие clipboardData
+			if (!e.clipboardData) return
+
+			const html = e.clipboardData.getData('text/html')
+
+			// Проверяем, есть ли HTML и не было ли событие уже отменено
+			if (html && !e.defaultPrevented) {
+				const parser = new DOMParser()
+				const doc = parser.parseFromString(html, 'text/html')
+				const divs = doc.querySelectorAll('div')
+
+				const lines = Array.from(divs)
+					.map(div => (div.textContent || '').replace(/\s+/g, ' ').trim())
+					.filter(Boolean)
+
+				if (lines.length === 0) return
+
+				// Останавливаем оригинальное событие на фазе capture
+				e.stopImmediatePropagation()
+				e.preventDefault()
+
+				const cleanedText = lines.join('\n')
+
+				// Создаем "чистый" контейнер данных
+				const dataTransfer = new DataTransfer()
+				dataTransfer.setData('text/plain', cleanedText)
+
+				// Генерируем новое событие paste
+				const newEvent = new ClipboardEvent('paste', {
+					clipboardData: dataTransfer,
+					bubbles: true,
+					cancelable: true,
+				})
+
+				// e.target может быть EventTarget | null, приводим к Node/HTMLElement для dispatch
+				if (e.target instanceof Node) {
+					e.target.dispatchEvent(newEvent)
+				}
+			}
+		}
+
+		// true — использование фазы захвата (capture)
+		window.addEventListener('paste', handleGlobalPaste, true)
+
+		return () => {
+			window.removeEventListener('paste', handleGlobalPaste, true)
+		}
+	}, [])
 
 	function clearHandler() {
 		setData(defaultData)

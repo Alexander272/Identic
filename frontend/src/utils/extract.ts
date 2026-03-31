@@ -1,6 +1,8 @@
 // const reWithUnit = /(\d+)\s*(?:шт|кг)|(?:шт|кг)\.?\s*(\d+)/i
-const reWithUnit = /([\d,.]+)\s*(?:шт|кг)$|(?:шт|кг)\.?\s*([\d,.]+)$/i
-const reEndDigits = /\s+(\d+)$/
+// const reWithUnit = /([\d,.]+)\s*(?:шт|кг)$|(?:шт|кг)\.?\s*([\d,.]+)$/i
+const reWithUnit = /(?:\s+|—\s*|[-]\s*)([\d,.]+)\s*(?:шт|кг)\.?$/i
+// const reEndDigits = /\s+(\d+)$/
+const reEndDigits = /(?:\s+|—\s*|[-]\s+)(\d+)$/
 
 /**
  * Функция парсит строку, извлекает количество и возвращает очищенное наименование.
@@ -8,7 +10,7 @@ const reEndDigits = /\s+(\d+)$/
  * @returns {{ name: string, quantity: number }}
  */
 export const extractQuantity = (input: string) => {
-	const s = input.trim()
+	const s = input.replace(/\u00A0/g, ' ').trim()
 
 	// 1. Ищем паттерны с "шт" (регистронезависимо)
 	// Ищем число до или после "шт", "шт.", "шт "
@@ -25,7 +27,8 @@ export const extractQuantity = (input: string) => {
 
 	// 2. Если "шт" нет, проверяем, не заканчивается ли строка на стандарт (ГОСТ, ОСТ, ТУ и т.д.)
 	// Если в конце стандарт, то числа там — это часть стандарта, их трогать нельзя.
-	const isStandard = /(ОСТ|ГОСТ|ТУ|ASME|B|Series)\s*[\d.\-\s]+$/i.test(s)
+	// const isStandard = /(ОСТ|ГОСТ|ТУ|ASME|B|Series)\s*[\d.\-\s]+$/i.test(s)
+	const isStandard = /(?:ГОСТ|ОСТ|ТУ|ASME|ANSI|DIN|ISO|Series|B)\s+[\d.\-/]+(?:\s+DN\d+)?$/i.test(s)
 
 	if (!isStandard) {
 		// Ищем число в самом конце строки, которому предшествует пробел
