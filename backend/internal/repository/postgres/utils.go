@@ -168,7 +168,7 @@ type CursorState struct {
 func (c CursorState) Encode() (string, error) {
 	data, err := json.Marshal(c)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to encode cursor: %w", err)
 	}
 	return base64.RawURLEncoding.EncodeToString(data), nil
 }

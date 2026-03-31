@@ -15,7 +15,7 @@ import (
 	"github.com/Alexander272/Identic/backend/internal/repository"
 	"github.com/Alexander272/Identic/backend/internal/server"
 	"github.com/Alexander272/Identic/backend/internal/services"
-	transport "github.com/Alexander272/Identic/backend/internal/transport"
+	"github.com/Alexander272/Identic/backend/internal/transport"
 	"github.com/Alexander272/Identic/backend/pkg/database/postgres"
 	"github.com/Alexander272/Identic/backend/pkg/logger"
 	"github.com/Alexander272/Identic/backend/pkg/ws_hub"
