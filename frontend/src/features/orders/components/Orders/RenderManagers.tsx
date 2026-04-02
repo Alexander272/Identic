@@ -4,10 +4,7 @@ export const renderManagers = (fullString: string) => {
 	if (!fullString) return '—'
 
 	// Разделяем по слэшу, запятой или пробелу
-	const names = fullString
-		.split(/[/,]/)
-		.map(n => n.trim())
-		.sort()
+	const names = fullString.split(/[/,]/).map(n => n.trim())
 
 	return (
 		<div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>

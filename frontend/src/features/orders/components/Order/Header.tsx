@@ -1,7 +1,8 @@
-import type { FC } from 'react'
+import { useMemo, type FC } from 'react'
 import { Box, Divider, Stack, Tooltip, Typography, useTheme } from '@mui/material'
 
 import type { IOrder } from '../../types/order'
+import { stringToHSLA } from '@/utils/colors'
 import { BusinessIcon } from '@/components/Icons/BusinessIcon'
 import { FileIcon } from '@/components/Icons/FileIcon'
 
@@ -15,6 +16,9 @@ export const Header: FC<Props> = ({ order }) => {
 	const parts = order.manager.split('/')
 	const manager = parts.length > 0 && parts[0]
 	const assistant = parts.length > 1 && parts[1]
+
+	const managerColor = useMemo(() => stringToHSLA(manager || ''), [manager])
+	const assistantColor = useMemo(() => stringToHSLA(assistant || ''), [assistant])
 
 	return (
 		<Stack
@@ -116,12 +120,36 @@ export const Header: FC<Props> = ({ order }) => {
 					<Stack direction='row' spacing={1} alignItems='center'>
 						{manager || assistant ? (
 							<>
-								<Typography sx={{ px: 2, py: 0.5, borderRadius: 2, bgcolor: '#e3f2fd' }}>
+								{/* <Typography sx={{ px: 2, py: 0.5, borderRadius: 2, bgcolor: '#e3f2fd' }}>{manager}</Typography> */}
+								<Typography
+									sx={{
+										px: 2,
+										py: 0.5,
+										borderRadius: 2,
+										bgcolor: managerColor.bg,
+										color: managerColor.text,
+										border: `1px solid ${managerColor.border}`,
+									}}
+								>
 									{manager}
 								</Typography>
-								<Typography sx={{ px: 2, py: 0.5, borderRadius: 2, bgcolor: '#e6e6e6' }}>
+								{/* <Typography sx={{ px: 2, py: 0.5, borderRadius: 2, bgcolor: '#e6e6e6' }}>
 									{assistant}
-								</Typography>
+								</Typography> */}
+								{assistant && (
+									<Typography
+										sx={{
+											px: 2,
+											py: 0.5,
+											borderRadius: 2,
+											bgcolor: assistantColor.bg,
+											color: assistantColor.text,
+											border: `1px solid ${assistantColor.border}`,
+										}}
+									>
+										{assistant}
+									</Typography>
+								)}
 							</>
 						) : (
 							<Typography fontSize={14}>Менеджер не указан</Typography>

@@ -28,7 +28,7 @@ export const Filter: FC<Props> = ({ filters, onChange, showFound }) => {
 	}
 
 	return (
-		<Stack direction={'row'} width={'100%'} mt={1}>
+		<Stack direction={'row'} width={'100%'}>
 			<TextField
 				value={search}
 				onChange={searchHandler}

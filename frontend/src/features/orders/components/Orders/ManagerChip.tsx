@@ -9,7 +9,7 @@ export const ManagerChip = ({ name }: { name: string }) => {
 	return (
 		<Chip
 			label={name}
-			size='small'
+			size={'small'}
 			style={{
 				backgroundColor: colors.bg,
 				color: colors.text,

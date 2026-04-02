@@ -1,5 +1,6 @@
 import { useMemo, useState, type FC } from 'react'
 import {
+	Button,
 	Stack,
 	Table,
 	TableBody,
@@ -7,17 +8,20 @@ import {
 	TableContainer,
 	TableHead,
 	TableRow,
+	Tooltip,
 	Typography,
 	useTheme,
 } from '@mui/material'
+import { useNavigate } from 'react-router'
+import dayjs from 'dayjs'
 
 import type { IFilter } from '../../types/filter'
 import { useGetOrderByIdQuery } from '../../orderApiSlice'
+import { numberFormat } from '@/utils/format'
 import { BoxFallback } from '@/components/Fallback/BoxFallback'
+import { ModifyIcon } from '@/components/Icons/ModifyIcon'
 import { Filter } from './FlatFilters'
 import { Header } from './Header'
-import dayjs from 'dayjs'
-import { numberFormat } from '@/utils/format'
 
 type Props = {
 	id: string
@@ -25,6 +29,7 @@ type Props = {
 }
 
 export const Order: FC<Props> = ({ id, positionIds }) => {
+	const navigate = useNavigate()
 	const { palette } = useTheme()
 	const [filters, setFilters] = useState<IFilter>({
 		search: '',
@@ -38,6 +43,13 @@ export const Order: FC<Props> = ({ id, positionIds }) => {
 			...prev,
 			[name]: value,
 		}))
+	}
+
+	const editHandler = (e: React.MouseEvent) => {
+		e.stopPropagation()
+		e.preventDefault()
+
+		navigate(`/orders/edit/${id}`)
 	}
 
 	const filteredPositions = useMemo(() => {
@@ -61,12 +73,32 @@ export const Order: FC<Props> = ({ id, positionIds }) => {
 		<Stack position={'relative'} sx={{ mr: -2 }}>
 			{isFetching ? <BoxFallback /> : null}
 
-			<Typography component='h2' variant='h6' align='center'>
-				Заказ от{' '}
-				<Typography component='span' fontWeight={'bold'} variant='h6'>
-					{data?.data?.date ? dayjs(data?.data?.date).format('DD.MM.YYYY') : '...'}
+			<Stack direction={'row'} spacing={0.5} width={'100%'} justifyContent={'center'} alignContent={'center'}>
+				<Typography component='h2' variant='h6' align='center'>
+					Заказ от{' '}
+					<Typography component='span' fontWeight={'bold'} variant='h6'>
+						{data?.data?.date ? dayjs(data?.data?.date).format('DD.MM.YYYY') : '...'}
+					</Typography>
 				</Typography>
-			</Typography>
+
+				<Tooltip title='Редактировать'>
+					<Button
+						onClick={editHandler}
+						// variant='outlined'
+						sx={{
+							minWidth: 48,
+							textTransform: 'inherit',
+							// background: '#fff',
+							// border: '1px solid #707070',
+							borderRadius: '12px',
+							padding: '4px 10px',
+							':hover': { svg: { fill: palette.primary.main }, color: palette.primary.main },
+						}}
+					>
+						<ModifyIcon sx={{ fontSize: 18 }} />
+					</Button>
+				</Tooltip>
+			</Stack>
 
 			<Stack mb={2} pr={2}>
 				{/* <Table size='small'>
@@ -104,7 +136,7 @@ export const Order: FC<Props> = ({ id, positionIds }) => {
 				{data?.data && <Header order={data?.data} />}
 			</Stack>
 
-			<Stack justifyContent={'center'} alignItems={'center'} mb={2}>
+			<Stack direction={'row'} spacing={2} justifyContent={'center'} alignItems={'center'} mb={2} mt={1}>
 				{/* <Typography component='h5' fontSize={'1.2rem'}>
 					Позиции
 				</Typography> */}

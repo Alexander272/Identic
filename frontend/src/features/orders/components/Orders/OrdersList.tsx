@@ -92,13 +92,13 @@ export const OrdersList: FC<Props> = ({ year }) => {
 							<TableCell width={400} sx={{ fontWeight: 'bold' }}>
 								Заказчик
 							</TableCell>
-							<TableCell width={140} align='right' sx={{ fontWeight: 'bold' }}>
+							<TableCell width={120} align='center' sx={{ fontWeight: 'bold' }}>
 								Кол-во позиций
 							</TableCell>
-							<TableCell width={160} sx={{ fontWeight: 'bold' }}>
+							<TableCell width={180} sx={{ fontWeight: 'bold' }}>
 								Менеджер / помощник
 							</TableCell>
-							<TableCell width={120} sx={{ fontWeight: 'bold' }}>
+							<TableCell width={120} align='center' sx={{ fontWeight: 'bold' }}>
 								Счет в 1С
 							</TableCell>
 							<TableCell width={280} sx={{ fontWeight: 'bold' }}>
@@ -113,9 +113,9 @@ export const OrdersList: FC<Props> = ({ year }) => {
 							<TableCell align='center'>{dayjs(d.date).format('DD.MM.YYYY')}</TableCell>
 							<TableCell>{d.consumer || '—'}</TableCell>
 							<TableCell>{d.customer || '—'}</TableCell>
-							<TableCell align='right'>{d.positionCount}</TableCell>
+							<TableCell align='center'>{d.positionCount}</TableCell>
 							<TableCell>{renderManagers(d.manager)}</TableCell>
-							<TableCell>{d.bill || '—'}</TableCell>
+							<TableCell align='center'>{d.bill || '—'}</TableCell>
 							<TableCell>{d.notes || '—'}</TableCell>
 							<TableCell sx={{ padding: 0, borderTopRightRadius: 8, borderBottomRightRadius: 8 }}>
 								<Tooltip title=' Редактировать заказ'>
@@ -160,10 +160,7 @@ const renderManagers = (fullString: string) => {
 	if (!fullString) return '—'
 
 	// Разделяем по слэшу, запятой или пробелу
-	const names = fullString
-		.split(/[/,]/)
-		.map(n => n.trim())
-		.sort()
+	const names = fullString.split(/[/,]/).map(n => n.trim())
 
 	return (
 		<div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>

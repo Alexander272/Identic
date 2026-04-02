@@ -112,13 +112,13 @@ export const EditOrderForm: FC<Props> = ({ orderId }) => {
 					Позиции
 				</Typography>
 
-				<Grid />
+				<Grid orderId={orderId} />
 			</FormProvider>
 		</Stack>
 	)
 }
 
-const Grid = () => {
+const Grid: FC<{ orderId: string }> = ({ orderId }) => {
 	const { palette } = useTheme()
 
 	const [update, { isLoading }] = useUpdateOrderMutation()
@@ -146,6 +146,7 @@ const Grid = () => {
 			toast.error('Заполните хотя бы одну позицию')
 			return
 		}
+		if (form.id == '') form.id = orderId
 
 		form.positions.forEach((element, idx) => {
 			element.rowNumber = idx + 1
@@ -166,7 +167,7 @@ const Grid = () => {
 	}
 
 	return (
-		<Stack position={'relative'}>
+		<Stack position={'relative'} mb={1}>
 			<DataSheetGrid
 				value={positions}
 				onChange={newValue => setValue('positions', newValue, { shouldDirty: true })}
@@ -174,6 +175,7 @@ const Grid = () => {
 				contextMenuComponent={props => <ContextMenu {...props} />}
 				addRowsComponent={props => <AddRow {...props} />}
 				autoAddRow
+				height={300}
 			/>
 			<Stack direction={'row'} spacing={1} sx={{ position: 'absolute', right: 8, bottom: 6 }}>
 				<Button

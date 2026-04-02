@@ -209,6 +209,7 @@ export const Search = () => {
 						contextMenuComponent={props => <ContextMenu {...props} />}
 						addRowsComponent={props => <AddRow {...props} />}
 						autoAddRow
+						height={550}
 					/>
 					<Stack direction={'row'} spacing={1} sx={{ position: 'absolute', right: 8, bottom: 6 }}>
 						<Tooltip title='Найти'>

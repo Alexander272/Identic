@@ -145,6 +145,7 @@ export const CreateOrderForm = () => {
 			const payload = await create(form).unwrap()
 			const url = new URL(`/orders/${payload.id}`, window.location.origin)
 			setLink(url.toString())
+			reset(form)
 			toast.success('Заказ успешно создан')
 		} catch (error) {
 			const fetchError = error as IFetchError
@@ -245,7 +246,7 @@ export const CreateOrderForm = () => {
 			<Typography align='center' mb={1}>
 				Позиции
 			</Typography>
-			<Stack position={'relative'}>
+			<Stack position={'relative'} mb={1}>
 				<DataSheetGrid
 					value={data}
 					onChange={setData}
@@ -253,6 +254,7 @@ export const CreateOrderForm = () => {
 					contextMenuComponent={props => <ContextMenu {...props} />}
 					addRowsComponent={props => <AddRow {...props} />}
 					autoAddRow
+					height={300}
 				/>
 				<Stack direction={'row'} spacing={1} sx={{ position: 'absolute', right: 8, bottom: 6 }}>
 					<Button
