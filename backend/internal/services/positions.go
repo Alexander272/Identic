@@ -27,6 +27,7 @@ type Positions interface {
 	Create(ctx context.Context, tx postgres.Tx, dto []*models.PositionDTO) error
 	Update(ctx context.Context, tx postgres.Tx, dto []*models.PositionDTO) error
 	Delete(ctx context.Context, tx postgres.Tx, dto []*models.DeletePositionDTO) error
+	DeleteByOrder(ctx context.Context, tx postgres.Tx, dto *models.DeletePositionsByOrderIdDTO) error
 }
 
 func (s *PositionsService) GetByOrder(ctx context.Context, req *models.GetPositionsByOrderIdDTO) ([]*models.Position, error) {
@@ -113,6 +114,13 @@ func (s *PositionsService) Delete(ctx context.Context, tx postgres.Tx, dto []*mo
 func (s *PositionsService) executeDelete(ctx context.Context, tx postgres.Tx, dto []*models.DeletePositionDTO) error {
 	if err := s.repo.Delete(ctx, tx, dto); err != nil {
 		return fmt.Errorf("failed to delete positions. error: %w", err)
+	}
+	return nil
+}
+
+func (s *PositionsService) DeleteByOrder(ctx context.Context, tx postgres.Tx, dto *models.DeletePositionsByOrderIdDTO) error {
+	if err := s.repo.DeleteByOrder(ctx, tx, dto); err != nil {
+		return fmt.Errorf("failed to delete positions by order. error: %w", err)
 	}
 	return nil
 }

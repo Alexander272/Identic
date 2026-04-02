@@ -33,3 +33,7 @@ type PositionDTO struct {
 type DeletePositionDTO struct {
 	Id string `json:"id" db:"id"`
 }
+
+type DeletePositionsByOrderIdDTO struct {
+	OrderId string `json:"orderId" db:"order_id"`
+}

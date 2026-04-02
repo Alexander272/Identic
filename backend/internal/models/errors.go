@@ -3,8 +3,9 @@ package models
 import "errors"
 
 var (
-	ErrNoRows        = errors.New("row not found")
-	ErrAlreadyExists = errors.New("already exists")
+	ErrNoRows             = errors.New("row not found")
+	ErrAlreadyExists      = errors.New("already exists")
+	ErrOrderAlreadyExists = errors.New("order already exists")
 
 	ErrSessionEmpty = errors.New("user session not found")
 

@@ -1,6 +1,7 @@
 package orders
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
 	"strings"
@@ -184,6 +185,11 @@ func (h *Handler) create(c *gin.Context) {
 	}
 
 	if err := h.service.Create(c, dto); err != nil {
+		if errors.Is(err, models.ErrOrderAlreadyExists) {
+			response.NewErrorResponse(c, http.StatusBadRequest, err.Error(), "Заказ уже существует")
+			return
+		}
+
 		response.NewErrorResponse(c, http.StatusInternalServerError, err.Error(), "Произошла ошибка: "+err.Error())
 		error_bot.Send(c, err.Error(), dto)
 		return

@@ -96,8 +96,25 @@ func (s *OrdersService) GetFlatData(ctx context.Context, req *models.GetFlatOrde
 	return data, nil
 }
 
+func (s *OrdersService) IsExist(ctx context.Context, tx postgres.Tx, dto *models.OrderDTO) (bool, error) {
+	exist, err := s.repo.IsExist(ctx, tx, dto)
+	if err != nil {
+		return false, fmt.Errorf("failed to check if order exists. error: %w", err)
+	}
+	return exist, nil
+}
+
 func (s *OrdersService) Create(ctx context.Context, dto *models.OrderDTO) error {
 	return s.txManager.WithinTransaction(ctx, func(tx postgres.Tx) error {
+		isExist, err := s.repo.IsExist(ctx, tx, dto)
+		if err != nil {
+			return err
+		}
+
+		if isExist {
+			return models.ErrOrderAlreadyExists
+		}
+
 		if err := s.repo.Create(ctx, tx, dto); err != nil {
 			return fmt.Errorf("failed to create order. error: %w", err)
 		}
@@ -149,8 +166,17 @@ func (s *OrdersService) Update(ctx context.Context, dto *models.OrderDTO) error 
 		if err := s.repo.Update(ctx, tx, dto); err != nil {
 			return fmt.Errorf("failed to update order. error: %w", err)
 		}
-		if err := s.positions.Update(ctx, tx, dto.Positions); err != nil {
-			return fmt.Errorf("failed to update positions. error: %w", err)
+
+		for i := range dto.Positions {
+			dto.Positions[i].Id = uuid.NewString()
+			dto.Positions[i].OrderId = dto.Id
+		}
+
+		if err := s.positions.DeleteByOrder(ctx, tx, &models.DeletePositionsByOrderIdDTO{OrderId: dto.Id}); err != nil {
+			return err
+		}
+		if err := s.positions.Create(ctx, tx, dto.Positions); err != nil {
+			return err
 		}
 		return nil
 	})

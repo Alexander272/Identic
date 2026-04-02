@@ -43,6 +43,7 @@ type Orders interface {
 	GetByYear(ctx context.Context, req *models.GetOrderByYearDTO) ([]*models.Order, error)
 	GetUniqueData(ctx context.Context, req *models.GetUniqueDTO) ([]string, error)
 	GetFlatData(ctx context.Context, req *models.GetFlatOrderDTO) (*models.FlatOrderRes, error)
+	IsExist(ctx context.Context, tx Tx, dto *models.OrderDTO) (bool, error)
 	Create(ctx context.Context, tx Tx, dto *models.OrderDTO) error
 	CreateSeveral(ctx context.Context, tx Tx, dto []*models.OrderDTO) error
 	Update(ctx context.Context, tx Tx, dto *models.OrderDTO) error
@@ -288,6 +289,20 @@ func (r *OrderRepo) GetFlatData(ctx context.Context, req *models.GetFlatOrderDTO
 		HasMore: hasMore,
 	}
 	return res, nil
+}
+
+func (r *OrderRepo) IsExist(ctx context.Context, tx Tx, dto *models.OrderDTO) (bool, error) {
+	query := fmt.Sprintf(`SELECT EXISTS(SELECT 1 FROM %s WHERE customer=$1 AND consumer=$2 AND 
+		(date AT TIME ZONE 'UTC')::date=($3 AT TIME ZONE 'UTC')::date)`,
+		OrdersTable,
+	)
+	var exists bool
+
+	err := r.db.QueryRow(ctx, query, dto.Customer, dto.Consumer, dto.Date).Scan(&exists)
+	if err != nil {
+		return false, fmt.Errorf("failed to execute query: %w", err)
+	}
+	return exists, nil
 }
 
 func (r *OrderRepo) Create(ctx context.Context, tx Tx, dto *models.OrderDTO) error {

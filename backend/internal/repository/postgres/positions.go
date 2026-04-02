@@ -28,6 +28,7 @@ type Positions interface {
 	Create(ctx context.Context, tx Tx, dto []*models.PositionDTO) error
 	Update(ctx context.Context, tx Tx, dto []*models.PositionDTO) error
 	Delete(ctx context.Context, tx Tx, dto []*models.DeletePositionDTO) error
+	DeleteByOrder(ctx context.Context, tx Tx, dto *models.DeletePositionsByOrderIdDTO) error
 }
 
 func (r *PositionRepo) GetByOrder(ctx context.Context, req *models.GetPositionsByOrderIdDTO) ([]*models.Position, error) {
@@ -201,6 +202,15 @@ func (r *PositionRepo) Delete(ctx context.Context, tx Tx, dto []*models.DeletePo
 	query := fmt.Sprintf(`DELETE FROM %s WHERE id = ANY($1::uuid[])`, PositionsTable)
 
 	if _, err := r.getExec(tx).Exec(ctx, query, ids); err != nil {
+		return fmt.Errorf("failed to execute query. error: %w", err)
+	}
+	return nil
+}
+
+func (r *PositionRepo) DeleteByOrder(ctx context.Context, tx Tx, dto *models.DeletePositionsByOrderIdDTO) error {
+	query := fmt.Sprintf(`DELETE FROM %s WHERE order_id = $1`, PositionsTable)
+
+	if _, err := r.getExec(tx).Exec(ctx, query, dto.OrderId); err != nil {
 		return fmt.Errorf("failed to execute query. error: %w", err)
 	}
 	return nil
