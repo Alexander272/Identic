@@ -16,6 +16,7 @@ import { useNavigate } from 'react-router'
 import dayjs from 'dayjs'
 
 import type { IFilter } from '../../types/filter'
+import { AppRoutes } from '@/pages/router/routes'
 import { useGetOrderByIdQuery } from '../../orderApiSlice'
 import { numberFormat } from '@/utils/format'
 import { BoxFallback } from '@/components/Fallback/BoxFallback'
@@ -49,7 +50,8 @@ export const Order: FC<Props> = ({ id, positionIds }) => {
 		e.stopPropagation()
 		e.preventDefault()
 
-		navigate(`/orders/edit/${id}`)
+		// navigate(`/orders/edit/${id}`)
+		navigate(AppRoutes.EditOrder.replace(':id', id))
 	}
 
 	const filteredPositions = useMemo(() => {

@@ -1,0 +1,26 @@
+.row-deleted .dsg-cell {
+    /* Red */
+    background: #fff1f0;
+    /* text-decoration: line-through; */
+    /* position: relative; */
+}
+
+.row-deleted::after {
+    content: '';
+    position: absolute;
+    height: 1px;
+    background-color: black;
+    width: 100%;
+    top: 50%;
+    z-index: 100;
+}
+
+.row-created .dsg-cell {
+    /* Green */
+    background: #eaffd7;
+}
+
+.row-updated .dsg-cell {
+    /* Orange */
+    background: #fff7e6;
+}

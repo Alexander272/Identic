@@ -1,15 +1,19 @@
 import { useEffect, type FC } from 'react'
 import { Box, Button, Divider, Stack, TextField, Tooltip, Typography, useTheme } from '@mui/material'
-import { Controller, FormProvider, useForm, useFormContext, useWatch } from 'react-hook-form'
+import { Controller, FormProvider, useFieldArray, useForm, useFormContext, useWatch } from 'react-hook-form'
 import { DataSheetGrid, floatColumn, keyColumn, textColumn, type Column } from 'react-datasheet-grid'
+import type { Operation } from 'react-datasheet-grid/dist/types'
 import { toast } from 'react-toastify'
 import dayjs from 'dayjs'
 
+import './styles.css'
+
 import type { IFetchError } from '@/app/types/error'
-import type { IOrderUpdate } from '../../types/order'
-import type { IPositionCreate } from '../../types/positions'
+import type { IOrder, IOrderUpdate } from '../../types/order'
+import type { IPositionUpdate } from '../../types/positions'
 import { useGetOrderByIdQuery, useUpdateOrderMutation } from '../../orderApiSlice'
 import { extractQuantity } from '@/utils/extract'
+import { handleGlobalPaste } from '@/utils/globalPaste'
 import { AddRow } from '@/components/DataSheet/AddRow'
 import { ContextMenu } from '@/components/DataSheet/ContextMenu'
 import { DateField } from '@/components/Form/DateField'
@@ -26,12 +30,21 @@ const defaultValues: IOrderUpdate = {
 	bill: '',
 	date: dayjs().startOf('d').toISOString(),
 	notes: '',
-	positions: [{ rowNumber: 1, name: '', quantity: null, notes: '' }],
+	positions: [
+		{
+			id: new Date().getTime().toString(),
+			rowNumber: 1,
+			name: '',
+			quantity: null,
+			notes: '',
+			status: 'CREATED',
+		},
+	],
 }
 
-const columns: Column<IPositionCreate>[] = [
+const columns: Column<IPositionUpdate>[] = [
 	{
-		...keyColumn<IPositionCreate, 'name'>('name', textColumn),
+		...keyColumn<IPositionUpdate, 'name'>('name', textColumn),
 		title: 'Наименование',
 		pasteValue: ({ rowData, value }) => {
 			// 1. Если в колонке "Количество" уже есть данные (например, вставили 2 колонки из Excel),
@@ -51,8 +64,8 @@ const columns: Column<IPositionCreate>[] = [
 			}
 		},
 	},
-	{ ...keyColumn<IPositionCreate, 'quantity'>('quantity', floatColumn), title: 'Количество', width: 0.25 },
-	{ ...keyColumn<IPositionCreate, 'notes'>('notes', textColumn), title: 'Примечание', width: 0.75 },
+	{ ...keyColumn<IPositionUpdate, 'quantity'>('quantity', floatColumn), title: 'Количество', width: 0.25 },
+	{ ...keyColumn<IPositionUpdate, 'notes'>('notes', textColumn), title: 'Примечание', width: 0.75 },
 ]
 
 type Props = {
@@ -68,6 +81,15 @@ export const EditOrderForm: FC<Props> = ({ orderId }) => {
 	useEffect(() => {
 		if (order?.data) reset(order.data)
 	}, [order, reset])
+
+	useEffect(() => {
+		// true — использование фазы захвата (capture)
+		window.addEventListener('paste', handleGlobalPaste, true)
+
+		return () => {
+			window.removeEventListener('paste', handleGlobalPaste, true)
+		}
+	}, [])
 
 	return (
 		<Stack>
@@ -112,13 +134,13 @@ export const EditOrderForm: FC<Props> = ({ orderId }) => {
 					Позиции
 				</Typography>
 
-				<Grid orderId={orderId} />
+				<Grid orderId={orderId} data={order?.data} />
 			</FormProvider>
 		</Stack>
 	)
 }
 
-const Grid: FC<{ orderId: string }> = ({ orderId }) => {
+const Grid: FC<{ orderId: string; data?: IOrder }> = ({ orderId, data }) => {
 	const { palette } = useTheme()
 
 	const [update, { isLoading }] = useUpdateOrderMutation()
@@ -131,6 +153,16 @@ const Grid: FC<{ orderId: string }> = ({ orderId }) => {
 		formState: { isDirty },
 	} = useFormContext<IOrderUpdate>()
 	const positions = useWatch({ control, name: 'positions' }) || []
+
+	const { fields } = useFieldArray({
+		control,
+		name: 'positions',
+	})
+
+	const genId = () => new Date().getTime().toString()
+
+	const createHandler = () => ({ ...defaultValues.positions[0], id: genId() })
+	const duplicateHandler = ({ rowData }: { rowData: IPositionUpdate }) => ({ ...rowData, id: genId() })
 
 	const saveHandler = handleSubmit(async form => {
 		if (!isDirty) {
@@ -148,6 +180,7 @@ const Grid: FC<{ orderId: string }> = ({ orderId }) => {
 		}
 		if (form.id == '') form.id = orderId
 
+		form.positions = form.positions.filter(item => item.status != 'DELETED')
 		form.positions.forEach((element, idx) => {
 			element.rowNumber = idx + 1
 		})
@@ -163,14 +196,67 @@ const Grid: FC<{ orderId: string }> = ({ orderId }) => {
 	})
 
 	const clearHandler = () => {
-		reset(defaultValues)
+		reset(data)
 	}
 
+	const addClasses = ({ rowData }: { rowData: IPositionUpdate }) => {
+		switch (rowData.status) {
+			case 'DELETED':
+				return 'row-deleted'
+			case 'CREATED':
+				return 'row-created'
+			case 'UPDATED':
+				return 'row-updated'
+		}
+	}
+
+	const changeHandler = (value: IPositionUpdate[], operations: Operation[]) => {
+		const updatedValue = [...value]
+
+		for (const operation of operations) {
+			if (operation.type === 'DELETE') {
+				const deletedRows = fields.slice(operation.fromRowIndex, operation.toRowIndex)
+
+				deletedRows.forEach((row, index) => {
+					if (row.status == 'CREATED') {
+						updatedValue.splice(operation.fromRowIndex, 1)
+					} else {
+						const deletedRow = { ...row, status: 'DELETED' as const }
+						updatedValue.splice(operation.fromRowIndex + index, 0, deletedRow)
+					}
+				})
+			}
+
+			if (operation.type === 'UPDATE') {
+				for (let i = operation.fromRowIndex; i < operation.toRowIndex; i++) {
+					const row = updatedValue[i]
+					// Если строка уже помечена как созданная или удаленная, статус не меняем
+					if (!row.status) {
+						updatedValue[i] = { ...row, status: 'UPDATED' }
+					}
+				}
+			}
+
+			if (operation.type === 'CREATE') {
+				for (let i = operation.fromRowIndex; i < operation.toRowIndex; i++) {
+					updatedValue[i] = { ...updatedValue[i], status: 'CREATED' }
+				}
+			}
+		}
+
+		setValue('positions', updatedValue, { shouldDirty: true })
+	}
+
+	// TODO сделать выделение позиций которые редактировали
 	return (
 		<Stack position={'relative'} mb={1}>
 			<DataSheetGrid
 				value={positions}
-				onChange={newValue => setValue('positions', newValue, { shouldDirty: true })}
+				// onChange={newValue => setValue('positions', newValue, { shouldDirty: true })}
+				createRow={createHandler}
+				duplicateRow={duplicateHandler}
+				onChange={changeHandler}
+				rowClassName={addClasses}
 				columns={columns}
 				contextMenuComponent={props => <ContextMenu {...props} />}
 				addRowsComponent={props => <AddRow {...props} />}

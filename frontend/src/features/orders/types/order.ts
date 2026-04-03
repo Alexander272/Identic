@@ -1,4 +1,4 @@
-import type { IPosition, IPositionCreate } from './positions'
+import type { IPosition, IPositionCreate, IPositionUpdate } from './positions'
 
 export interface IOrderSocketMessage extends IOrder {
 	years: number[]
@@ -35,7 +35,7 @@ export interface IOrderUpdate {
 	bill: string
 	date: string
 	notes: string
-	positions: IPositionCreate[]
+	positions: IPositionUpdate[]
 }
 
 export interface IFlatOrder {

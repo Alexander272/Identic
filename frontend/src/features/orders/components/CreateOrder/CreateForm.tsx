@@ -1,15 +1,18 @@
 import { useEffect, useState } from 'react'
-import { Box, Button, Divider, Stack, TextField, Tooltip, Typography, useTheme } from '@mui/material'
-import { Controller, FormProvider, useForm } from 'react-hook-form'
+import { Box, Button, Divider, Stack, TextField, Tooltip, Typography, type Theme } from '@mui/material'
+import { Controller, FormProvider, useForm, useFormContext, useWatch } from 'react-hook-form'
 import { DataSheetGrid, floatColumn, keyColumn, textColumn, type Column } from 'react-datasheet-grid'
 import { toast } from 'react-toastify'
+import { useNavigate } from 'react-router'
 import dayjs from 'dayjs'
 
 import type { IFetchError } from '@/app/types/error'
 import type { IOrderCreate } from '../../types/order'
 import type { IPositionCreate } from '../../types/positions'
-import { useCreateOrderMutation } from '../../orderApiSlice'
+import { AppRoutes } from '@/pages/router/routes'
 import { extractQuantity } from '@/utils/extract'
+import { handleGlobalPaste } from '@/utils/globalPaste'
+import { useCreateOrderMutation } from '../../orderApiSlice'
 import { AddRow } from '@/components/DataSheet/AddRow'
 import { ContextMenu } from '@/components/DataSheet/ContextMenu'
 import { DateField } from '@/components/Form/DateField'
@@ -17,6 +20,7 @@ import { AutocompleteInput } from '@/components/Autocomplete/AutocompleteInput'
 import { SaveIcon } from '@/components/Icons/SaveIcon'
 import { RefreshIcon } from '@/components/Icons/RefreshIcon'
 import { HyperlinkIcon } from '@/components/Icons/HyperlinkIcon'
+import { ModifyIcon } from '@/components/Icons/ModifyIcon'
 
 const defaultValues: IOrderCreate = {
 	customer: '',
@@ -54,64 +58,24 @@ const columns: Column<IPositionCreate>[] = [
 	{ ...keyColumn<IPositionCreate, 'notes'>('notes', textColumn), title: 'Примечание', width: 0.75 },
 ]
 
+const buttonStyles = (theme: Theme) => ({
+	minWidth: 48,
+	height: '100%',
+	textTransform: 'inherit',
+	background: '#fff',
+	border: '1px solid #dcdcdc',
+	borderRadius: '6px',
+	padding: '4px 10px',
+	transition: 'all 0.3s ease',
+	':disabled': { svg: { fill: theme.palette.action.disabled } },
+	':hover': { svg: { fill: theme.palette.secondary.main }, color: theme.palette.primary.main },
+})
+
 export const CreateOrderForm = () => {
-	const { palette } = useTheme()
-
-	const [link, setLink] = useState('')
-	const [data, setData] = useState<IPositionCreate[]>(defaultValues.positions)
 	const methods = useForm<IOrderCreate>({ defaultValues })
-	const {
-		control,
-		handleSubmit,
-		reset,
-		formState: { isDirty },
-	} = methods
-
-	const [create, { isLoading }] = useCreateOrderMutation()
+	const { control } = methods
 
 	useEffect(() => {
-		const handleGlobalPaste = (e: ClipboardEvent) => {
-			// Проверяем наличие clipboardData
-			if (!e.clipboardData) return
-
-			const html = e.clipboardData.getData('text/html')
-
-			// Проверяем, есть ли HTML и не было ли событие уже отменено
-			if (html && !e.defaultPrevented) {
-				const parser = new DOMParser()
-				const doc = parser.parseFromString(html, 'text/html')
-				const divs = doc.querySelectorAll('div')
-
-				const lines = Array.from(divs)
-					.map(div => (div.textContent || '').replace(/\s+/g, ' ').trim())
-					.filter(Boolean)
-
-				if (lines.length === 0) return
-
-				// Останавливаем оригинальное событие на фазе capture
-				e.stopImmediatePropagation()
-				e.preventDefault()
-
-				const cleanedText = lines.join('\n')
-
-				// Создаем "чистый" контейнер данных
-				const dataTransfer = new DataTransfer()
-				dataTransfer.setData('text/plain', cleanedText)
-
-				// Генерируем новое событие paste
-				const newEvent = new ClipboardEvent('paste', {
-					clipboardData: dataTransfer,
-					bubbles: true,
-					cancelable: true,
-				})
-
-				// e.target может быть EventTarget | null, приводим к Node/HTMLElement для dispatch
-				if (e.target instanceof Node) {
-					e.target.dispatchEvent(newEvent)
-				}
-			}
-		}
-
 		// true — использование фазы захвата (capture)
 		window.addEventListener('paste', handleGlobalPaste, true)
 
@@ -119,49 +83,6 @@ export const CreateOrderForm = () => {
 			window.removeEventListener('paste', handleGlobalPaste, true)
 		}
 	}, [])
-
-	const saveHandler = handleSubmit(async form => {
-		if (!isDirty) {
-			toast.error('Данные заказа не заполнены')
-			return
-		}
-		if (form.consumer == '' && form.customer == '') {
-			toast.error('Заполните хотя бы одного контрагента')
-			return
-		}
-
-		if (data.some(item => item.quantity === null || item.name === '')) {
-			toast.error('Заполните хотя бы одну позицию')
-			return
-		}
-
-		data.forEach((element, idx) => {
-			element.rowNumber = idx + 1
-		})
-		form.positions = data
-		console.log(form)
-
-		try {
-			const payload = await create(form).unwrap()
-			const url = new URL(`/orders/${payload.id}`, window.location.origin)
-			setLink(url.toString())
-			reset(form)
-			toast.success('Заказ успешно создан')
-		} catch (error) {
-			const fetchError = error as IFetchError
-			toast.error(fetchError.data.message, { autoClose: false })
-		}
-	})
-
-	const copyHandler = () => {
-		navigator.clipboard.writeText(link)
-		toast.success('Ссылка скопирована')
-	}
-
-	const clearHandler = () => {
-		reset(defaultValues)
-		setData(defaultValues.positions)
-	}
 
 	return (
 		<Stack>
@@ -173,56 +94,12 @@ export const CreateOrderForm = () => {
 				<Stack direction={'row'} spacing={2} px={2} mb={2}>
 					<Stack spacing={2} width={'50%'}>
 						<Typography fontSize={'1.1rem'}>Контрагенты</Typography>
-
-						{/* <Controller
-							control={control}
-							name={`customer`}
-							render={({ field }) => <TextField {...field} label='Заказчик' fullWidth />}
-						/> 
-						<Controller
-							control={control}
-							name={`consumer`}
-							render={({ field }) => <TextField {...field} label='Конечник' fullWidth />}
-						/>*/}
 						<AutocompleteInput field={{ name: 'consumer', label: 'Конечник', type: 'list' }} />
 						<AutocompleteInput field={{ name: 'customer', label: 'Заказчик', type: 'list' }} />
 					</Stack>
 
 					<Stack spacing={2} width={'50%'}>
 						<Typography fontSize={'1.1rem'}>Детали заказа</Typography>
-
-						{/* <Controller
-							control={control}
-							name={`date`}
-							rules={{ required: true }}
-							render={({ field, fieldState: { error } }) => (
-								<DatePicker
-									{...field}
-									value={field.value ? dayjs(field.value) : null}
-									onChange={value => field.onChange(value?.startOf('d').toISOString())}
-									label={'Дата'}
-									showDaysOutsideCurrentMonth
-									fixedWeekNumber={6}
-									slots={{
-										textField: DateTextField,
-									}}
-									slotProps={{
-										textField: {
-											error: Boolean(error),
-										},
-									}}
-									minDate={dayjs('01-01-2010')}
-									sx={{ width: '100%' }}
-								/>
-							)}
-						/> 
-                        
-                        <Controller
-							control={control}
-							name={`manager`}
-							render={({ field }) => <TextField {...field} label='Менеджер / Помощник' fullWidth />}
-						/>*/}
-
 						<DateField data={{ name: 'date', label: 'Дата', isRequired: true, type: 'date' }} />
 						<AutocompleteInput field={{ name: 'manager', label: 'Менеджер / Помощник', type: 'list' }} />
 						<Controller
@@ -239,85 +116,122 @@ export const CreateOrderForm = () => {
 						<TextField {...field} label='Примечание' multiline minRows={2} sx={{ mx: 2 }} />
 					)}
 				/>
+
+				<Divider sx={{ mt: 3, mb: 2 }} />
+
+				<Typography align='center' mb={1}>
+					Позиции
+				</Typography>
+				<Grid />
 			</FormProvider>
+		</Stack>
+	)
+}
 
-			<Divider sx={{ mt: 3, mb: 2 }} />
+const Grid = () => {
+	const navigate = useNavigate()
 
-			<Typography align='center' mb={1}>
-				Позиции
-			</Typography>
-			<Stack position={'relative'} mb={1}>
-				<DataSheetGrid
-					value={data}
-					onChange={setData}
-					columns={columns}
-					contextMenuComponent={props => <ContextMenu {...props} />}
-					addRowsComponent={props => <AddRow {...props} />}
-					autoAddRow
-					height={300}
-				/>
-				<Stack direction={'row'} spacing={1} sx={{ position: 'absolute', right: 8, bottom: 6 }}>
-					<Button
-						onClick={saveHandler}
-						color='inherit'
-						disabled={!isDirty || isLoading}
-						sx={{
-							minWidth: 48,
-							textTransform: 'inherit',
-							background: '#fff',
-							border: '1px solid #dcdcdc',
-							borderRadius: '6px',
-							padding: '4px 10px',
-							':disabled': { svg: { fill: palette.action.disabled } },
-							':hover': { svg: { fill: palette.primary.main }, color: palette.primary.main },
-						}}
-					>
-						<SaveIcon fontSize={18} mr={1} />
-						Сохранить
-					</Button>
+	const [link, setLink] = useState('')
+	const [newId, setNewId] = useState('')
 
-					<Tooltip title={link ? 'Скопировать ссылку' : ''}>
-						<Box>
-							<Button
-								onClick={copyHandler}
-								disabled={!link}
-								sx={{
-									minWidth: 48,
-									height: '100%',
-									background: '#fff',
-									border: '1px solid #dcdcdc',
-									borderRadius: '6px',
-									padding: '4px 10px',
-									':disabled': { svg: { fill: palette.action.disabled } },
-									':hover': { svg: { fill: palette.secondary.main } },
-								}}
-							>
-								<HyperlinkIcon fontSize={18} />
-							</Button>
-						</Box>
-					</Tooltip>
+	const [create, { isLoading }] = useCreateOrderMutation()
 
-					<Tooltip title={!isDirty || isLoading ? 'Очистить форму' : ''}>
-						<Box>
-							<Button
-								onClick={clearHandler}
-								disabled={!isDirty || isLoading}
-								sx={{
-									minWidth: 48,
-									height: '100%',
-									background: '#fff',
-									border: '1px solid #dcdcdc',
-									borderRadius: '6px',
-									padding: '4px 10px',
-									':disabled': { svg: { fill: palette.action.disabled } },
-									':hover': { svg: { fill: palette.secondary.main } },
-								}}
-							>
-								<RefreshIcon fontSize={18} />
-							</Button>
-						</Box>
-					</Tooltip>
-				</Stack>
+	const {
+		control,
+		setValue,
+		handleSubmit,
+		reset,
+		formState: { isDirty },
+	} = useFormContext<IOrderCreate>()
+	const positions = useWatch({ control, name: 'positions' }) || []
+
+	const saveHandler = handleSubmit(async form => {
+		if (!isDirty) {
+			toast.error('Данные заказа не заполнены')
+			return
+		}
+		if (form.consumer == '' && form.customer == '') {
+			toast.error('Заполните хотя бы одного контрагента')
+			return
+		}
+
+		if (form.positions.some(item => item.quantity === null || item.name === '')) {
+			toast.error('Заполните хотя бы одну позицию')
+			return
+		}
+
+		form.positions.forEach((element, idx) => {
+			element.rowNumber = idx + 1
+		})
+		// form.positions = data
+		console.log(form)
+
+		try {
+			const payload = await create(form).unwrap()
+			const url = new URL(`/orders/${payload.id}`, window.location.origin)
+			setLink(url.toString())
+			setNewId(payload.id)
+			reset(form)
+			toast.success('Заказ успешно создан')
+		} catch (error) {
+			const fetchError = error as IFetchError
+			toast.error(fetchError.data.message, { autoClose: false })
+		}
+	})
+
+	const copyHandler = () => {
+		navigator.clipboard.writeText(link)
+		toast.success('Ссылка скопирована')
+	}
+	const editHandler = () => {
+		navigate(AppRoutes.EditOrder.replace(':id', newId))
+	}
+
+	const clearHandler = () => {
+		reset(defaultValues)
+		// setData(defaultValues.positions)
+	}
+
+	return (
+		<Stack position={'relative'} mb={1}>
+			<DataSheetGrid
+				value={positions}
+				onChange={newValue => setValue('positions', newValue, { shouldDirty: true })}
+				columns={columns}
+				contextMenuComponent={props => <ContextMenu {...props} />}
+				addRowsComponent={props => <AddRow {...props} />}
+				autoAddRow
+				height={300}
+			/>
+			<Stack direction={'row'} spacing={1} sx={{ position: 'absolute', right: 8, bottom: 6 }}>
+				<Button onClick={saveHandler} color='inherit' disabled={!isDirty || isLoading} sx={buttonStyles}>
+					<SaveIcon fontSize={18} mr={1} />
+					Сохранить
+				</Button>
+
+				<Tooltip title={newId ? 'Редактировать созданный заказ' : ''}>
+					<Box>
+						<Button onClick={editHandler} disabled={!newId} sx={buttonStyles}>
+							<ModifyIcon sx={{ fontSize: 18 }} />
+						</Button>
+					</Box>
+				</Tooltip>
+
+				<Tooltip title={link ? 'Скопировать ссылку' : ''}>
+					<Box>
+						<Button onClick={copyHandler} disabled={!link} sx={buttonStyles}>
+							<HyperlinkIcon fontSize={18} />
+						</Button>
+					</Box>
+				</Tooltip>
+
+				<Tooltip title={isDirty && !isLoading ? 'Очистить форму' : ''}>
+					<Box>
+						<Button onClick={clearHandler} disabled={!isDirty || isLoading} sx={buttonStyles}>
+							<RefreshIcon fontSize={18} />
+						</Button>
+					</Box>
+				</Tooltip>
 			</Stack>
 		</Stack>
 	)

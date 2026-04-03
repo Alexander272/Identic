@@ -14,3 +14,12 @@ export interface IPositionCreate {
 	quantity: number | null
 	notes: string | null
 }
+
+export interface IPositionUpdate {
+	id: string
+	rowNumber: number
+	name: string | null
+	quantity: number | null
+	notes: string | null
+	status: 'CREATED' | 'UPDATED' | 'DELETED'
+}

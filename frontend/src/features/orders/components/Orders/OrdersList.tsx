@@ -19,6 +19,7 @@ import { useNavigate } from 'react-router'
 import dayjs from 'dayjs'
 
 import type { IOrder } from '../../types/order'
+import { AppRoutes } from '@/pages/router/routes'
 import { useGetOrdersByYearQuery } from '../../orderApiSlice'
 import { BoxFallback } from '@/components/Fallback/BoxFallback'
 import { ModifyIcon } from '@/components/Icons/ModifyIcon'
@@ -66,7 +67,8 @@ export const OrdersList: FC<Props> = ({ year }) => {
 		e.stopPropagation()
 		e.preventDefault()
 
-		navigate(`/orders/edit/${id}`)
+		// navigate(`/orders/edit/${id}`)
+		navigate(AppRoutes.EditOrder.replace(':id', id))
 	}
 
 	return (
