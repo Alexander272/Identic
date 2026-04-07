@@ -32,6 +32,7 @@ var reCamelCase = regexp.MustCompile("([a-z0-9])([0-9A-Z])")
 var allowedFields = map[string]struct{}{
 	"customer": {},
 	"consumer": {},
+	"client":   {},
 	"manager":  {},
 	"year":     {},
 	"date":     {},
@@ -39,6 +40,7 @@ var allowedFields = map[string]struct{}{
 }
 
 type Orders interface {
+	Get(ctx context.Context, req *models.OrderFilterDTO) ([]*models.Order, error)
 	GetById(ctx context.Context, req *models.GetOrderByIdDTO) (*models.Order, error)
 	GetByYear(ctx context.Context, req *models.GetOrderByYearDTO) ([]*models.Order, error)
 	GetUniqueData(ctx context.Context, req *models.GetUniqueDTO) ([]string, error)
@@ -48,6 +50,68 @@ type Orders interface {
 	CreateSeveral(ctx context.Context, tx Tx, dto []*models.OrderDTO) error
 	Update(ctx context.Context, tx Tx, dto *models.OrderDTO) error
 	Delete(ctx context.Context, tx Tx, dto *models.DeleteOrderDTO) error
+}
+
+func (r *OrderRepo) Get(ctx context.Context, req *models.OrderFilterDTO) ([]*models.Order, error) {
+	var allowedFields = map[string][]string{
+		"client":  {"customer", "consumer"},
+		"manager": {"manager"},
+		"date":    {"date"},
+	}
+
+	baseQuery := fmt.Sprintf(`SELECT o.id, o.customer, o.consumer, o.manager, o.bill, o.date, o.notes, COUNT(p.id) AS position_count
+        FROM %s AS o
+        LEFT JOIN %s AS p ON p.order_id = o.id`,
+		OrdersTable, PositionsTable,
+	)
+	qb := NewQueryBuilder(baseQuery)
+
+	for _, filter := range req.Filters {
+		cols := allowedFields[filter.Field]
+
+		for _, val := range filter.Values {
+			if len(cols) > 1 {
+				types := slices.Repeat([]string{val.CompareType}, len(cols))
+				values := slices.Repeat([]string{val.Value}, len(cols))
+				qb.AddCompositeFilter(cols, types, values)
+			} else {
+				qb.AddFilter(cols[0], val.CompareType, val.Value)
+			}
+		}
+	}
+
+	qb.SetGroupBy("o.id")
+
+	sortFields := []SortField{
+		{Field: "o.date", Desc: true},
+		{Field: "o.created_at", Desc: true},
+		{Field: "manager", Desc: false},
+		{Field: "customer", Desc: false},
+		{Field: "consumer", Desc: false},
+	}
+	sortFields = append(sortFields, SortField{Field: "o.id", Desc: false})
+	qb.SetMultiSort(sortFields)
+
+	query, args := qb.Build()
+	var data []*models.Order
+
+	rows, err := r.db.Query(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute query. error: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		tmp := &models.Order{}
+		if err := rows.Scan(&tmp.Id, &tmp.Customer, &tmp.Consumer, &tmp.Manager, &tmp.Bill, &tmp.Date, &tmp.Notes, &tmp.PositionCount); err != nil {
+			return nil, fmt.Errorf("failed to scan row. error: %w", err)
+		}
+		data = append(data, tmp)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error during rows iteration: %w", err)
+	}
+	return data, nil
 }
 
 func (r *OrderRepo) GetById(ctx context.Context, req *models.GetOrderByIdDTO) (*models.Order, error) {
@@ -98,30 +162,49 @@ func (r *OrderRepo) GetByYear(ctx context.Context, req *models.GetOrderByYearDTO
 }
 
 func (r *OrderRepo) GetUniqueData(ctx context.Context, req *models.GetUniqueDTO) ([]string, error) {
-	snake := reCamelCase.ReplaceAllString(req.Field, "${1}_${2}")
-	req.Field = strings.ToLower(snake)
+	var validFields []string
 
-	if _, exist := allowedFields[req.Field]; !exist {
-		return nil, models.ErrFieldNotAllowed
+	rawFields := []string{req.Field}
+	if req.Field == "client" {
+		rawFields = []string{"customer", "consumer"}
 	}
-	quotedField := pgx.Identifier{req.Field}.Sanitize()
 
-	query := fmt.Sprintf(`SELECT COALESCE(array_agg(DISTINCT %s::text), '{}'::text[]) 
-		FROM %s WHERE %s::text!='' AND %s IS NOT NULL`,
-		quotedField, OrdersTable, quotedField, quotedField,
+	for _, f := range rawFields {
+		f = strings.TrimSpace(f)
+		snake := reCamelCase.ReplaceAllString(f, "${1}_${2}")
+		field := strings.ToLower(snake)
+
+		if _, exist := allowedFields[field]; !exist {
+			return nil, models.ErrFieldNotAllowed
+		}
+		validFields = append(validFields, pgx.Identifier{field}.Sanitize())
+	}
+
+	// 2. Строим подзапрос, который объединяет значения из всех выбранных колонок в одну
+	// Используем LATERAL unnest для эффективного превращения колонок в строки
+	columnList := strings.Join(validFields, ", ")
+
+	// cross join lateral позволяет для каждой строки таблицы
+	// превратить список колонок в набор строк
+	query := fmt.Sprintf(`
+		SELECT COALESCE(array_agg(DISTINCT val::text), '{}'::text[])
+		FROM %s,
+		LATERAL (SELECT unnest(ARRAY[%s])) AS t(val)
+		WHERE val::text != '' AND val IS NOT NULL`,
+		OrdersTable, columnList,
 	)
-	var data []string
 
+	var data []string
 	err := r.db.QueryRow(ctx, query).Scan(&data)
 	if err != nil {
-		return nil, fmt.Errorf("failed to execute query. error: %w", err)
+		return nil, fmt.Errorf("failed to execute query: %w", err)
 	}
 
 	slices.SortFunc(data, func(a, b string) int {
 		if req.Sort == "DESC" {
-			return strings.Compare(b, a) // Убывание
+			return strings.Compare(strings.ToLower(b), strings.ToLower(a))
 		}
-		return strings.Compare(a, b) // Возрастание
+		return strings.Compare(strings.ToLower(a), strings.ToLower(b))
 	})
 
 	return data, nil

@@ -12,7 +12,7 @@ var (
 	// reCleanSymbols = regexp.MustCompile(`[^a-zа-я0-9]+`)
 	reCleanSymbols = regexp.MustCompile(`[^a-zA-Zа-яА-Я0-9]+`)
 	reMultiSpace   = regexp.MustCompile(`\s+`)
-	reStd          = regexp.MustCompile(`(?:гост|ост|ту)[\s\-]*[\d\.\-]+`)
+	// reStd          = regexp.MustCompile(`(?:гост|ост|ту)[\s\-]*[\d\.\-]+`)
 )
 
 func NormalizeString(name string) string {
@@ -46,9 +46,9 @@ func NormalizeString(name string) string {
 	// )
 	// name = replacer.Replace(name)
 
-	// // 5. Схлопываем лишние пробелы внутри и по краям
-	// name = reMultiSpace.ReplaceAllString(name, " ")
-	// name = strings.TrimSpace(name)
+	// 5. Схлопываем лишние пробелы внутри и по краям
+	name = reMultiSpace.ReplaceAllString(name, " ")
+	name = strings.TrimSpace(name)
 
 	return name
 }

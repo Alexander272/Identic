@@ -37,6 +37,10 @@ type Order struct {
 	Positions     []*Position `json:"positions"`
 }
 
+type OrderFilterDTO struct {
+	Filters []*Filter `json:"filters"`
+}
+
 type OrderDTO struct {
 	Id        string         `json:"id" db:"id"`
 	Customer  string         `json:"customer" db:"customer"`

@@ -29,7 +29,7 @@ func Register(api *gin.RouterGroup, service services.Orders) {
 
 	orders := api.Group("/orders")
 	{
-		// orders.GET("", handler.getAll)
+		orders.GET("", handler.get)
 		orders.GET("/:id", handler.getById)
 		orders.GET("/info/:id", handler.getInfo)
 		orders.GET("/by-year/:year", handler.getByYear)
@@ -39,6 +39,42 @@ func Register(api *gin.RouterGroup, service services.Orders) {
 		orders.PUT("/:id", handler.update)
 		// orders.DELETE("/:id", handler.delete)
 	}
+}
+
+func (h *Handler) get(c *gin.Context) {
+	req := &models.OrderFilterDTO{}
+
+	filters := c.QueryMap("filters")
+
+	for k, v := range filters {
+		valueMap := c.QueryMap(k)
+		values := []*models.FilterValue{}
+		for key, value := range valueMap {
+			values = append(values, &models.FilterValue{
+				CompareType: key,
+				Value:       value,
+			})
+		}
+		if values[0].CompareType == "" {
+			continue
+		}
+
+		f := &models.Filter{
+			Field:     k,
+			FieldType: v,
+			Values:    values,
+		}
+
+		req.Filters = append(req.Filters, f)
+	}
+
+	data, err := h.service.Get(c, req)
+	if err != nil {
+		response.NewErrorResponse(c, http.StatusInternalServerError, err.Error(), "Произошла ошибка: "+err.Error())
+		error_bot.Send(c, err.Error(), req)
+		return
+	}
+	c.JSON(http.StatusOK, &response.DataResponse{Data: data})
 }
 
 func (h *Handler) getById(c *gin.Context) {

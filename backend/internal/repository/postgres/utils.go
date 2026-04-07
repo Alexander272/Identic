@@ -12,6 +12,7 @@ type QueryBuilder struct {
 	baseQuery string
 	where     []string
 	args      []interface{}
+	groupBy   string
 	orderBy   string
 	limit     int
 	cursor    interface{}
@@ -45,6 +46,10 @@ func (qb *QueryBuilder) AddMultiSearch(fields []string, search string) {
 	}
 
 	qb.where = append(qb.where, "("+strings.Join(parts, " OR ")+")")
+}
+
+func (qb *QueryBuilder) SetGroupBy(field string) {
+	qb.groupBy = field
 }
 
 func (qb *QueryBuilder) SetSort(field string, desc bool) {
@@ -139,11 +144,115 @@ func (qb *QueryBuilder) SetLimit(limit int) {
 	qb.limit = limit
 }
 
+func (qb *QueryBuilder) AddCompositeFilter(fieldNames []string, compare []string, values []string) {
+	if len(fieldNames) != len(compare) || len(fieldNames) != len(values) {
+		return
+	}
+
+	parts := []string{}
+
+	for i := range fieldNames {
+		filter, args := qb.prepareFilter(fieldNames[i], compare[i], values[i])
+		parts = append(parts, filter)
+		if args != nil {
+			qb.args = append(qb.args, args)
+		}
+	}
+	qb.where = append(qb.where, "("+strings.Join(parts, " OR ")+")")
+}
+func (qb *QueryBuilder) AddFilter(fieldName string, compare string, value string) {
+	if compare == "" {
+		return
+	}
+
+	filter, args := qb.prepareFilter(fieldName, compare, value)
+	qb.where = append(qb.where, filter)
+	if args != nil {
+		qb.args = append(qb.args, args)
+	}
+
+	// switch compare {
+	// case "con":
+	// 	qb.args = append(qb.args, "%"+value+"%")
+	// 	qb.where = append(qb.where, fmt.Sprintf("%s ILIKE $%d", fieldName, len(qb.args)))
+	// case "start":
+	// 	qb.args = append(qb.args, value+"%")
+	// 	qb.where = append(qb.where, fmt.Sprintf("%s ILIKE $%d", fieldName, len(qb.args)))
+	// case "end":
+	// 	qb.args = append(qb.args, "%"+value)
+	// 	qb.where = append(qb.where, fmt.Sprintf("%s ILIKE $%d", fieldName, len(qb.args)))
+	// case "like":
+	// 	qb.args = append(qb.args, value)
+	// 	qb.where = append(qb.where, fmt.Sprintf("%s ILIKE $%d", fieldName, len(qb.args)))
+	// case "nlike":
+	// 	qb.args = append(qb.args, value)
+	// 	qb.where = append(qb.where, fmt.Sprintf("%s NOT ILIKE $%d", fieldName, len(qb.args)))
+	// case "in":
+	// 	// Разделяем строку по разделителю
+	// 	vals := strings.Split(value, "|")
+	// 	qb.args = append(qb.args, vals)
+	// 	qb.where = append(qb.where, fmt.Sprintf("%s::text ILIKE ANY ($%d)", fieldName, len(qb.args)))
+	// case "nin":
+	// 	vals := strings.Split(value, "|")
+	// 	qb.args = append(qb.args, vals)
+	// 	qb.where = append(qb.where, fmt.Sprintf("%s::text NOT ILIKE ANY ($%d)", fieldName, len(qb.args)))
+	// case "eq":
+	// 	qb.args = append(qb.args, value)
+	// 	qb.where = append(qb.where, fmt.Sprintf("%s = $%d", fieldName, len(qb.args)))
+	// case "neq":
+	// 	qb.args = append(qb.args, value)
+	// 	qb.where = append(qb.where, fmt.Sprintf("%s != $%d", fieldName, len(qb.args)))
+	// case "gte":
+	// 	qb.args = append(qb.args, value)
+	// 	qb.where = append(qb.where, fmt.Sprintf("%s >= $%d", fieldName, len(qb.args)))
+	// case "lte":
+	// 	qb.args = append(qb.args, value)
+	// 	qb.where = append(qb.where, fmt.Sprintf("%s <= $%d", fieldName, len(qb.args)))
+	// case "null":
+	// 	qb.where = append(qb.where, fmt.Sprintf("(%s IS NULL OR %s::text = '')", fieldName, fieldName))
+	// }
+}
+func (qb *QueryBuilder) prepareFilter(fieldName string, compare string, value string) (string, interface{}) {
+	switch compare {
+	case "con":
+		return fmt.Sprintf("%s ILIKE $%d", fieldName, len(qb.args)+1), "%" + value + "%"
+	case "start":
+		return fmt.Sprintf("%s ILIKE $%d", fieldName, len(qb.args)+1), value + "%"
+	case "end":
+		return fmt.Sprintf("%s ILIKE $%d", fieldName, len(qb.args)+1), "%" + value
+	case "like":
+		return fmt.Sprintf("%s ILIKE $%d", fieldName, len(qb.args)+1), value
+	case "nlike":
+		return fmt.Sprintf("%s NOT ILIKE $%d", fieldName, len(qb.args)+1), value
+	case "in":
+		// Разделяем строку по разделителю
+		return fmt.Sprintf("%s::text ILIKE ANY ($%d)", fieldName, len(qb.args)+1), strings.Split(value, "|")
+	case "nin":
+		return fmt.Sprintf("%s::text NOT ILIKE ANY ($%d)", fieldName, len(qb.args)+1), strings.Split(value, "|")
+	case "eq":
+		return fmt.Sprintf("%s = $%d", fieldName, len(qb.args)+1), value
+	case "neq":
+		return fmt.Sprintf("%s != $%d", fieldName, len(qb.args)+1), value
+	case "gte":
+		return fmt.Sprintf("%s >= $%d", fieldName, len(qb.args)+1), value
+	case "lte":
+		return fmt.Sprintf("%s <= $%d", fieldName, len(qb.args)+1), value
+	case "null":
+		return fmt.Sprintf("(%s IS NULL OR %s::text = '')", fieldName, fieldName), nil
+	}
+
+	return "", nil
+}
+
 func (qb *QueryBuilder) Build() (string, []interface{}) {
 	query := qb.baseQuery
 
 	if len(qb.where) > 0 {
 		query += " WHERE " + strings.Join(qb.where, " AND ")
+	}
+
+	if qb.groupBy != "" {
+		query += " GROUP BY " + qb.groupBy
 	}
 
 	if qb.orderBy != "" {

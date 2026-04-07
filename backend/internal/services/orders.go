@@ -25,6 +25,7 @@ func NewOrdersService(repo repository.Orders, txManager TransactionManager, posi
 }
 
 type Orders interface {
+	Get(ctx context.Context, req *models.OrderFilterDTO) ([]*models.Order, error)
 	GetById(ctx context.Context, req *models.GetOrderByIdDTO) (*models.Order, error)
 	GetInfoById(ctx context.Context, req *models.GetOrderByIdDTO) (*models.Order, error)
 	GetByYear(ctx context.Context, req *models.GetOrderByYearDTO) ([]*models.Order, error)
@@ -33,6 +34,14 @@ type Orders interface {
 	Create(ctx context.Context, dto *models.OrderDTO) error
 	CreateSeveral(ctx context.Context, tx postgres.Tx, dto []*models.OrderDTO) error
 	Update(ctx context.Context, dto *models.OrderDTO) error
+}
+
+func (s *OrdersService) Get(ctx context.Context, req *models.OrderFilterDTO) ([]*models.Order, error) {
+	data, err := s.repo.Get(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get orders. error: %w", err)
+	}
+	return data, nil
 }
 
 func (s *OrdersService) GetById(ctx context.Context, req *models.GetOrderByIdDTO) (*models.Order, error) {

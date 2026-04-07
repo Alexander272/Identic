@@ -330,8 +330,8 @@ type rowData struct {
 	position *models.PositionDTO
 }
 
+// var reNum = regexp.MustCompile(`\d+(?:[.,]\d+)?`)
 var reNumbers = regexp.MustCompile(`[0-9,.]+`)
-var reNum = regexp.MustCompile(`\d+(?:[.,]\d+)?`)
 var reCount = regexp.MustCompile(`^\d+[.)]\s*`)
 var reWithUnit = regexp.MustCompile(`(?i)(\d+)\s*(?:шт|кг)|(?:шт|кг)\.?\s*(\d+)`)
 var reStandards = regexp.MustCompile(`(?i)(ОСТ|ГОСТ|ТУ|ASME|B)\s*[\d\.\-]+$`)
