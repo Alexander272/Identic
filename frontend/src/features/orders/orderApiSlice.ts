@@ -2,13 +2,31 @@ import { toast } from 'react-toastify'
 
 import type { IBaseFetchError } from '@/app/types/error'
 import type { IFlatOrder, IGetFlatOrders, IOrder, IOrderCreate, IOrderUpdate } from './types/order'
+import type { IFilter } from './types/params'
 import { API } from '@/app/api'
 import { apiSlice } from '@/app/apiSlice'
 import { wsService } from '@/app/services/socket'
+import { buildFilterUrlParams } from './utils/buildFilters'
 
 export const orderApiSlice = apiSlice.injectEndpoints({
 	overrideExisting: false,
 	endpoints: builder => ({
+		getOrders: builder.query<{ data: IOrder[] }, IFilter[]>({
+			query: req => ({
+				url: API.orders.base,
+				method: 'GET',
+				params: buildFilterUrlParams(req),
+			}),
+			providesTags: [{ type: 'Orders', id: 'ALL' }],
+			onQueryStarted: async (_arg, api) => {
+				try {
+					await api.queryFulfilled
+				} catch (error) {
+					const fetchError = (error as IBaseFetchError).error
+					toast.error(fetchError.data.message, { autoClose: false })
+				}
+			},
+		}),
 		getOrderById: builder.query<{ data: IOrder }, string>({
 			query: id => ({
 				url: `${API.orders.base}/${id}`,
@@ -40,124 +58,6 @@ export const orderApiSlice = apiSlice.injectEndpoints({
 				}
 			},
 		}),
-		// getOrdersByYear: builder.query<{ data: IOrder[] }, string>({
-		// 	query: year => ({
-		// 		url: `${API.orders.byYear(year)}`,
-		// 		method: 'GET',
-		// 	}),
-		// 	providesTags: (_res, _err, arg) => [{ type: 'Orders', id: arg }],
-		// 	onQueryStarted: async (_arg, api) => {
-		// 		try {
-		// 			await api.queryFulfilled
-		// 		} catch (error) {
-		// 			const fetchError = (error as IBaseFetchError).error
-		// 			toast.error(fetchError.data.message, { autoClose: false })
-		// 		}
-		// 	},
-		// }),
-		// getOrdersByYear: builder.query<{ data: IOrder[] }, string>({
-		// 	query: year => ({
-		// 		url: API.orders.byYear(year),
-		// 		method: 'GET',
-		// 	}),
-		// 	providesTags: (_res, _err, arg) => [{ type: 'Orders', id: arg }],
-		// 	async onCacheEntryAdded(year, { updateCachedData, cacheDataLoaded, cacheEntryRemoved, dispatch }) {
-		// 		// Инициализируем переменные сразу, чтобы избежать "used before assignment"
-		// 		let ws: WebSocket | null = null
-		// 		let timeoutId: ReturnType<typeof setTimeout> | null = null
-		// 		let isNamespaceClosed = false
-
-		// 		const connect = () => {
-		// 			if (isNamespaceClosed) return
-
-		// 			const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-		// 			// Явно типизируем сокет
-		// 			const socket = new WebSocket(`${protocol}//${window.location.host}/api/ws`)
-		// 			ws = socket
-
-		// 			socket.onmessage = (event: MessageEvent) => {
-		// 				const message: IOrderSocketMessage = JSON.parse(event.data)
-		// 				const orderYear = new Date(message.createdAt).getFullYear().toString()
-
-		// 				if (message.action === 'INSERT_MANY') {
-		// 					// Проверяем, есть ли текущий год вкладки в списке измененных годов
-		// 					const isCurrentYearAffected = message.years?.some((y: number) => y.toString() === year)
-		// 					if (isCurrentYearAffected) {
-		// 						updateCachedData(() => {
-		// 							dispatch(apiSlice.util.invalidateTags([{ type: 'Orders', id: year }]))
-		// 						})
-		// 					}
-		// 					return
-		// 				}
-
-		// 				if (orderYear === year) {
-		// 					updateCachedData(draft => {
-		// 						if (message.action === 'DELETE') {
-		// 							draft.data = draft.data.filter(o => o.id !== message.id)
-		// 						} else if (message.action === 'UPDATE') {
-		// 							const index = draft.data.findIndex(o => o.id === message.id)
-		// 							if (index !== -1) {
-		// 								draft.data[index] = { ...draft.data[index], ...message }
-		// 							}
-		// 						} else if (message.action === 'INSERT') {
-		// 							draft.data.unshift(message)
-		// 						}
-
-		// 						// const index = draft.data.findIndex(o => o.id === message.id)
-		// 						// if (index !== -1) {
-		// 						// 	draft.data[index] = { ...draft.data[index], ...message }
-		// 						// } else if (message.action === 'INSERT') {
-		// 						// 	draft.data.unshift(message)
-		// 						// }
-		// 					})
-		// 				}
-		// 			}
-
-		// 			socket.onclose = e => {
-		// 				ws = null
-		// 				// Если закрытие не инициировано нами, пробуем переподключиться
-		// 				if (!isNamespaceClosed && e.code !== 1000) {
-		// 					timeoutId = setTimeout(connect, 5000)
-		// 				}
-		// 			}
-
-		// 			socket.onerror = () => {
-		// 				socket.close()
-		// 			}
-		// 		}
-
-		// 		try {
-		// 			await cacheDataLoaded
-		// 			connect()
-		// 		} catch {
-		// 			// Ошибка загрузки данных
-		// 		}
-
-		// 		// Ожидаем удаления данных из кэша (уход со страницы)
-		// 		await cacheEntryRemoved
-
-		// 		// Ставим флаг, чтобы реконнект больше не срабатывал
-		// 		isNamespaceClosed = true
-
-		// 		if (timeoutId) {
-		// 			clearTimeout(timeoutId)
-		// 		}
-
-		// 		const socketToClose = ws as WebSocket | null
-		// 		if (socketToClose) {
-		// 			socketToClose.close(1000, 'Closed by RTK Query')
-		// 		}
-		// 	},
-		// 	onQueryStarted: async (_arg, api) => {
-		// 		try {
-		// 			await api.queryFulfilled
-		// 		} catch (error) {
-		// 			const fetchError = error as IBaseFetchError
-		// 			const message = fetchError?.error?.data?.message || 'Ошибка загрузки'
-		// 			toast.error(message, { autoClose: false })
-		// 		}
-		// 	},
-		// }),
 		getOrdersByYear: builder.query<{ data: IOrder[] }, string>({
 			query: year => ({
 				url: API.orders.byYear(year),
@@ -297,6 +197,7 @@ export const orderApiSlice = apiSlice.injectEndpoints({
 })
 
 export const {
+	useGetOrdersQuery,
 	useGetOrderByIdQuery,
 	useGetOrdersByYearQuery,
 	useLazyGetOrderInfoQuery,

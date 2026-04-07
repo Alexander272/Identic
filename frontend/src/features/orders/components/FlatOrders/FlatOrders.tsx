@@ -64,12 +64,10 @@ export const FlatOrders = () => {
 
 			try {
 				const res = await fetchOrders({ cursor: cursorValue, limit: 20 }).unwrap()
-				console.log('Получено строк:', res.data.orders.length)
 
 				setOrders(prev => {
 					const existingIds = new Set(prev.map(t => t.id))
 					const newItems = res.data.orders.filter(t => !existingIds.has(t.id))
-					console.log('Новых строк:', newItems.length)
 					return [...prev, ...newItems]
 				})
 
@@ -118,7 +116,7 @@ export const FlatOrders = () => {
 								Конечник
 							</TableCell>
 							<TableCell width={260} sx={{ fontWeight: 'bold' }}>
-								Заказчик
+								Заказчик/перекуп
 							</TableCell>
 							<TableCell width={180} sx={{ fontWeight: 'bold' }}>
 								Примечание заказа

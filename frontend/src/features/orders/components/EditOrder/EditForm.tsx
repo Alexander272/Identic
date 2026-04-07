@@ -105,7 +105,7 @@ export const EditOrderForm: FC<Props> = ({ orderId }) => {
 						<Typography fontSize={'1.1rem'}>Контрагенты</Typography>
 
 						<AutocompleteInput field={{ name: 'consumer', label: 'Конечник', type: 'list' }} />
-						<AutocompleteInput field={{ name: 'customer', label: 'Заказчик', type: 'list' }} />
+						<AutocompleteInput field={{ name: 'customer', label: 'Заказчик/перекуп', type: 'list' }} />
 					</Stack>
 
 					<Stack spacing={2} width={'50%'}>

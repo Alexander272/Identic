@@ -38,7 +38,7 @@ export const Filter: FC<Props> = ({ filters, onChange }) => {
 	return (
 		<>
 			<IconButton onClick={openHandler} sx={{ ml: 1 }}>
-				<FilterIcon fontSize={16} />
+				<FilterIcon sx={{ fontSize: 16 }} />
 			</IconButton>
 
 			<Popover

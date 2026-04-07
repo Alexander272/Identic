@@ -4,6 +4,11 @@ export const handleGlobalPaste = (e: ClipboardEvent) => {
 	// Проверяем наличие clipboardData
 	if (!e.clipboardData) return
 
+	if (e.target) {
+		const isMuiComponent = (e.target as HTMLElement).closest('[class*="Mui"]')
+		if (isMuiComponent) return
+	}
+
 	const html = e.clipboardData.getData('text/html')
 	console.log(html)
 
