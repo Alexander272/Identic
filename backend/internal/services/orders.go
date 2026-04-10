@@ -144,7 +144,7 @@ func (s *OrdersService) IsExist(ctx context.Context, tx postgres.Tx, dto *models
 
 func (s *OrdersService) Create(ctx context.Context, dto *models.OrderDTO) error {
 	return s.txManager.WithinTransaction(ctx, func(tx postgres.Tx) error {
-		isExist, err := s.repo.IsExist(ctx, tx, dto)
+		isExist, err := s.repo.IsExistByPos(ctx, tx, dto)
 		if err != nil {
 			return err
 		}

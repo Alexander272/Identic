@@ -46,6 +46,7 @@ type Orders interface {
 	GetUniqueData(ctx context.Context, req *models.GetUniqueDTO) ([]string, error)
 	GetFlatData(ctx context.Context, req *models.GetFlatOrderDTO) (*models.FlatOrderRes, error)
 	IsExist(ctx context.Context, tx Tx, dto *models.OrderDTO) (bool, error)
+	IsExistByPos(ctx context.Context, tx Tx, dto *models.OrderDTO) (bool, error)
 	Create(ctx context.Context, tx Tx, dto *models.OrderDTO) error
 	CreateSeveral(ctx context.Context, tx Tx, dto []*models.OrderDTO) error
 	Update(ctx context.Context, tx Tx, dto *models.OrderDTO) error
@@ -391,6 +392,23 @@ func (r *OrderRepo) IsExist(ctx context.Context, tx Tx, dto *models.OrderDTO) (b
 	var exists bool
 
 	err := r.db.QueryRow(ctx, query, dto.Customer, dto.Consumer, dto.Notes, dto.Date, len(dto.Positions)).Scan(&exists)
+	if err != nil {
+		return false, fmt.Errorf("failed to execute query: %w", err)
+	}
+	return exists, nil
+}
+func (r *OrderRepo) IsExistByPos(ctx context.Context, tx Tx, dto *models.OrderDTO) (bool, error) {
+	query := fmt.Sprintf(`SELECT EXISTS (
+			SELECT 1 FROM %s 
+			WHERE content_hash = $1 AND created_at > NOW() - INTERVAL '14 days'
+		)`,
+		Tables.Orders,
+	)
+
+	newHash := CalculateHash(dto.Positions)
+	var exists bool
+
+	err := r.db.QueryRow(ctx, query, newHash).Scan(&exists)
 	if err != nil {
 		return false, fmt.Errorf("failed to execute query: %w", err)
 	}
