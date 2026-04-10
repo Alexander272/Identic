@@ -126,7 +126,7 @@ export const Search = () => {
 			height={'100%'}
 			justifyContent={'center'}
 			// spacing={1}
-			sx={{ height: '100%', maxHeight: 750, minWidth: 900 }}
+			sx={{ height: '100%', minWidth: 900 }}
 		>
 			{isSearching ? <BoxFallback /> : null}
 
@@ -211,7 +211,9 @@ export const Search = () => {
 				</Stack>
 			</Stack>
 
-			{isSuccess ? <Results data={results || []} search={data} isLoading={isSearching} /> : null}
+			{isSuccess ? (
+				<Results data={results || []} search={data} isLoading={isSearching} searchId={searchResponse.id} />
+			) : null}
 		</Stack>
 	)
 }

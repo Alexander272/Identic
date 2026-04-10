@@ -98,25 +98,38 @@ export function extractFromInlineText(elements: Element[], minValid: number): Pa
 }
 
 // ================= Паттерны =================
-export const DEFAULT_NAME_PATTERN = /наимен|товар|назван|item|product|description|позиция/i
+export const DEFAULT_NAME_PATTERN = /наим|товар|назван|номен|item|product|description|позиция/i
 export const DEFAULT_QTY_PATTERN = /кол|qty|кол-во|quantity|шт|pcs|amount|count/i
 
-/** Собирает текстовые блоки из DOM (аналог вашего div.textContent подхода) */
+/** Собирает текстовые блоки из DOM */
 export function extractRawLines(doc: Document): string[] {
 	const elements = doc.querySelectorAll('div, tr, li, p')
-	const seen = new Set<string>()
 	const lines: string[] = []
 
 	for (const el of elements) {
-		const text = normalizeText(el.textContent)
-		if (text.length > 5 && !seen.has(text)) {
-			seen.add(text)
+		const hasNested = el.querySelector('div, tr, li, p')
+		if (hasNested) continue // Пропускаем элементы с вложенными
+
+		const text = normalizeText(getSmartText(el))
+		console.log('normalizeText', text)
+
+		if (text.length > 5) {
 			lines.push(text)
 		}
 	}
 	return lines
 }
 
+function getSmartText(el: Element): string {
+	if (el.tagName === 'TR') {
+		// Склеиваем ячейки таблицы через пробел, чтобы <td> не слипались
+		return Array.from(el.children)
+			.map(child => child.textContent?.trim() || '')
+			.join(' ')
+	}
+	// Для остальных (p, li, div) берем текст как есть
+	return el.textContent || ''
+}
 /** Парсит одну строку в { name, quantity } */
 export function parseLine(line: string, minNameLen: number): ParsedItem | null {
 	// 1. Убираем ведущую нумерацию: "1 ", "№2 ", "3. "

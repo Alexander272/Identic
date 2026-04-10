@@ -10,9 +10,10 @@ type Props = {
 	data: IOrderMatchResult[]
 	search: ISearchItem[]
 	isLoading: boolean | undefined
+	searchId: string
 }
 
-export const Results: FC<Props> = ({ data, search, isLoading }) => {
+export const Results: FC<Props> = ({ data, search, isLoading, searchId }) => {
 	return (
 		<Stack
 			borderRadius={3}
@@ -44,7 +45,7 @@ export const Results: FC<Props> = ({ data, search, isLoading }) => {
 				</Stack>
 			)}
 
-			{data.length > 0 && !isLoading ? <ResultsTable data={data} search={search} /> : null}
+			{data.length > 0 && !isLoading ? <ResultsTable data={data} search={search} searchId={searchId} /> : null}
 		</Stack>
 	)
 }

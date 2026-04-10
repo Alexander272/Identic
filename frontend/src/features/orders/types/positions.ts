@@ -6,6 +6,7 @@ export interface IPosition {
 	quantity: number
 	notes: string
 	createdAt: string
+	isFound: boolean
 }
 
 export interface IPositionCreate {

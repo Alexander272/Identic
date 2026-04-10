@@ -15,6 +15,7 @@ export interface IOrderMatchResult {
 	customer: string
 	consumer: string
 	year: number
+	date: string
 	link: string
 	score: number // Общий процент совпадения (0-100)
 	matchedPos: number // Сколько позиций совпало

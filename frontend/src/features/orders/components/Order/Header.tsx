@@ -51,7 +51,7 @@ export const Header: FC<Props> = ({ order }) => {
 							color='text.secondary'
 							sx={{ fontWeight: 700, display: 'block', mb: 0.5 }}
 						>
-							Заказчик
+							Заказчик / Перекуп
 						</Typography>
 						<Typography variant='body2' color='text.primary' fontWeight={'bold'}>
 							{order.customer || '-'}

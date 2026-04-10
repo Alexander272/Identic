@@ -26,10 +26,11 @@ import { Header } from './Header'
 
 type Props = {
 	id: string
-	positionIds: string[]
+	searchId: string
+	// positionIds: string[]
 }
 
-export const Order: FC<Props> = ({ id, positionIds }) => {
+export const Order: FC<Props> = ({ id, searchId }) => {
 	const navigate = useNavigate()
 	const { palette } = useTheme()
 	const [filters, setFilters] = useState<IFilter>({
@@ -37,7 +38,7 @@ export const Order: FC<Props> = ({ id, positionIds }) => {
 		found: false,
 	})
 
-	const { data, isFetching } = useGetOrderByIdQuery(id, { skip: !id })
+	const { data, isFetching } = useGetOrderByIdQuery({ id, searchId }, { skip: !id })
 
 	const updateFilter = (name: string, value: unknown) => {
 		setFilters(prev => ({
@@ -62,14 +63,14 @@ export const Order: FC<Props> = ({ id, positionIds }) => {
 			const matchesSearch = item.name.toLowerCase().includes(filters.search.toLowerCase())
 
 			// 2. Фильтр по найденному
-			const matchesFound = filters.found ? positionIds.includes(item.id) : true
+			const matchesFound = filters.found ? item.isFound || false : true
 
 			// // 3. Фильтр по флагу (чекбоксу)
 			// const matchesStock = filters.showOnlyAvailable ? item.inStock : true
 
 			return matchesSearch && matchesFound
 		})
-	}, [data, filters, positionIds])
+	}, [data, filters])
 
 	return (
 		<Stack position={'relative'} sx={{ mr: -2 }}>
@@ -143,7 +144,7 @@ export const Order: FC<Props> = ({ id, positionIds }) => {
 					Позиции
 				</Typography> */}
 
-				<Filter filters={filters} onChange={updateFilter} showFound={positionIds.length > 0} />
+				<Filter filters={filters} onChange={updateFilter} showFound={data?.data.posWereFound} />
 			</Stack>
 
 			<TableContainer sx={{ height: 570, overflow: 'auto', pr: 2 }}>
@@ -160,7 +161,7 @@ export const Order: FC<Props> = ({ id, positionIds }) => {
 					<TableBody>
 						{filteredPositions.map((pos, idx) => {
 							let bgcolor = idx % 2 === 1 ? '#fafafa' : '#fff'
-							if (positionIds.includes(pos.id)) bgcolor = palette.rowActive.main
+							if (pos.isFound) bgcolor = palette.rowActive.main
 
 							return (
 								<TableRow key={pos.id} hover sx={{ bgcolor: bgcolor }}>

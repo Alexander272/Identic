@@ -116,7 +116,7 @@ export const FlatOrders = () => {
 								Конечник
 							</TableCell>
 							<TableCell width={260} sx={{ fontWeight: 'bold' }}>
-								Заказчик/перекуп
+								Заказчик / Перекуп
 							</TableCell>
 							<TableCell width={180} sx={{ fontWeight: 'bold' }}>
 								Примечание заказа

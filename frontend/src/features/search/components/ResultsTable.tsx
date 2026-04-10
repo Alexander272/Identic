@@ -15,18 +15,20 @@ import {
 	useTheme,
 } from '@mui/material'
 import { Link } from 'react-router'
+import dayjs from 'dayjs'
 
 import type { IOrderMatchResult, ISearchItem } from '../types/search'
 import { PopupLinkIcon } from '@/components/Icons/PopupLinkIcon'
-import { Info } from './Info'
 import { IndexingPageIcon } from '@/components/Icons/IndexingPageIcon'
+import { Info } from './Info'
 
 type Props = {
 	data: IOrderMatchResult[]
 	search: ISearchItem[]
+	searchId: string
 }
 
-export const ResultsTable: FC<Props> = ({ data, search }) => {
+export const ResultsTable: FC<Props> = ({ data, search, searchId }) => {
 	return (
 		<Table size='small'>
 			<TableHead>
@@ -49,8 +51,8 @@ export const ResultsTable: FC<Props> = ({ data, search }) => {
 
 				{/* Первый ряд шапки */}
 				<TableRow sx={{ bgcolor: '#f7f7f7', '& th': { fontWeight: 700 } }}>
-					<TableCell rowSpan={2} sx={{ borderTopLeftRadius: 8 }}>
-						Год
+					<TableCell rowSpan={2} align='center' sx={{ borderTopLeftRadius: 8 }}>
+						Дата
 					</TableCell>
 					<TableCell rowSpan={2}>Контрагент</TableCell>
 					<TableCell rowSpan={2} align='center'>
@@ -79,20 +81,24 @@ export const ResultsTable: FC<Props> = ({ data, search }) => {
 			</TableHead>
 			<TableBody>
 				{data.map(order => (
-					<ResultRow key={order.orderId} order={order} search={search} />
+					<ResultRow key={order.orderId} order={order} search={search} searchId={searchId} />
 				))}
 			</TableBody>
 		</Table>
 	)
 }
 
-const ResultRow: FC<{ order: IOrderMatchResult; search: ISearchItem[] }> = ({ order, search }) => {
+const ResultRow: FC<{ order: IOrderMatchResult; search: ISearchItem[]; searchId: string }> = ({
+	order,
+	search,
+	searchId,
+}) => {
 	const { palette } = useTheme()
 	const [open, setOpen] = useState(false)
 
 	const openHandler = (event: MouseEvent) => {
 		event.stopPropagation()
-		setOpen(!open)
+		setOpen(true)
 	}
 	const closeHandler = (event: MouseEvent) => {
 		event.stopPropagation()
@@ -106,13 +112,14 @@ const ResultRow: FC<{ order: IOrderMatchResult; search: ISearchItem[] }> = ({ or
 			hover
 			sx={{ cursor: 'pointer', transition: '0.2s all ease-in-out' }}
 		>
-			<TableCell align='center' sx={{ fontWeight: 'bold' }}>
-				{order.year}
+			<TableCell align='center'>
+				<Typography>{dayjs(order.date).format('DD.MM')}</Typography>
+				<Typography fontSize={'0.9rem'}>{order.year}</Typography>
 			</TableCell>
 			<TableCell>
 				<Typography>Конечник: {order.consumer || '-'}</Typography>
 				<Typography variant='body2' color='text.secondary'>
-					Заказчик: {order.customer || '-'}
+					Заказчик / Перекуп: {order.customer || '-'}
 				</Typography>
 			</TableCell>
 			{/* <TableCell>{order.customer}</TableCell> */}
@@ -176,7 +183,7 @@ const ResultRow: FC<{ order: IOrderMatchResult; search: ISearchItem[] }> = ({ or
 							<IndexingPageIcon fontSize={22} />
 						</Button>
 					</Tooltip>
-					<Info data={order} search={search} open={open} onClose={closeHandler} />
+					<Info data={order} search={search} open={open} onClose={closeHandler} searchId={searchId} />
 
 					<Link
 						to={order.link}

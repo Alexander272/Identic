@@ -95,7 +95,7 @@ export const CreateOrderForm = () => {
 					<Stack spacing={2} width={'50%'}>
 						<Typography fontSize={'1.1rem'}>Контрагенты</Typography>
 						<AutocompleteInput field={{ name: 'consumer', label: 'Конечник', type: 'list' }} />
-						<AutocompleteInput field={{ name: 'customer', label: 'Заказчик/перекуп', type: 'list' }} />
+						<AutocompleteInput field={{ name: 'customer', label: 'Заказчик / Перекуп', type: 'list' }} />
 					</Stack>
 
 					<Stack spacing={2} width={'50%'}>

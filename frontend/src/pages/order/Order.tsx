@@ -8,10 +8,11 @@ export default function OrderPage() {
 	const [searchParams] = useSearchParams()
 
 	const { id } = useParams()
-	const positionIds = searchParams.get('positions')?.split(',') || []
+	// const positionIds = searchParams.get('positions')?.split(',') || []
+	const searchId = searchParams.get('search')
 
 	// console.log('id', id)
-	console.log('positionIds', positionIds)
+	// console.log('positionIds', positionIds)
 
 	return (
 		<PageBox>
@@ -29,7 +30,7 @@ export default function OrderPage() {
 				flexDirection={'column'}
 				sx={{ backgroundColor: '#fff' }}
 			>
-				<Order id={id || ''} positionIds={positionIds} />
+				<Order id={id || ''} searchId={searchId || ''} />
 			</Box>
 		</PageBox>
 	)

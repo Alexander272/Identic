@@ -15,7 +15,7 @@ export default function Home() {
 				width={'100%'}
 				border={'1px solid rgba(0, 0, 0, 0.12)'}
 				mb={1}
-				sx={{ backgroundColor: '#fff', userSelect: 'none' }}
+				sx={{ backgroundColor: '#fff' }}
 			>
 				<Breadcrumbs aria-label='breadcrumb'>
 					<Breadcrumb to={AppRoutes.Home}>Главная</Breadcrumb>

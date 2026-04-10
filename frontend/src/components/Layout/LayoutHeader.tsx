@@ -1,14 +1,21 @@
 import { AppBar, Box, Stack, styled, Toolbar, Tooltip, useTheme } from '@mui/material'
 import { Link } from 'react-router'
+import Logo from '@/assets/logo.webp'
 
 import { AppRoutes } from '@/pages/router/routes'
-
-import Logo from '@/assets/logo.webp'
+import { useSignOutMutation } from '@/features/auth/authApiSlice'
 import { AddFileIcon } from '../Icons/AddFileIcon'
 import { SearchIcon } from '../Icons/SearchIcon'
+import { LogoutIcon } from '../Icons/LogoutIcon'
 
 export const LayoutHeader = () => {
 	const { palette } = useTheme()
+
+	const [signOut] = useSignOutMutation()
+
+	const logoutHandler = () => {
+		void signOut(null)
+	}
 
 	return (
 		<AppBar position='relative' sx={{ borderRadius: 0, alignItems: 'center' }}>
@@ -48,6 +55,10 @@ export const LayoutHeader = () => {
 							</NavBox>
 						</Tooltip>
 					</Link>
+
+					<NavBox onClick={logoutHandler} sx={{ ':hover': { svg: { fill: palette.primary.main } } }}>
+						<LogoutIcon fill={'#000'} fontSize={24} transition={'0.3s all ease-in-out'} />
+					</NavBox>
 				</Stack>
 			</Toolbar>
 		</AppBar>

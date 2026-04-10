@@ -76,7 +76,7 @@ export const EditOrderForm: FC<Props> = ({ orderId }) => {
 	const methods = useForm<IOrderUpdate>({ defaultValues })
 	const { control, reset } = methods
 
-	const { data: order, isFetching } = useGetOrderByIdQuery(orderId, { skip: !orderId })
+	const { data: order, isFetching } = useGetOrderByIdQuery({ id: orderId }, { skip: !orderId })
 
 	useEffect(() => {
 		if (order?.data) reset(order.data)
@@ -105,7 +105,7 @@ export const EditOrderForm: FC<Props> = ({ orderId }) => {
 						<Typography fontSize={'1.1rem'}>Контрагенты</Typography>
 
 						<AutocompleteInput field={{ name: 'consumer', label: 'Конечник', type: 'list' }} />
-						<AutocompleteInput field={{ name: 'customer', label: 'Заказчик/перекуп', type: 'list' }} />
+						<AutocompleteInput field={{ name: 'customer', label: 'Заказчик / Перекуп', type: 'list' }} />
 					</Stack>
 
 					<Stack spacing={2} width={'50%'}>

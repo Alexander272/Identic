@@ -9,7 +9,7 @@ import { VerifiedIcon } from '@/components/Icons/VerifiedIcon'
 import { WarnIcon } from '@/components/Icons/WarnIcon'
 import { CloseRoundIcon } from '@/components/Icons/CloseRoundIcon'
 import { PopupLinkIcon } from '@/components/Icons/PopupLinkIcon'
-import { DiffText } from './DiffText'
+import { DiffText } from './MatchTable/DiffText'
 
 // --- Константы цветов и стилей ---
 const colors = {
@@ -102,10 +102,16 @@ export const MatchTable: FC<Props> = ({ request, result, foundPositions }) => {
 		}
 
 		const foundName = normalize(foundItem.name)
+		const foundNotes = normalize(foundItem.notes)
 		const reqName = requestedItem?.name ? normalize(requestedItem.name) : ''
 
+		const isNameMatch = foundName === reqName
+		const isNotesMatch = foundNotes === reqName
+
+		const matchedFrom = isNameMatch ? 'name' : isNotesMatch ? 'notes' : null
+
 		const diff = {
-			name: foundName !== reqName,
+			name: !matchedFrom,
 			qty: foundQty !== reqQty,
 		}
 
@@ -114,6 +120,7 @@ export const MatchTable: FC<Props> = ({ request, result, foundPositions }) => {
 				status: 'partial',
 				foundItem,
 				mismatch: diff,
+				matchedFrom,
 			}
 		}
 		// if (foundQty < reqQty || foundQty > reqQty) {
@@ -192,7 +199,7 @@ export const MatchTable: FC<Props> = ({ request, result, foundPositions }) => {
 			>
 				{filteredIndices.map(index => {
 					const item = request[index]
-					const { status, foundItem, mismatch } = getRowData(index as number)
+					const { status, foundItem, mismatch, matchedFrom } = getRowData(index as number)
 
 					let rowColorStyles
 					let statusColor
@@ -313,9 +320,14 @@ export const MatchTable: FC<Props> = ({ request, result, foundPositions }) => {
 											</Typography>
 										)}
 										{mismatch?.name ? (
-											<DiffText expected={item.name || ''} actual={foundItem.name} />
+											<DiffText
+												expected={item.name || ''}
+												actual={matchedFrom === 'notes' ? foundItem.notes : foundItem.name}
+											/>
 										) : (
-											<Typography>{foundItem?.name}</Typography>
+											<Typography>
+												{matchedFrom === 'notes' ? foundItem?.notes : foundItem?.name}
+											</Typography>
 										)}
 										<Typography color='textSecondary'>
 											<Box

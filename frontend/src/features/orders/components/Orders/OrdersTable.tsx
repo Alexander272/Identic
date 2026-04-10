@@ -85,7 +85,7 @@ export const OrdersTable: FC<Props> = ({ orders }) => {
 								Конечник
 							</TableCell>
 							<TableCell width={400} sx={{ fontWeight: 'bold' }}>
-								Заказчик/перекуп
+								Заказчик / Перекуп
 							</TableCell>
 							<TableCell width={120} align='center' sx={{ fontWeight: 'bold' }}>
 								Кол-во позиций

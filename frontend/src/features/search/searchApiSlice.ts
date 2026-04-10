@@ -47,6 +47,7 @@ export const searchApiSlice = apiSlice.injectEndpoints({
 					const unsubscribe = wsService.subscribe('SEARCH_RESULT_PART', message => {
 						updateCachedData(draft => {
 							draft.isProcessing = true
+							draft.id = currentSearchId
 							if (isFirstBatch) {
 								// Первая пачка: очищаем старые результаты (от POST запроса или прошлого поиска)
 								draft.data = message.items
@@ -92,6 +93,7 @@ export const searchApiSlice = apiSlice.injectEndpoints({
 				dispatch(
 					searchApiSlice.util.updateQueryData('findOrders', arg, draft => {
 						draft.data = []
+						draft.id = arg.sessionId
 						draft.isProcessing = true
 					}),
 				)

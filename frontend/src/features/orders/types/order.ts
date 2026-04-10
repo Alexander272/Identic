@@ -16,6 +16,7 @@ export interface IOrder {
 	createdAt: string
 	positionCount: number
 	positions: IPosition[]
+	posWereFound: boolean
 }
 
 export interface IOrderCreate {

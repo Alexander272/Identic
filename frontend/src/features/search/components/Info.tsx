@@ -7,16 +7,17 @@ import { useLazyGetOrderInfoQuery } from '@/features/orders/orderApiSlice'
 import { Header } from '@/features/orders/components/Order/Header'
 import { BoxFallback } from '@/components/Fallback/BoxFallback'
 import { TimesIcon } from '@/components/Icons/TimesIcon'
-import { MatchTable } from './MatchTable'
+import { MatchTable } from './MatchTable/MatchTable'
 
 type Props = {
 	data: IOrderMatchResult
 	search: ISearchItem[]
+	searchId: string
 	open: boolean
 	onClose: (e: MouseEvent) => void
 }
 
-export const Info: FC<Props> = ({ data, search, open, onClose }) => {
+export const Info: FC<Props> = ({ data, search, searchId, open, onClose }) => {
 	const { palette } = useTheme()
 	// const [open, setOpen] = useState(false)
 
@@ -24,12 +25,13 @@ export const Info: FC<Props> = ({ data, search, open, onClose }) => {
 
 	useEffect(() => {
 		if (open && !order) {
-			getOrder({ id: data.orderId, positions: data.positions?.map(p => p.id) })
+			getOrder({ id: data.orderId, searchId: searchId })
 		}
-	}, [open, data.orderId, data.positions, getOrder, order])
+	}, [open, data.orderId, searchId, getOrder, order])
 
 	const closeHandler = (e: React.MouseEvent, reason?: string) => {
 		if (reason === 'backdropClick') return
+		console.log('close')
 
 		e.stopPropagation?.()
 		onClose(e)
@@ -48,7 +50,7 @@ export const Info: FC<Props> = ({ data, search, open, onClose }) => {
 
 	return (
 		<>
-			<Dialog open={open} onClose={closeHandler} fullScreen>
+			<Dialog open={open} fullScreen>
 				<Stack direction={'row'} width={'100%'} justifyContent={'space-between'} alignItems={'center'}>
 					<DialogTitle sx={{ fontWeight: 'bold' }}>
 						Информация о заказе от{' '}

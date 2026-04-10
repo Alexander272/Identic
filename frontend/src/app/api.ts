@@ -15,4 +15,10 @@ export const API = {
 		unique: (field: string) => `orders/unique/${field}` as const,
 		flat: `orders/flat` as const,
 	},
+	users: {
+		base: '/users' as const,
+		sync: '/users/sync' as const,
+		access: '/users/access' as const,
+	},
+	roles: '/roles' as const,
 }

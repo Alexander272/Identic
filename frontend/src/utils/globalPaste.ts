@@ -14,14 +14,6 @@ export const handleGlobalPaste = (e: ClipboardEvent) => {
 
 	// Проверяем, есть ли HTML и не было ли событие уже отменено
 	if (html && !e.defaultPrevented) {
-		// const parser = new DOMParser()
-		// const doc = parser.parseFromString(html, 'text/html')
-		// const divs = doc.querySelectorAll('div')
-
-		// const lines = Array.from(divs)
-		// 	.map(div => (div.textContent || '').replace(/\s+/g, ' ').trim())
-		// 	.filter(Boolean)
-
 		const table = extractTableData(html)
 
 		console.log('table', table)

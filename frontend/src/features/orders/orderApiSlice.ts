@@ -27,12 +27,13 @@ export const orderApiSlice = apiSlice.injectEndpoints({
 				}
 			},
 		}),
-		getOrderById: builder.query<{ data: IOrder }, string>({
-			query: id => ({
-				url: `${API.orders.base}/${id}`,
+		getOrderById: builder.query<{ data: IOrder }, { id: string; searchId?: string }>({
+			query: req => ({
+				url: `${API.orders.base}/${req.id}`,
 				method: 'GET',
+				params: { search: req.searchId },
 			}),
-			providesTags: (_res, _err, arg) => [{ type: 'Orders', id: arg }],
+			providesTags: (_res, _err, arg) => [{ type: 'Orders', id: arg.id }],
 			onQueryStarted: async (_arg, api) => {
 				try {
 					await api.queryFulfilled
@@ -42,11 +43,11 @@ export const orderApiSlice = apiSlice.injectEndpoints({
 				}
 			},
 		}),
-		getOrderInfo: builder.query<{ data: IOrder }, { id: string; positions?: string[] }>({
+		getOrderInfo: builder.query<{ data: IOrder }, { id: string; searchId?: string }>({
 			query: req => ({
 				url: API.orders.info(req.id),
 				method: 'GET',
-				params: { positions: req.positions?.join(',') },
+				params: { search: req.searchId },
 			}),
 			providesTags: (_res, _err, arg) => [{ type: 'Orders', id: arg.id }],
 			onQueryStarted: async (_arg, api) => {
