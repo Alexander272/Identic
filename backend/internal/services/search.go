@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/Alexander272/Identic/backend/internal/models"
 	"github.com/Alexander272/Identic/backend/internal/repository"
@@ -16,18 +17,21 @@ import (
 type SearchService struct {
 	repo     repository.Search
 	orderUrl string
+	cacheTTL time.Duration
 }
 
-func NewSearchService(repo repository.Search, orderUrl string) *SearchService {
+func NewSearchService(repo repository.Search, orderUrl string, cacheTTL time.Duration) *SearchService {
 	return &SearchService{
 		repo:     repo,
 		orderUrl: orderUrl,
+		cacheTTL: cacheTTL,
 	}
 }
 
 type Search interface {
 	Search(ctx context.Context, req *models.SearchRequest) ([]*models.OrderMatchResult, error)
 	SearchAndGroup(ctx context.Context, req *models.SearchRequest) ([]*models.OrderMatchResult, error)
+	GetCache(ctx context.Context, req *models.GetCacheDTO) ([]string, error)
 }
 
 func (s *SearchService) Search(ctx context.Context, req *models.SearchRequest) ([]*models.OrderMatchResult, error) {
@@ -65,6 +69,7 @@ func (s *SearchService) Search(ctx context.Context, req *models.SearchRequest) (
 				Year:     m.YearInt,
 				Customer: m.Customer,
 				Consumer: m.Consumer,
+				Date:     m.Date,
 			}
 			bestMatches[m.OrderId] = make(map[string]*models.MatchInfo)
 		}
@@ -81,7 +86,7 @@ func (s *SearchService) Search(ctx context.Context, req *models.SearchRequest) (
 		}
 	}
 
-	return s.finalize(orderMap, bestMatches, len(req.Items)), nil
+	return s.finalize(orderMap, bestMatches, len(req.Items), req.SearchId), nil
 }
 
 func (s *SearchService) SearchAndGroup(ctx context.Context, req *models.SearchRequest) ([]*models.OrderMatchResult, error) {
@@ -107,7 +112,7 @@ func (s *SearchService) SearchAndGroup(ctx context.Context, req *models.SearchRe
 
 	// генерируем ссылку на заказ
 	for _, m := range rawResults {
-		if err := s.genLink(m); err != nil {
+		if err := s.genLink(m, req.SearchId); err != nil {
 			return nil, err
 		}
 	}
@@ -137,8 +142,16 @@ func (s *SearchService) SearchAndGroup(ctx context.Context, req *models.SearchRe
 	return rawResults, nil
 }
 
+func (s *SearchService) GetCache(ctx context.Context, req *models.GetCacheDTO) ([]string, error) {
+	positions, err := s.repo.GetCache(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get cache. error: %w", err)
+	}
+	return positions, nil
+}
+
 // Вспомогательные методы логики
-func (s *SearchService) genLink(item *models.OrderMatchResult) (err error) {
+func (s *SearchService) genLink(item *models.OrderMatchResult, searchId string) (err error) {
 	item.Link, err = url.JoinPath(s.orderUrl, item.OrderId)
 	if err != nil {
 		return fmt.Errorf("failed to generate link. error: %w", err)
@@ -153,10 +166,17 @@ func (s *SearchService) genLink(item *models.OrderMatchResult) (err error) {
 	for i, p := range item.Positions {
 		ids[i] = p.Id
 	}
-	q.Set("positions", strings.Join(ids, ","))
+	// q.Set("positions", strings.Join(ids, ","))
+	// url.RawQuery = q.Encode()
+
+	cacheDTO := &models.SetCacheDTO{OrderId: item.OrderId, SearchId: searchId, PositionIds: ids, Exp: s.cacheTTL}
+	s.repo.SetCache(context.Background(), cacheDTO)
+
+	q.Set("search", searchId)
 	url.RawQuery = q.Encode()
 
 	item.Link = url.String()
+
 	return nil
 }
 
@@ -230,7 +250,9 @@ func (s *SearchService) calculateItemScore(sml, reqQty, dbQty float64) float64 {
 	return sml * qtyFactor
 }
 
-func (s *SearchService) finalize(om map[string]*models.OrderMatchResult, bm map[string]map[string]*models.MatchInfo, total int) []*models.OrderMatchResult {
+func (s *SearchService) finalize(
+	om map[string]*models.OrderMatchResult, bm map[string]map[string]*models.MatchInfo, total int, searchId string,
+) []*models.OrderMatchResult {
 	results := make([]*models.OrderMatchResult, 0, len(om))
 	for id, order := range om {
 		var sumScore float64
@@ -253,7 +275,7 @@ func (s *SearchService) finalize(om map[string]*models.OrderMatchResult, bm map[
 		order.TotalCount = total
 		order.Score = math.Round((sumScore/float64(total)*100)*100) / 100
 
-		s.genLink(order)
+		s.genLink(order, searchId)
 
 		if order.Score > 0 {
 			results = append(results, order)
@@ -264,7 +286,7 @@ func (s *SearchService) finalize(om map[string]*models.OrderMatchResult, bm map[
 		if results[i].Score != results[j].Score {
 			return results[i].Score > results[j].Score
 		}
-		return results[i].Year > results[j].Year
+		return results[i].Date.After(results[j].Date)
 	})
 
 	return results

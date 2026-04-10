@@ -18,7 +18,7 @@ func Migrate(pool *pgxpool.Pool) error {
 	}
 
 	db := stdlib.OpenDBFromPool(pool)
-	defer db.Close() // Закрывает обертку, но НЕ сам пул pgx
+	// defer db.Close() // Закрывает обертку, но НЕ сам пул pgx
 
 	logger.Info("migration up till last")
 	if err := goose.Up(db, "."); err != nil {

@@ -1,5 +1,7 @@
 package models
 
+import "time"
+
 // SearchItem - позиция, которую мы ищем (входящий запрос)
 type SearchItem struct {
 	Id       int     `json:"id"`
@@ -27,15 +29,16 @@ type MatchedPosition struct {
 
 // OrderMatchResult - результат поиска по одному заказу
 type OrderMatchResult struct {
-	OrderId      string  `json:"orderId"`
-	Customer     string  `json:"customer"`
-	Consumer     string  `json:"consumer"`
-	Year         int     `json:"year"`
-	Link         string  `json:"link"`
-	Score        float64 `json:"score"`        // Общий процент совпадения (0-100)
-	MatchedPos   int     `json:"matchedPos"`   // Сколько позиций совпало
-	MatchedQuant int     `json:"matchedQuant"` // Сколько позиций + количество совпало
-	TotalCount   int     `json:"totalCount"`   // Сколько позиций в запросе
+	OrderId      string    `json:"orderId"`
+	Customer     string    `json:"customer"`
+	Consumer     string    `json:"consumer"`
+	Date         time.Time `json:"date"`
+	Year         int       `json:"year"`
+	Link         string    `json:"link"`
+	Score        float64   `json:"score"`        // Общий процент совпадения (0-100)
+	MatchedPos   int       `json:"matchedPos"`   // Сколько позиций совпало
+	MatchedQuant int       `json:"matchedQuant"` // Сколько позиций + количество совпало
+	TotalCount   int       `json:"totalCount"`   // Сколько позиций в запросе
 	// PositionIds  []string `json:"positionIds"`
 	Positions []*MatchPosition `json:"positions"`
 }
@@ -72,6 +75,7 @@ type RawMatch struct {
 	YearInt    int
 	Customer   string
 	Consumer   string
+	Date       time.Time
 	ReqId      string   // ID позиции из запроса (номер по порядку)
 	PosId      string   // UUID позиции в базе
 	PSearch    string   // Название товара в базе
@@ -90,4 +94,16 @@ type SearchResultPart struct {
 type SearchErrorPayload struct {
 	SearchId string `json:"searchId"`
 	Message  string `json:"message"`
+}
+
+type GetCacheDTO struct {
+	OrderId  string `json:"orderId"`
+	SearchId string `json:"searchId"`
+}
+
+type SetCacheDTO struct {
+	OrderId     string   `json:"orderId"`
+	SearchId    string   `json:"searchId"`
+	PositionIds []string `json:"positionIds"`
+	Exp         time.Duration
 }

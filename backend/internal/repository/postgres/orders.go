@@ -62,7 +62,7 @@ func (r *OrderRepo) Get(ctx context.Context, req *models.OrderFilterDTO) ([]*mod
 	baseQuery := fmt.Sprintf(`SELECT o.id, o.customer, o.consumer, o.manager, o.bill, o.date, o.notes, COUNT(p.id) AS position_count
         FROM %s AS o
         LEFT JOIN %s AS p ON p.order_id = o.id`,
-		OrdersTable, PositionsTable,
+		Tables.Orders, Tables.Positions,
 	)
 	qb := NewQueryBuilder(baseQuery)
 
@@ -116,7 +116,7 @@ func (r *OrderRepo) Get(ctx context.Context, req *models.OrderFilterDTO) ([]*mod
 
 func (r *OrderRepo) GetById(ctx context.Context, req *models.GetOrderByIdDTO) (*models.Order, error) {
 	query := fmt.Sprintf(`SELECT id, customer, consumer, manager, bill, date, notes FROM %s WHERE id = $1`,
-		OrdersTable,
+		Tables.Orders,
 	)
 	order := &models.Order{}
 
@@ -138,7 +138,7 @@ func (r *OrderRepo) GetByYear(ctx context.Context, req *models.GetOrderByYearDTO
         LEFT JOIN %s AS p ON p.order_id = o.id
         WHERE o.year = $1
         GROUP BY o.id ORDER BY o.date DESC, o.created_at DESC, manager, customer, consumer`,
-		OrdersTable, PositionsTable,
+		Tables.Orders, Tables.Positions,
 	)
 	var data []*models.Order
 
@@ -191,7 +191,7 @@ func (r *OrderRepo) GetUniqueData(ctx context.Context, req *models.GetUniqueDTO)
 		FROM %s,
 		LATERAL (SELECT unnest(ARRAY[%s])) AS t(val)
 		WHERE val::text != '' AND val IS NOT NULL`,
-		OrdersTable, columnList,
+		Tables.Orders, columnList,
 	)
 
 	var data []string
@@ -215,7 +215,7 @@ func (r *OrderRepo) GetFlatData(ctx context.Context, req *models.GetFlatOrderDTO
 		row_number, name, quantity, p.notes AS pos_notes
 		FROM %s AS o
 		JOIN %s AS p ON p.order_id = o.id`,
-		OrdersTable, PositionsTable,
+		Tables.Orders, Tables.Positions,
 	)
 	qb := NewQueryBuilder(baseQuery)
 
@@ -375,13 +375,22 @@ func (r *OrderRepo) GetFlatData(ctx context.Context, req *models.GetFlatOrderDTO
 }
 
 func (r *OrderRepo) IsExist(ctx context.Context, tx Tx, dto *models.OrderDTO) (bool, error) {
-	query := fmt.Sprintf(`SELECT EXISTS(SELECT 1 FROM %s WHERE customer=$1 AND consumer=$2 AND 
-		(date AT TIME ZONE 'UTC')::date=($3 AT TIME ZONE 'UTC')::date)`,
-		OrdersTable,
+	query := fmt.Sprintf(`SELECT EXISTS (
+			SELECT 1 
+			FROM %s AS o
+			INNER JOIN %s AS p ON o.id = p.order_id
+			WHERE o.customer = $1 
+			AND o.consumer = $2 
+			AND o.notes = $3 
+			AND date >= $4 AND date < $4 + interval '1 day'
+			GROUP BY o.id
+			HAVING COUNT(p.id) = $5
+		)`,
+		Tables.Orders, Tables.Positions,
 	)
 	var exists bool
 
-	err := r.db.QueryRow(ctx, query, dto.Customer, dto.Consumer, dto.Date).Scan(&exists)
+	err := r.db.QueryRow(ctx, query, dto.Customer, dto.Consumer, dto.Notes, dto.Date, len(dto.Positions)).Scan(&exists)
 	if err != nil {
 		return false, fmt.Errorf("failed to execute query: %w", err)
 	}
@@ -391,7 +400,7 @@ func (r *OrderRepo) IsExist(ctx context.Context, tx Tx, dto *models.OrderDTO) (b
 func (r *OrderRepo) Create(ctx context.Context, tx Tx, dto *models.OrderDTO) error {
 	query := fmt.Sprintf(`INSERT INTO %s (id, customer, consumer, manager, bill, date, year, notes)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-		OrdersTable,
+		Tables.Orders,
 	)
 	if dto.Id == "" {
 		dto.Id = uuid.NewString()
@@ -456,7 +465,7 @@ func (r *OrderRepo) CreateSeveral(ctx context.Context, tx Tx, dto []*models.Orde
 	columns := []string{"id", "customer", "consumer", "manager", "bill", "date", "year", "notes"}
 	_, err := r.getExec(tx).CopyFrom(
 		ctx,
-		pgx.Identifier{OrdersTable},
+		pgx.Identifier{Tables.Orders},
 		columns,
 		pgx.CopyFromRows(rows),
 	)
@@ -490,7 +499,7 @@ func quoteLiteral(s string) string {
 func (r *OrderRepo) Update(ctx context.Context, tx Tx, dto *models.OrderDTO) error {
 	query := fmt.Sprintf(`UPDATE %s SET customer = $2, consumer = $3, manager = $4, bill = $5, date = $6, year = $7, notes = $8 
 		WHERE id = $1`,
-		OrdersTable,
+		Tables.Orders,
 	)
 	dto.Year = dto.Date.Year()
 
@@ -525,7 +534,7 @@ func (r *OrderRepo) Update(ctx context.Context, tx Tx, dto *models.OrderDTO) err
 }
 
 func (r *OrderRepo) Delete(ctx context.Context, tx Tx, dto *models.DeleteOrderDTO) error {
-	query := fmt.Sprintf(`DELETE FROM %s WHERE id = $1 RETURNING year`, OrdersTable)
+	query := fmt.Sprintf(`DELETE FROM %s WHERE id = $1 RETURNING year`, Tables.Orders)
 	var year int
 
 	err := r.getExec(tx).QueryRow(ctx, query, dto.Id).Scan(&year)

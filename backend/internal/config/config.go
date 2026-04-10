@@ -12,13 +12,15 @@ type (
 		Environment string `yaml:"environment" env:"APP_ENV" env-default:"dev"`
 		LogLevel    string `yaml:"log_level" env-default:"info"`
 		LogSource   bool   `yaml:"log_source" env-default:"false"`
-		// Redis        RedisConfig
-		Postgres PostgresConfig
-		Auth     AuthConfig
-		Keycloak KeycloakConfig
-		Http     HttpConfig
-		Limiter  LimiterConfig
-		Links    LinksConfig
+		Redis       RedisConfig
+		Postgres    PostgresConfig
+		Auth        AuthConfig
+		Keycloak    KeycloakConfig
+		Http        HttpConfig
+		Limiter     LimiterConfig
+		Casbin      CasbinConfig
+		Search      SearchConfig
+		Links       LinksConfig
 	}
 
 	HttpConfig struct {
@@ -34,12 +36,12 @@ type (
 		MaxMessageSize     int64         `yaml:"max_message_size" env-default:"10240"`
 	}
 
-	// RedisConfig struct {
-	// 	Host     string `yaml:"host" env:"REDIS_HOST"`
-	// 	Port     string `yaml:"port" env:"REDIS_PORT"`
-	// 	DB       int    `yaml:"db" env:"REDIS_DB"`
-	// 	Password string `env:"REDIS_PASSWORD"`
-	// }
+	RedisConfig struct {
+		Host     string `yaml:"host" env:"REDIS_HOST"`
+		Port     string `yaml:"port" env:"REDIS_PORT"`
+		DB       int    `yaml:"db" env:"REDIS_DB"`
+		Password string `env:"REDIS_PASSWORD"`
+	}
 
 	PostgresConfig struct {
 		Host     string `yaml:"host" env:"POSTGRES_HOST"`
@@ -73,6 +75,15 @@ type (
 		RPS   int           `yaml:"rps" env:"RPS" env-default:"10"`
 		Burst int           `yaml:"burst" env:"BURST" env-default:"20"`
 		TTL   time.Duration `yaml:"ttl" env:"TTL" env-default:"10m"`
+	}
+
+	CasbinConfig struct {
+		ModelPath     string `yaml:"model_path" env:"CASBIN_MODEL_PATH" env-default:"configs/privacy.conf"`
+		EnableWatcher bool   `yaml:"enable_watcher" env:"CASBIN_ENABLE_WATCHER" env-default:"false"`
+	}
+
+	SearchConfig struct {
+		CacheTTL time.Duration `yaml:"cache_ttl" env-default:"1h"`
 	}
 
 	LinksConfig struct {

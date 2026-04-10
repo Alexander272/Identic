@@ -14,13 +14,15 @@ type OrdersService struct {
 	repo      repository.Orders
 	txManager TransactionManager
 	positions Positions
+	search    Search
 }
 
-func NewOrdersService(repo repository.Orders, txManager TransactionManager, positions Positions) *OrdersService {
+func NewOrdersService(repo repository.Orders, txManager TransactionManager, positions Positions, search Search) *OrdersService {
 	return &OrdersService{
 		repo:      repo,
 		txManager: txManager,
 		positions: positions,
+		search:    search,
 	}
 }
 
@@ -58,6 +60,25 @@ func (s *OrdersService) GetById(ctx context.Context, req *models.GetOrderByIdDTO
 	}
 	data.Positions = positions
 
+	if req.SearchId != "" {
+		cache := &models.GetCacheDTO{OrderId: req.Id, SearchId: req.SearchId}
+		posIds, err := s.search.GetCache(ctx, cache)
+		if err != nil {
+			return nil, err
+		}
+
+		found := make(map[string]struct{}, len(posIds))
+		for _, posId := range posIds {
+			found[posId] = struct{}{}
+		}
+		for _, pos := range data.Positions {
+			if _, ok := found[pos.Id]; ok {
+				pos.IsFound = true
+			}
+		}
+		data.PosWereFound = len(found) > 0
+	}
+
 	return data, nil
 }
 
@@ -70,12 +91,20 @@ func (s *OrdersService) GetInfoById(ctx context.Context, req *models.GetOrderByI
 		return nil, fmt.Errorf("failed to get order info. error: %w", err)
 	}
 
-	if len(req.PositionIds) > 0 {
-		positions, err := s.positions.GetByIds(ctx, &models.GetPositionsByIds{Ids: req.PositionIds})
+	if req.SearchId != "" {
+		cache := &models.GetCacheDTO{OrderId: req.Id, SearchId: req.SearchId}
+		posIds, err := s.search.GetCache(ctx, cache)
 		if err != nil {
 			return nil, err
 		}
-		data.Positions = positions
+
+		if len(posIds) > 0 {
+			positions, err := s.positions.GetByIds(ctx, &models.GetPositionsByIds{Ids: posIds})
+			if err != nil {
+				return nil, err
+			}
+			data.Positions = positions
+		}
 	}
 
 	return data, nil

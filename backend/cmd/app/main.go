@@ -16,7 +16,9 @@ import (
 	"github.com/Alexander272/Identic/backend/internal/server"
 	"github.com/Alexander272/Identic/backend/internal/services"
 	"github.com/Alexander272/Identic/backend/internal/transport"
+	"github.com/Alexander272/Identic/backend/pkg/auth"
 	"github.com/Alexander272/Identic/backend/pkg/database/postgres"
+	"github.com/Alexander272/Identic/backend/pkg/database/redis"
 	"github.com/Alexander272/Identic/backend/pkg/logger"
 	"github.com/Alexander272/Identic/backend/pkg/ws_hub"
 	"github.com/subosito/gotenv"
@@ -52,6 +54,24 @@ func main() {
 		log.Fatalf("failed to migrate: %s", err.Error())
 	}
 
+	memDB, err := redis.NewRedisClient(&redis.Config{
+		Host:     conf.Redis.Host,
+		Port:     conf.Redis.Port,
+		DB:       conf.Redis.DB,
+		Password: conf.Redis.Password,
+	})
+	if err != nil {
+		log.Fatalf("failed to initialize redis %s", err.Error())
+	}
+
+	keycloak := auth.NewKeycloakClient(&auth.Deps{
+		Url:       conf.Keycloak.Url,
+		ClientId:  conf.Keycloak.ClientId,
+		Realm:     conf.Keycloak.Realm,
+		AdminName: conf.Keycloak.Root,
+		AdminPass: conf.Keycloak.RootPass,
+	})
+
 	// Контекст для управления всеми фоновыми процессами
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -60,19 +80,19 @@ func main() {
 	go hub.Run(ctx)
 
 	//* Services, Repos & API Handlers
-	repo := repository.NewRepository(db)
+	repo := repository.NewRepository(db, memDB)
 	service := services.NewServices(&services.Deps{
-		Repo:  repo,
-		Links: conf.Links,
-		Hub:   hub,
-		// Keycloak:      keycloak,
+		Repo:     repo,
+		Conf:     conf,
+		Hub:      hub,
+		Keycloak: keycloak,
 		// MostClient:    mostClient,
 		// CheckUsedConf: conf.Notification.CheckUsed,
 		// Adapter:       adapter,
 		// BotUrl:   conf.Bot.Url,
 	})
 
-	handlers := transport.NewHandler(nil, service, hub)
+	handlers := transport.NewHandler(keycloak, service, hub)
 
 	//* HTTP Server
 	// if err := services.Scheduler.Start(&conf.Scheduler); err != nil {

@@ -66,6 +66,7 @@ func (s *PositionsService) Create(ctx context.Context, tx postgres.Tx, dto []*mo
 func (s *PositionsService) executeCreate(ctx context.Context, tx postgres.Tx, dto []*models.PositionDTO) error {
 	for i := range dto {
 		dto[i].Search = NormalizeString(dto[i].Name)
+		dto[i].NormalizedNotes = NormalizeString(dto[i].Notes)
 	}
 
 	if err := s.repo.Create(ctx, tx, dto); err != nil {

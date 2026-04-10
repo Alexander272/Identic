@@ -48,14 +48,15 @@ func (r *SearchRepo) FetchExact(ctx context.Context, req *models.SearchRequest) 
             FROM UNNEST($1::text[], $2::numeric[], $3::int[]) AS t(name, qty, id)
         )
         SELECT 
-            o.id::text, o.year, o.customer, o.consumer,
-            r.req_item_id, p.id::text as matched_item_id, p.search,
+            o.id::text, o.year, o.customer, o.consumer, o.date,
+            r.req_item_id, p.id::text as matched_item_id, 
+			CASE WHEN p.search=r.req_name THEN p.search ELSE p.normalized_notes END as p_search,
             r.req_qty, p.quantity as db_qty,
             1.0 as similarity -- Для точного поиска всегда 1.0
         FROM req r
-        JOIN %s p ON p.search = r.req_name
+        JOIN %s p ON p.search = r.req_name OR p.normalized_notes = r.req_name
         JOIN %s o ON o.id = p.order_id`,
-		PositionsTable, OrdersTable,
+		Tables.Positions, Tables.Orders,
 	)
 
 	rows, err := r.db.Query(ctx, query, names, qtys, ids)
@@ -68,7 +69,7 @@ func (r *SearchRepo) FetchExact(ctx context.Context, req *models.SearchRequest) 
 	for rows.Next() {
 		var m models.RawMatch
 		err := rows.Scan(
-			&m.OrderId, &m.YearInt, &m.Customer, &m.Consumer,
+			&m.OrderId, &m.YearInt, &m.Customer, &m.Consumer, &m.Date,
 			&m.ReqId, &m.PosId, &m.PSearch, &m.ReqQty, &m.DbQty, &m.Similarity,
 		)
 		if err != nil {
@@ -108,7 +109,7 @@ func (r *SearchRepo) FetchFuzzy(ctx context.Context, req *models.SearchRequest) 
             FROM UNNEST($1::text[], $2::numeric[], $3::int[]) AS t(name, qty, id)
         )
         SELECT 
-            o.id::text, o.year, o.customer, o.consumer,
+            o.id::text, o.year, o.customer, o.consumer, o.date,
             r.req_id::text,
             p.id::text as pos_id,
             p.search,
@@ -119,7 +120,7 @@ func (r *SearchRepo) FetchFuzzy(ctx context.Context, req *models.SearchRequest) 
         FROM req r
         JOIN %s p ON p.search %% r.req_name 
         JOIN %s o ON o.id = p.order_id;`,
-		PositionsTable, OrdersTable,
+		Tables.Positions, Tables.Orders,
 	)
 
 	rows, err := tx.Query(ctx, query, names, qtys, ids)
@@ -137,6 +138,7 @@ func (r *SearchRepo) FetchFuzzy(ctx context.Context, req *models.SearchRequest) 
 			&m.YearInt,
 			&m.Customer,
 			&m.Consumer,
+			&m.Date,
 			&m.ReqId,
 			&m.PosId,
 			&m.PSearch,
@@ -203,7 +205,7 @@ func (r *SearchRepo) Find(ctx context.Context, req *models.SearchRequest) ([]*mo
             ) AS score
         FROM order_stats
         ORDER BY score DESC, year DESC;`,
-		PositionsTable, OrdersTable,
+		Tables.Positions, Tables.Orders,
 	)
 
 	rows, err := r.db.Query(ctx, query, names, qtys)
@@ -271,7 +273,7 @@ func (r *SearchRepo) FindSimilar(ctx context.Context, req *models.SearchRequest)
         FROM req r
         JOIN %s p ON p.search %% r.req_name 
         JOIN %s o ON o.id = p.order_id;`, // Убрали WHERE по количеству
-		PositionsTable, OrdersTable,
+		Tables.Positions, Tables.Orders,
 	)
 
 	rows, err := tx.Query(ctx, query, names, qtys)
@@ -498,7 +500,7 @@ func (r *SearchRepo) isCriticalType(s string) bool {
 // 		FROM order_stats
 // 		WHERE (matched_req_count::numeric / cardinality($1)) >= 0.70
 // 		ORDER BY year DESC, score DESC;`,
-// 		PositionsTable, OrdersTable,
+// 		Tables.Positions, Tables.Orders,
 // 	)
 
 // 	rows, err := tx.Query(ctx, query, names, qtys)
@@ -585,7 +587,7 @@ func (r *SearchRepo) isCriticalType(s string) bool {
 // 		GROUP BY order_id, year, customer, consumer
 // 		ORDER BY score DESC, year DESC
 // 		LIMIT 100`,
-// 		PositionsTable, OrdersTable,
+// 		Tables.Positions, Tables.Orders,
 // 	)
 
 // 	rows, err := tx.Query(ctx, query, names, qtys)
@@ -649,7 +651,7 @@ func (r *SearchRepo) isCriticalType(s string) bool {
 //         JOIN %s p ON p.search %% r.req_name
 //         JOIN %s o ON o.id = p.order_id
 //         WHERE p.quantity BETWEEN r.req_qty * 0.7 AND r.req_qty * 1.3;`,
-// 		PositionsTable, OrdersTable,
+// 		Tables.Positions, Tables.Orders,
 // 	)
 
 // 	rows, err := tx.Query(ctx, query, names, qtys)

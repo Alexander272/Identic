@@ -10,6 +10,7 @@ import (
 	"github.com/Alexander272/Identic/backend/internal/models/response"
 	"github.com/Alexander272/Identic/backend/internal/services"
 	"github.com/Alexander272/Identic/backend/internal/transport/http/handlers"
+	"github.com/Alexander272/Identic/backend/internal/transport/middleware"
 	"github.com/Alexander272/Identic/backend/internal/transport/ws"
 	"github.com/Alexander272/Identic/backend/pkg/auth"
 	"github.com/Alexander272/Identic/backend/pkg/error_bot"
@@ -62,9 +63,8 @@ func (h *Handler) ErrorHandler(c *gin.Context, origErr any) {
 }
 
 func (h *Handler) initAPI(router *gin.Engine, conf *config.Config) {
-	// middleware := middleware.NewMiddleware(h.services, conf.Auth, h.keycloak)
-	// handler := handlers.NewHandler(&handlers.Deps{Services: h.services, Conf: conf, Middleware: middleware})
-	handler := handlers.NewHandler(&handlers.Deps{Services: h.services, Conf: conf, Hub: h.hub})
+	middleware := middleware.NewMiddleware(h.services, conf.Auth, h.keycloak)
+	handler := handlers.NewHandler(&handlers.Deps{Services: h.services, Conf: conf, Hub: h.hub, Middleware: middleware})
 	wsHandler := ws.NewWsHandler(h.hub, conf.Http, h.services)
 
 	api := router.Group("/api")

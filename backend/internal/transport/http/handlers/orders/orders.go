@@ -85,6 +85,11 @@ func (h *Handler) getById(c *gin.Context) {
 	}
 	req := &models.GetOrderByIdDTO{Id: id}
 
+	search := c.Query("search")
+	if search != "" {
+		req.SearchId = search
+	}
+
 	order, err := h.service.GetById(c, req)
 	if err != nil {
 		response.NewErrorResponse(c, http.StatusInternalServerError, err.Error(), "Произошла ошибка: "+err.Error())
@@ -102,9 +107,13 @@ func (h *Handler) getInfo(c *gin.Context) {
 	}
 	req := &models.GetOrderByIdDTO{Id: id}
 
-	positionIds := c.Query("positions")
-	if positionIds != "" {
-		req.PositionIds = strings.Split(positionIds, ",")
+	// positionIds := c.Query("positions")
+	// if positionIds != "" {
+	// 	req.PositionIds = strings.Split(positionIds, ",")
+	// }
+	search := c.Query("search")
+	if search != "" {
+		req.SearchId = search
 	}
 
 	order, err := h.service.GetInfoById(c, req)

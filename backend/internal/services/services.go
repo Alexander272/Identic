@@ -2,7 +2,9 @@ package services
 
 import (
 	"github.com/Alexander272/Identic/backend/internal/config"
+	"github.com/Alexander272/Identic/backend/internal/events"
 	"github.com/Alexander272/Identic/backend/internal/repository"
+	"github.com/Alexander272/Identic/backend/pkg/auth"
 	"github.com/Alexander272/Identic/backend/pkg/ws_hub"
 )
 
@@ -17,25 +19,47 @@ type Services struct {
 	Positions
 	Search
 	SearchStream
+
+	Roles
+	Users
+	Session
+	AccessPolices
 }
 
 type Deps struct {
-	Repo  *repository.Repository
-	Links config.LinksConfig
-	Hub   *ws_hub.Hub
+	Repo     *repository.Repository
+	Keycloak *auth.KeycloakClient
+	Conf     *config.Config
+	Hub      *ws_hub.Hub
 }
 
 func NewServices(deps *Deps) *Services {
 	transaction := NewTransactionManager(deps.Repo.Transaction)
 
-	positions := NewPositionsService(deps.Repo.Positions, transaction)
-	orders := NewOrdersService(deps.Repo.Orders, transaction, positions)
-	import_file := NewImportService(transaction, orders, positions)
+	updatePolicyEvent := &events.PolicyEventManager{}
+
+	search := NewSearchService(deps.Repo.Search, deps.Conf.Links.Orders, deps.Conf.Search.CacheTTL)
+	searchStream := NewSearchStreamService(search, deps.Hub)
 
 	ordersStream := NewOrderStreamService(deps.Repo.OrdersEvents, deps.Hub)
 
-	search := NewSearchService(deps.Repo.Search, deps.Links.Orders)
-	searchStream := NewSearchStreamService(search, deps.Hub)
+	positions := NewPositionsService(deps.Repo.Positions, transaction)
+	orders := NewOrdersService(deps.Repo.Orders, transaction, positions, search)
+	import_file := NewImportService(transaction, orders, positions)
+
+	permissions := NewPermissionService(deps.Repo.Permissions, transaction, updatePolicyEvent)
+	roleHierarchy := NewRoleHierarchyService(deps.Repo.RoleHierarchy)
+	role := NewRoleService(deps.Repo.Roles)
+	user := NewUserService(&UsersDeps{Repo: deps.Repo.Users, TxManager: transaction, Keycloak: deps.Keycloak, Role: role})
+
+	adapter := NewAdapter(&AdapterDeps{Permissions: permissions, Users: user, RoleHierarchy: roleHierarchy})
+	policies := NewAccessPoliciesService(&PoliciesDeps{
+		Conf:     deps.Conf.Casbin,
+		Adapter:  adapter,
+		EventBus: updatePolicyEvent,
+	})
+
+	session := NewSessionService(deps.Keycloak, user, policies)
 
 	return &Services{
 		Import:       import_file,
@@ -44,5 +68,11 @@ func NewServices(deps *Deps) *Services {
 		Positions:    positions,
 		Search:       search,
 		SearchStream: searchStream,
+
+		Roles:   role,
+		Users:   user,
+		Session: session,
+
+		AccessPolices: policies,
 	}
 }

@@ -4,6 +4,7 @@ import "time"
 
 type GetOrderByIdDTO struct {
 	Id          string   `json:"id" db:"id"`
+	SearchId    string   `json:"searchId" db:"search_id"`
 	PositionIds []string `json:"positionIds"`
 }
 
@@ -35,6 +36,7 @@ type Order struct {
 	PositionCount int         `json:"positionCount" db:"position_count"`
 	CreatedAt     time.Time   `json:"createdAt" db:"created_at"`
 	Positions     []*Position `json:"positions"`
+	PosWereFound  bool        `json:"posWereFound"`
 }
 
 type OrderFilterDTO struct {

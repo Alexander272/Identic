@@ -33,7 +33,7 @@ type Positions interface {
 
 func (r *PositionRepo) GetByOrder(ctx context.Context, req *models.GetPositionsByOrderIdDTO) ([]*models.Position, error) {
 	query := fmt.Sprintf(`SELECT id, order_id, row_number, name, quantity, notes FROM %s WHERE order_id = $1 ORDER BY row_number ASC`,
-		PositionsTable,
+		Tables.Positions,
 	)
 
 	var positions []*models.Position
@@ -63,7 +63,7 @@ func (r *PositionRepo) GetByOrder(ctx context.Context, req *models.GetPositionsB
 
 func (r *PositionRepo) GetByIds(ctx context.Context, req *models.GetPositionsByIds) ([]*models.Position, error) {
 	query := fmt.Sprintf(`SELECT id, order_id, row_number, name, quantity, notes FROM %s WHERE id = ANY($1::uuid[]) ORDER BY row_number ASC`,
-		PositionsTable,
+		Tables.Positions,
 	)
 
 	positions := make([]*models.Position, 0, len(req.Ids))
@@ -91,36 +91,6 @@ func (r *PositionRepo) Create(ctx context.Context, tx Tx, dto []*models.Position
 		return nil
 	}
 
-	// ids := make([]string, len(dto))
-	// orderIds := make([]string, len(dto))
-	// names := make([]string, len(dto))
-	// searches := make([]string, len(dto))
-	// quantities := make([]float64, len(dto))
-	// notes := make([]string, len(dto))
-
-	// for i, v := range dto {
-	// 	if v.Id == "" {
-	// 		v.Id = uuid.NewString()
-	// 	}
-
-	// 	ids[i] = v.Id
-	// 	orderIds[i] = v.OrderId
-	// 	names[i] = v.Name
-	// 	searches[i] = v.Search
-	// 	quantities[i] = v.Quantity
-	// 	notes[i] = v.Notes
-	// }
-
-	// query := fmt.Sprintf(`INSERT INTO %s (id, order_id, name, search, quantity, notes)
-	// 	SELECT unnest($1::uuid[]), unnest($2::uuid[]), unnest($3::text[]), unnest($4::text[]), unnest($5::real[]), unnest($6::text[])`,
-	// 	PositionsTable,
-	// )
-
-	// if _, err := r.getExec(tx).Exec(ctx, query, ids, orderIds, names, searches, quantities, notes); err != nil {
-	// 	return fmt.Errorf("failed to execute query. error: %w", err)
-	// }
-	// return nil
-
 	rows := make([][]interface{}, len(dto))
 
 	for i, v := range dto {
@@ -136,13 +106,14 @@ func (r *PositionRepo) Create(ctx context.Context, tx Tx, dto []*models.Position
 			v.Search,
 			v.Quantity,
 			v.Notes,
+			v.NormalizedNotes,
 		}
 	}
 
-	columns := []string{"id", "order_id", "row_number", "name", "search", "quantity", "notes"}
+	columns := []string{"id", "order_id", "row_number", "name", "search", "quantity", "notes", "normalized_notes"}
 	_, err := r.getExec(tx).CopyFrom(
 		ctx,
-		pgx.Identifier{PositionsTable},
+		pgx.Identifier{Tables.Positions},
 		columns,
 		pgx.CopyFromRows(rows),
 	)
@@ -163,24 +134,28 @@ func (r *PositionRepo) Update(ctx context.Context, tx Tx, dto []*models.Position
 	search := make([]string, len(dto))
 	quantities := make([]float32, len(dto))
 	notes := make([]string, len(dto))
+	normNotes := make([]string, len(dto))
 
 	for i, v := range dto {
 		ids[i] = v.Id
 		names[i] = v.Name
+		search[i] = v.Search
 		quantities[i] = v.Quantity
 		notes[i] = v.Notes
+		normNotes[i] = v.NormalizedNotes
 	}
 
-	query := fmt.Sprintf(`UPDATE %s AS t SET name = s.name, search = s.search, quantity = s.quantity, notes = s.notes 
+	query := fmt.Sprintf(`UPDATE %s AS t SET name = s.name, search = s.search, quantity = s.quantity, notes = s.notes, normalized_notes = s.normalized_notes
 		FROM (
 			SELECT UNNEST($1::uuid[]) as id, 
 				   UNNEST($2::text[]) as name, 
 				   UNNEST($3::text[]) as search,
 				   UNNEST($4::real[]) as quantity,
-				   UNNEST($5::text[]) as notes
+				   UNNEST($5::text[]) as notes,
+				   UNNEST($6::text[]) as normalized_notes
 		) AS s 
 		WHERE t.id = s.id`,
-		PositionsTable,
+		Tables.Positions,
 	)
 
 	if _, err := r.getExec(tx).Exec(ctx, query, ids, names, search, quantities, notes); err != nil {
@@ -199,7 +174,7 @@ func (r *PositionRepo) Delete(ctx context.Context, tx Tx, dto []*models.DeletePo
 		ids[i] = v.Id
 	}
 
-	query := fmt.Sprintf(`DELETE FROM %s WHERE id = ANY($1::uuid[])`, PositionsTable)
+	query := fmt.Sprintf(`DELETE FROM %s WHERE id = ANY($1::uuid[])`, Tables.Positions)
 
 	if _, err := r.getExec(tx).Exec(ctx, query, ids); err != nil {
 		return fmt.Errorf("failed to execute query. error: %w", err)
@@ -208,7 +183,7 @@ func (r *PositionRepo) Delete(ctx context.Context, tx Tx, dto []*models.DeletePo
 }
 
 func (r *PositionRepo) DeleteByOrder(ctx context.Context, tx Tx, dto *models.DeletePositionsByOrderIdDTO) error {
-	query := fmt.Sprintf(`DELETE FROM %s WHERE order_id = $1`, PositionsTable)
+	query := fmt.Sprintf(`DELETE FROM %s WHERE order_id = $1`, Tables.Positions)
 
 	if _, err := r.getExec(tx).Exec(ctx, query, dto.OrderId); err != nil {
 		return fmt.Errorf("failed to execute query. error: %w", err)
