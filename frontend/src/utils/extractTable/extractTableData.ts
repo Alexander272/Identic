@@ -25,8 +25,10 @@ export function extractTableData(html: string, config: ExtractConfig = {}): Extr
 		return []
 	}
 
+	let structureFound = false
 	// ===== 1. Классические <table> =====
 	const tables = Array.from(doc.querySelectorAll('table'))
+	if (tables.length > 0) structureFound = true
 	for (const table of tables) {
 		console.log('parse Table')
 
@@ -34,17 +36,11 @@ export function extractTableData(html: string, config: ExtractConfig = {}): Extr
 		if (rows.length < 2) continue
 
 		const header = findHeaderRow(rows, DEFAULT_NAME_PATTERN, DEFAULT_QTY_PATTERN)
-		// if (!header) continue
-		if (!header) {
-			console.log('Table found, but no header detected. Exiting.')
-			return []
-		}
+		if (!header) continue
 
 		const cells = getRowCells(header)
 		const indexes = findColumnIndexes(cells, DEFAULT_NAME_PATTERN, DEFAULT_QTY_PATTERN)
-
-		// if (!indexes) continue
-		if (!indexes) return []
+		if (!indexes) continue
 
 		const result = extractFromGrid(rows, rows.indexOf(header), indexes.nameIndex, indexes.qtyIndex, minValid)
 
@@ -54,9 +50,18 @@ export function extractTableData(html: string, config: ExtractConfig = {}): Extr
 	// ===== 2. CSS-Grid / Div-таблицы =====
 	const gridCandidates = Array.from(
 		doc.querySelectorAll<HTMLElement>(
-			'[class*="row"], [class*="item"], [class*="list"], [class*="grid-cell"], [class*="k-grid"]',
+			'[class*="row"], [class*="item"], [class*="list"], [class*="grid-cell"], [class*="k-grid"], [data-qa="cell"]',
 		),
-	).filter(el => el.children.length >= 2)
+	)
+		.map(el => {
+			if (el.getAttribute('data-qa') === 'cell' || el.classList.contains('controls-Grid__header-cell')) {
+				return el.parentElement
+			}
+			return el
+		})
+		.filter(
+			(el, index, self) => el && el.children.length >= 2 && self.indexOf(el) === index, // Убираем дубликаты родителей
+		) as HTMLElement[]
 
 	if (gridCandidates.length >= 2) {
 		console.log('parser grid')
@@ -76,6 +81,12 @@ export function extractTableData(html: string, config: ExtractConfig = {}): Extr
 				if (result.length) return result
 			}
 		}
+	}
+
+	// Выходим если нашли таблицу, но её структура невалидна
+	if (structureFound) {
+		console.log('Structure detected but headers were invalid. Aborting before text parse.')
+		return []
 	}
 
 	// ===== 3. Плоские текстовые строки =====

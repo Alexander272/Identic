@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 
 import { useAppDispatch, useAppSelector } from '@/hooks/redux'
-import { getRole, setUser } from '@/features/user/userSlice'
+import { getToken, setUser } from '@/features/user/userSlice'
 import { useRefreshQuery } from '../authApiSlice'
 
 export function useRefresh() {
@@ -9,7 +9,7 @@ export function useRefresh() {
 	const dispatch = useAppDispatch()
 
 	// Достаем пользователя напрямую из стора
-	const user = useAppSelector(getRole)
+	const token = useAppSelector(getToken)
 
 	useEffect(() => {
 		if (isSuccess && data) {
@@ -23,7 +23,7 @@ export function useRefresh() {
 	// 3. Если ошибка — мы готовы (покажем страницу логина)
 
 	const isFinished = !isLoading && !isFetching
-	const hasUserInStore = isSuccess && !!user
+	const hasUserInStore = isSuccess && !!token
 
 	const ready = isFinished && (isError || hasUserInStore)
 

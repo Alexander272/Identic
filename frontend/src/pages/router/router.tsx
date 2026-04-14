@@ -10,6 +10,11 @@ import { CreateOrder } from '@/pages/createOrder/CreateOrderLazy'
 import { EditOrder } from '@/pages/editOrder/EditOrderLazy'
 import { OrdersList } from '@/pages/ordersList/OrdersListLazy'
 import { Search } from '@/pages/search/SearchLazy'
+import { Accesses } from '@/pages/accesses/AccessesLazy'
+import { Dashboard } from '@/pages/accesses/dashboard/DashboardLazy'
+import { Users } from '@/pages/accesses/users/UsersLazy'
+import { Role } from '@/pages/accesses/role/RoleLazy'
+import { Permissions } from '@/pages/accesses/permissions/PermsLazy'
 import PrivateRoute from './PrivateRoute'
 
 const config: RouteObject[] = [
@@ -48,6 +53,29 @@ const config: RouteObject[] = [
 					{
 						path: AppRoutes.Search,
 						element: <Search />,
+					},
+
+					{
+						path: AppRoutes.Accesses,
+						element: <Accesses />,
+						children: [
+							{
+								index: true,
+								element: <Dashboard />,
+							},
+							{
+								path: AppRoutes.UserAccess,
+								element: <Users />,
+							},
+							{
+								path: AppRoutes.RoleAccess,
+								element: <Role />,
+							},
+							{
+								path: AppRoutes.Permissions,
+								element: <Permissions />,
+							},
+						],
 					},
 				],
 			},

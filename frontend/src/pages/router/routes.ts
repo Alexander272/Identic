@@ -7,4 +7,8 @@ export const AppRoutes = Object.freeze({
 	EditOrder: '/orders/edit/:id' as const,
 	OrdersList: '/orders/list' as const,
 	Search: '/search' as const,
+	Accesses: '/accesses' as const,
+	UserAccess: '/accesses/user' as const,
+	RoleAccess: '/accesses/roles' as const,
+	Permissions: '/accesses/permissions' as const,
 })

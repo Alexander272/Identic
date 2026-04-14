@@ -21,4 +21,8 @@ export const API = {
 		access: '/users/access' as const,
 	},
 	roles: '/roles' as const,
+	permissions: {
+		base: '/permissions' as const,
+		resources: '/permissions/resources' as const,
+	},
 }

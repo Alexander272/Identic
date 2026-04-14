@@ -3,10 +3,13 @@ import { Link } from 'react-router'
 import Logo from '@/assets/logo.webp'
 
 import { AppRoutes } from '@/pages/router/routes'
+import { PermRules } from '@/features/access/constants/permissions'
 import { useSignOutMutation } from '@/features/auth/authApiSlice'
+import { useCheckPermission } from '@/features/user/hooks/check'
 import { AddFileIcon } from '../Icons/AddFileIcon'
 import { SearchIcon } from '../Icons/SearchIcon'
 import { LogoutIcon } from '../Icons/LogoutIcon'
+import { ShieldIcon } from '../Icons/ShieldIcon'
 
 export const LayoutHeader = () => {
 	const { palette } = useTheme()
@@ -16,6 +19,8 @@ export const LayoutHeader = () => {
 	const logoutHandler = () => {
 		void signOut(null)
 	}
+
+	const canEditSettings = useCheckPermission(PermRules.Users.Write)
 
 	return (
 		<AppBar position='relative' sx={{ borderRadius: 0, alignItems: 'center' }}>
@@ -34,6 +39,16 @@ export const LayoutHeader = () => {
 				</Link>
 
 				<Stack ml={'auto'} direction={'row'} spacing={0.5}>
+					{canEditSettings ? (
+						<Link to={AppRoutes.Accesses} aria-label='roles page'>
+							<Tooltip title='Настройка доступа' disableInteractive>
+								<NavBox sx={{ ':hover': { svg: { stroke: palette.primary.main } } }}>
+									<ShieldIcon sx={{ fontSize: 26, transition: '0.3s all ease-in-out' }} />
+								</NavBox>
+							</Tooltip>
+						</Link>
+					) : null}
+
 					<Link to={AppRoutes.CreateOrder} aria-label='roles page'>
 						<Tooltip title='Добавить заказ' disableInteractive>
 							<NavBox sx={{ ':hover': { svg: { fill: palette.primary.main } } }}>
