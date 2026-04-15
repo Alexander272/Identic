@@ -47,7 +47,7 @@ func (h *Handler) Init(group *gin.RouterGroup) {
 	import_file.Register(secure, h.services.Import)
 	search.Register(secure, h.services.SearchStream, h.hub)
 
-	orders.Register(secure, h.services.Orders)
+	orders.Register(secure, h.services.Orders, h.middleware)
 
 	permissions.Register(secure, h.services.Permissions, h.middleware)
 	roles.Register(secure, h.services.Roles, h.middleware)

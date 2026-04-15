@@ -12,26 +12,28 @@ import (
 type PositionsService struct {
 	repo      repository.Positions
 	txManager TransactionManager
+	activity  Activity
 }
 
-func NewPositionsService(repo repository.Positions, txManager TransactionManager) *PositionsService {
+func NewPositionsService(repo repository.Positions, txManager TransactionManager, activity Activity) *PositionsService {
 	return &PositionsService{
 		repo:      repo,
 		txManager: txManager,
+		activity:  activity,
 	}
 }
 
 type Positions interface {
-	GetByOrder(ctx context.Context, req *models.GetPositionsByOrderIdDTO) ([]*models.Position, error)
+	GetByOrder(ctx context.Context, tx postgres.Tx, req *models.GetPositionsByOrderIdDTO) ([]*models.Position, error)
 	GetByIds(ctx context.Context, req *models.GetPositionsByIds) ([]*models.Position, error)
 	Create(ctx context.Context, tx postgres.Tx, dto []*models.PositionDTO) error
 	Update(ctx context.Context, tx postgres.Tx, dto []*models.PositionDTO) error
-	Delete(ctx context.Context, tx postgres.Tx, dto []*models.DeletePositionDTO) error
+	Delete(ctx context.Context, tx postgres.Tx, dto []*models.PositionDTO) error
 	DeleteByOrder(ctx context.Context, tx postgres.Tx, dto *models.DeletePositionsByOrderIdDTO) error
 }
 
-func (s *PositionsService) GetByOrder(ctx context.Context, req *models.GetPositionsByOrderIdDTO) ([]*models.Position, error) {
-	data, err := s.repo.GetByOrder(ctx, req)
+func (s *PositionsService) GetByOrder(ctx context.Context, tx postgres.Tx, req *models.GetPositionsByOrderIdDTO) ([]*models.Position, error) {
+	data, err := s.repo.GetByOrder(ctx, tx, req)
 	if err != nil {
 		if err == models.ErrNoRows {
 			return nil, err
@@ -100,7 +102,7 @@ func (s *PositionsService) executeUpdate(ctx context.Context, tx postgres.Tx, dt
 	return nil
 }
 
-func (s *PositionsService) Delete(ctx context.Context, tx postgres.Tx, dto []*models.DeletePositionDTO) error {
+func (s *PositionsService) Delete(ctx context.Context, tx postgres.Tx, dto []*models.PositionDTO) error {
 	if len(dto) == 0 {
 		return nil
 	}
@@ -112,7 +114,7 @@ func (s *PositionsService) Delete(ctx context.Context, tx postgres.Tx, dto []*mo
 	}
 	return s.executeDelete(ctx, tx, dto) // Если транзакция передана, используем её
 }
-func (s *PositionsService) executeDelete(ctx context.Context, tx postgres.Tx, dto []*models.DeletePositionDTO) error {
+func (s *PositionsService) executeDelete(ctx context.Context, tx postgres.Tx, dto []*models.PositionDTO) error {
 	if err := s.repo.Delete(ctx, tx, dto); err != nil {
 		return fmt.Errorf("failed to delete positions. error: %w", err)
 	}

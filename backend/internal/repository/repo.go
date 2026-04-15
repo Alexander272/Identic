@@ -38,6 +38,10 @@ type AuditLogs interface {
 	postgres.AuditLogs
 }
 
+type Activity interface {
+	postgres.Activity
+}
+
 type Repository struct {
 	Transaction
 	Orders
@@ -51,6 +55,7 @@ type Repository struct {
 	Users
 
 	AuditLogs
+	Activity
 }
 
 func NewRepository(pool *pgxpool.Pool, memDB *memoryDB.Client) *Repository {
@@ -72,5 +77,6 @@ func NewRepository(pool *pgxpool.Pool, memDB *memoryDB.Client) *Repository {
 		Users:         postgres.NewUserRepo(pool, transaction),
 
 		AuditLogs: postgres.NewAuditRepo(pool, transaction),
+		Activity:  postgres.NewActivityRepo(pool, transaction),
 	}
 }

@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/Alexander272/Identic/backend/internal/access"
+	"github.com/Alexander272/Identic/backend/internal/constants"
 	"github.com/Alexander272/Identic/backend/internal/models"
 	"github.com/Alexander272/Identic/backend/internal/models/response"
 	"github.com/Alexander272/Identic/backend/internal/services"
@@ -89,6 +90,18 @@ func (h *Handler) create(c *gin.Context) {
 		return
 	}
 
+	u, exists := c.Get(constants.CtxUser)
+	if !exists {
+		response.NewErrorResponse(c, http.StatusUnauthorized, "empty user", "Сессия не найдена")
+		return
+	}
+	user := u.(models.User)
+
+	dto.Actor = models.Actor{
+		ID:   user.ID,
+		Name: user.Name,
+	}
+
 	if err := h.service.Create(c, dto); err != nil {
 		response.NewErrorResponse(c, http.StatusInternalServerError, err.Error(), "Произошла ошибка: "+err.Error())
 		error_bot.Send(c, err.Error(), dto)
@@ -111,7 +124,23 @@ func (h *Handler) update(c *gin.Context) {
 		response.NewErrorResponse(c, http.StatusBadRequest, err.Error(), "Отправлены некорректные данные")
 		return
 	}
+	if id != dto.ID {
+		response.NewErrorResponse(c, http.StatusBadRequest, "id is not equal to dto.ID", "Некорректные данные")
+		return
+	}
 	dto.ID = id
+
+	u, exists := c.Get(constants.CtxUser)
+	if !exists {
+		response.NewErrorResponse(c, http.StatusUnauthorized, "empty user", "Сессия не найдена")
+		return
+	}
+	user := u.(models.User)
+
+	dto.Actor = models.Actor{
+		ID:   user.ID,
+		Name: user.Name,
+	}
 
 	if err := h.service.Update(c, dto); err != nil {
 		response.NewErrorResponse(c, http.StatusInternalServerError, err.Error(), "Произошла ошибка: "+err.Error())
@@ -130,6 +159,18 @@ func (h *Handler) delete(c *gin.Context) {
 		return
 	}
 	dto := &models.DeleteRoleDTO{ID: id}
+
+	u, exists := c.Get(constants.CtxUser)
+	if !exists {
+		response.NewErrorResponse(c, http.StatusUnauthorized, "empty user", "Сессия не найдена")
+		return
+	}
+	user := u.(models.User)
+
+	dto.Actor = models.Actor{
+		ID:   user.ID,
+		Name: user.Name,
+	}
 
 	if err := h.service.Delete(c, dto); err != nil {
 		response.NewErrorResponse(c, http.StatusInternalServerError, err.Error(), "Произошла ошибка: "+err.Error())

@@ -22,15 +22,24 @@ type Position struct {
 }
 
 type PositionDTO struct {
-	Id              string  `json:"id" db:"id"`
-	OrderId         string  `json:"orderId" db:"order_id"`
-	RowNumber       int     `json:"rowNumber" db:"row_number"`
-	Name            string  `json:"name" db:"name"`
-	Search          string  `json:"search" db:"search"`
-	Quantity        float32 `json:"quantity" db:"quantity"`
-	Notes           string  `json:"notes" db:"notes"`
-	NormalizedNotes string  `json:"normalizedNotes" db:"normalized_notes"`
+	Id              string         `json:"id" db:"id"`
+	OrderId         string         `json:"orderId" db:"order_id"`
+	RowNumber       int            `json:"rowNumber" db:"row_number"`
+	Name            string         `json:"name" db:"name"`
+	Search          string         `json:"search" db:"search"`
+	Quantity        float32        `json:"quantity" db:"quantity"`
+	Notes           string         `json:"notes" db:"notes"`
+	NormalizedNotes string         `json:"normalizedNotes" db:"normalized_notes"`
+	Status          PositionStatus `json:"status" db:"status"`
 }
+
+type PositionStatus string
+
+const (
+	PositionCreated PositionStatus = "CREATED"
+	PositionUpdated PositionStatus = "UPDATED"
+	PositionDeleted PositionStatus = "DELETED"
+)
 
 type DeletePositionDTO struct {
 	Id string `json:"id" db:"id"`

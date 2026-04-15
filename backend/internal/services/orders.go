@@ -3,10 +3,12 @@ package services
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	"github.com/Alexander272/Identic/backend/internal/models"
 	"github.com/Alexander272/Identic/backend/internal/repository"
 	"github.com/Alexander272/Identic/backend/internal/repository/postgres"
+	"github.com/Alexander272/Identic/backend/pkg/logger"
 	"github.com/google/uuid"
 )
 
@@ -15,20 +17,22 @@ type OrdersService struct {
 	txManager TransactionManager
 	positions Positions
 	search    Search
+	activity  Activity
 }
 
-func NewOrdersService(repo repository.Orders, txManager TransactionManager, positions Positions, search Search) *OrdersService {
+func NewOrdersService(repo repository.Orders, txManager TransactionManager, positions Positions, search Search, activity Activity) *OrdersService {
 	return &OrdersService{
 		repo:      repo,
 		txManager: txManager,
 		positions: positions,
 		search:    search,
+		activity:  activity,
 	}
 }
 
 type Orders interface {
 	Get(ctx context.Context, req *models.OrderFilterDTO) ([]*models.Order, error)
-	GetById(ctx context.Context, req *models.GetOrderByIdDTO) (*models.Order, error)
+	GetById(ctx context.Context, tx postgres.Tx, req *models.GetOrderByIdDTO) (*models.Order, error)
 	GetInfoById(ctx context.Context, req *models.GetOrderByIdDTO) (*models.Order, error)
 	GetByYear(ctx context.Context, req *models.GetOrderByYearDTO) ([]*models.Order, error)
 	GetUniqueData(ctx context.Context, req *models.GetUniqueDTO) ([]string, error)
@@ -46,15 +50,15 @@ func (s *OrdersService) Get(ctx context.Context, req *models.OrderFilterDTO) ([]
 	return data, nil
 }
 
-func (s *OrdersService) GetById(ctx context.Context, req *models.GetOrderByIdDTO) (*models.Order, error) {
-	data, err := s.repo.GetById(ctx, req)
+func (s *OrdersService) GetById(ctx context.Context, tx postgres.Tx, req *models.GetOrderByIdDTO) (*models.Order, error) {
+	data, err := s.repo.GetById(ctx, tx, req)
 	if err != nil {
 		if err == models.ErrNoRows {
 			return nil, err
 		}
 		return nil, fmt.Errorf("failed to get order. error: %w", err)
 	}
-	positions, err := s.positions.GetByOrder(ctx, &models.GetPositionsByOrderIdDTO{OrderId: data.Id})
+	positions, err := s.positions.GetByOrder(ctx, tx, &models.GetPositionsByOrderIdDTO{OrderId: data.Id})
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +87,7 @@ func (s *OrdersService) GetById(ctx context.Context, req *models.GetOrderByIdDTO
 }
 
 func (s *OrdersService) GetInfoById(ctx context.Context, req *models.GetOrderByIdDTO) (*models.Order, error) {
-	data, err := s.repo.GetById(ctx, req)
+	data, err := s.repo.GetById(ctx, nil, req)
 	if err != nil {
 		if err == models.ErrNoRows {
 			return nil, err
@@ -145,7 +149,7 @@ func (s *OrdersService) IsExist(ctx context.Context, tx postgres.Tx, dto *models
 func (s *OrdersService) Create(ctx context.Context, dto *models.OrderDTO) error {
 	dto.Hash = CalculateHash(dto.Positions)
 
-	return s.txManager.WithinTransaction(ctx, func(tx postgres.Tx) error {
+	err := s.txManager.WithinTransaction(ctx, func(tx postgres.Tx) error {
 		isExist, err := s.repo.IsExistByPos(ctx, tx, dto)
 		if err != nil {
 			return err
@@ -158,6 +162,7 @@ func (s *OrdersService) Create(ctx context.Context, dto *models.OrderDTO) error 
 		if err := s.repo.Create(ctx, tx, dto); err != nil {
 			return fmt.Errorf("failed to create order. error: %w", err)
 		}
+
 		for i := range dto.Positions {
 			dto.Positions[i].OrderId = dto.Id
 		}
@@ -166,6 +171,28 @@ func (s *OrdersService) Create(ctx context.Context, dto *models.OrderDTO) error 
 		}
 		return nil
 	})
+	if err != nil {
+		return err
+	}
+
+	go s.activity.AsyncLog(context.Background(), func() error {
+		return s.txManager.WithinTransaction(ctx, func(tx postgres.Tx) error {
+			if err := s.activity.LogOrderCreate(ctx, tx, dto); err != nil {
+				return fmt.Errorf("failed to log order create: %w", err)
+			}
+			return s.activity.BatchLogPositions(ctx, tx, &models.BatchLogPositionsDTO{
+				OrderID: dto.Id,
+				Actor:   dto.Actor,
+				Created: dto.Positions,
+			})
+		})
+	}, map[string]any{
+		"order_id": dto.Id,
+		"action":   "order_" + models.ActionInsert,
+		"actor":    dto.Actor,
+	})
+
+	return nil
 }
 
 func (s *OrdersService) CreateSeveral(ctx context.Context, tx postgres.Tx, dto []*models.OrderDTO) error {
@@ -202,24 +229,62 @@ func (s *OrdersService) executeCreate(ctx context.Context, tx postgres.Tx, dto [
 }
 
 func (s *OrdersService) Update(ctx context.Context, dto *models.OrderDTO) error {
-	dto.Hash = CalculateHash(dto.Positions)
+	created, updated, deleted, notChanged := splitPositions(dto.Id, dto.Positions)
+	dto.Hash = CalculateHash(slices.Concat(created, updated, notChanged))
+	oldOrder := &models.Order{}
 
-	return s.txManager.WithinTransaction(ctx, func(tx postgres.Tx) error {
+	logger.Debug("update",
+		logger.AnyAttr("created", created),
+		logger.AnyAttr("updated", updated),
+		logger.AnyAttr("deleted", deleted),
+		logger.AnyAttr("notChanged", notChanged))
+
+	err := s.txManager.WithinTransaction(ctx, func(tx postgres.Tx) error {
+		// Получаем старое состояние заказа для логирования
+		var err error
+		oldOrder, err = s.GetById(ctx, tx, &models.GetOrderByIdDTO{Id: dto.Id})
+		if err != nil {
+			return fmt.Errorf("failed to get old order: %w", err)
+		}
+
 		if err := s.repo.Update(ctx, tx, dto); err != nil {
 			return fmt.Errorf("failed to update order. error: %w", err)
 		}
 
-		for i := range dto.Positions {
-			dto.Positions[i].Id = uuid.NewString()
-			dto.Positions[i].OrderId = dto.Id
+		if err := s.positions.Create(ctx, tx, created); err != nil {
+			return err
+		}
+		if err := s.positions.Update(ctx, tx, updated); err != nil {
+			return err
+		}
+		if err := s.positions.Delete(ctx, tx, deleted); err != nil {
+			return err
 		}
 
-		if err := s.positions.DeleteByOrder(ctx, tx, &models.DeletePositionsByOrderIdDTO{OrderId: dto.Id}); err != nil {
-			return err
-		}
-		if err := s.positions.Create(ctx, tx, dto.Positions); err != nil {
-			return err
-		}
 		return nil
 	})
+	if err != nil {
+		return err
+	}
+
+	go s.activity.AsyncLog(context.Background(), func() error {
+		return s.txManager.WithinTransaction(context.Background(), func(tx postgres.Tx) error {
+			if err := s.activity.LogOrderUpdate(ctx, dto.Actor, oldOrder, dto); err != nil {
+				return fmt.Errorf("failed to log order update: %w", err)
+			}
+			return s.activity.BatchLogPositions(ctx, tx, &models.BatchLogPositionsDTO{
+				OrderID: dto.Id,
+				Actor:   dto.Actor,
+				Created: created,
+				Updated: updated,
+				Deleted: deleted,
+			})
+		})
+	}, map[string]any{
+		"order_id": dto.Id,
+		"actor":    dto.Actor,
+		"action":   "order_" + models.ActionUpdate,
+	})
+
+	return nil
 }

@@ -41,7 +41,7 @@ var allowedFields = map[string]struct{}{
 
 type Orders interface {
 	Get(ctx context.Context, req *models.OrderFilterDTO) ([]*models.Order, error)
-	GetById(ctx context.Context, req *models.GetOrderByIdDTO) (*models.Order, error)
+	GetById(ctx context.Context, tx Tx, req *models.GetOrderByIdDTO) (*models.Order, error)
 	GetByYear(ctx context.Context, req *models.GetOrderByYearDTO) ([]*models.Order, error)
 	GetUniqueData(ctx context.Context, req *models.GetUniqueDTO) ([]string, error)
 	GetFlatData(ctx context.Context, req *models.GetFlatOrderDTO) (*models.FlatOrderRes, error)
@@ -115,13 +115,13 @@ func (r *OrderRepo) Get(ctx context.Context, req *models.OrderFilterDTO) ([]*mod
 	return data, nil
 }
 
-func (r *OrderRepo) GetById(ctx context.Context, req *models.GetOrderByIdDTO) (*models.Order, error) {
+func (r *OrderRepo) GetById(ctx context.Context, tx Tx, req *models.GetOrderByIdDTO) (*models.Order, error) {
 	query := fmt.Sprintf(`SELECT id, customer, consumer, manager, bill, date, notes FROM %s WHERE id = $1`,
 		Tables.Orders,
 	)
 	order := &models.Order{}
 
-	err := r.db.QueryRow(ctx, query, req.Id).Scan(
+	err := r.getExec(tx).QueryRow(ctx, query, req.Id).Scan(
 		&order.Id, &order.Customer, &order.Consumer, &order.Manager, &order.Bill, &order.Date, &order.Notes,
 	)
 	if err != nil {

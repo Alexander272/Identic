@@ -9,6 +9,7 @@ import (
 	"unicode"
 
 	"github.com/Alexander272/Identic/backend/internal/models"
+	"github.com/google/uuid"
 )
 
 var (
@@ -87,4 +88,23 @@ func CalculateHash(positions []*models.PositionDTO) string {
 	// 4. Считаем SHA256
 	hash := sha256.Sum256([]byte(sb.String()))
 	return fmt.Sprintf("%x", hash)
+}
+
+func splitPositions(orderId string, dto []*models.PositionDTO) (created, updated, deleted, notChanged []*models.PositionDTO) {
+	for i := range dto {
+		switch dto[i].Status {
+		case models.PositionCreated:
+			dto[i].Id = uuid.NewString()
+			dto[i].OrderId = orderId
+			created = append(created, dto[i])
+		case models.PositionUpdated:
+			updated = append(updated, dto[i])
+		case models.PositionDeleted:
+			deleted = append(deleted, dto[i])
+		default:
+			notChanged = append(notChanged, dto[i])
+		}
+	}
+
+	return
 }

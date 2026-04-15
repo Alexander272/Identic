@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/Alexander272/Identic/backend/internal/models"
+	"github.com/Alexander272/Identic/backend/pkg/logger"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -23,21 +24,21 @@ func NewPositionRepo(db *pgxpool.Pool, tr Transaction) *PositionRepo {
 }
 
 type Positions interface {
-	GetByOrder(ctx context.Context, req *models.GetPositionsByOrderIdDTO) ([]*models.Position, error)
+	GetByOrder(ctx context.Context, tx Tx, req *models.GetPositionsByOrderIdDTO) ([]*models.Position, error)
 	GetByIds(ctx context.Context, req *models.GetPositionsByIds) ([]*models.Position, error)
 	Create(ctx context.Context, tx Tx, dto []*models.PositionDTO) error
 	Update(ctx context.Context, tx Tx, dto []*models.PositionDTO) error
-	Delete(ctx context.Context, tx Tx, dto []*models.DeletePositionDTO) error
+	Delete(ctx context.Context, tx Tx, dto []*models.PositionDTO) error
 	DeleteByOrder(ctx context.Context, tx Tx, dto *models.DeletePositionsByOrderIdDTO) error
 }
 
-func (r *PositionRepo) GetByOrder(ctx context.Context, req *models.GetPositionsByOrderIdDTO) ([]*models.Position, error) {
+func (r *PositionRepo) GetByOrder(ctx context.Context, tx Tx, req *models.GetPositionsByOrderIdDTO) ([]*models.Position, error) {
 	query := fmt.Sprintf(`SELECT id, order_id, row_number, name, quantity, notes FROM %s WHERE order_id = $1 ORDER BY row_number ASC`,
 		Tables.Positions,
 	)
 
 	var positions []*models.Position
-	rows, err := r.db.Query(ctx, query, req.OrderId)
+	rows, err := r.getExec(tx).Query(ctx, query, req.OrderId)
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute query. error: %w", err)
 	}
@@ -97,6 +98,7 @@ func (r *PositionRepo) Create(ctx context.Context, tx Tx, dto []*models.Position
 		if v.Id == "" {
 			v.Id = uuid.NewString()
 		}
+		logger.Debug("positions", logger.AnyAttr("item", v))
 
 		rows[i] = []interface{}{
 			v.Id,
@@ -158,13 +160,13 @@ func (r *PositionRepo) Update(ctx context.Context, tx Tx, dto []*models.Position
 		Tables.Positions,
 	)
 
-	if _, err := r.getExec(tx).Exec(ctx, query, ids, names, search, quantities, notes); err != nil {
+	if _, err := r.getExec(tx).Exec(ctx, query, ids, names, search, quantities, notes, normNotes); err != nil {
 		return fmt.Errorf("failed to execute query. error: %w", err)
 	}
 	return nil
 }
 
-func (r *PositionRepo) Delete(ctx context.Context, tx Tx, dto []*models.DeletePositionDTO) error {
+func (r *PositionRepo) Delete(ctx context.Context, tx Tx, dto []*models.PositionDTO) error {
 	if len(dto) == 0 {
 		return nil
 	}
@@ -173,6 +175,7 @@ func (r *PositionRepo) Delete(ctx context.Context, tx Tx, dto []*models.DeletePo
 	for i, v := range dto {
 		ids[i] = v.Id
 	}
+	logger.Debug("positions", logger.AnyAttr("ids", ids))
 
 	query := fmt.Sprintf(`DELETE FROM %s WHERE id = ANY($1::uuid[])`, Tables.Positions)
 

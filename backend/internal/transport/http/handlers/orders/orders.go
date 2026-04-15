@@ -6,9 +6,12 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/Alexander272/Identic/backend/internal/access"
+	"github.com/Alexander272/Identic/backend/internal/constants"
 	"github.com/Alexander272/Identic/backend/internal/models"
 	"github.com/Alexander272/Identic/backend/internal/models/response"
 	"github.com/Alexander272/Identic/backend/internal/services"
+	"github.com/Alexander272/Identic/backend/internal/transport/middleware"
 	"github.com/Alexander272/Identic/backend/pkg/error_bot"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -24,10 +27,10 @@ func NewHandler(service services.Orders) *Handler {
 	}
 }
 
-func Register(api *gin.RouterGroup, service services.Orders) {
+func Register(api *gin.RouterGroup, service services.Orders, middleware *middleware.Middleware) {
 	handler := NewHandler(service)
 
-	orders := api.Group("/orders")
+	orders := api.Group("/orders", middleware.CheckPermissions(access.Reg.R(access.ResourceOrder).Read()))
 	{
 		orders.GET("", handler.get)
 		orders.GET("/:id", handler.getById)
@@ -35,8 +38,13 @@ func Register(api *gin.RouterGroup, service services.Orders) {
 		orders.GET("/by-year/:year", handler.getByYear)
 		orders.GET("/unique/:field", handler.getUniqueData)
 		orders.GET("/flat", handler.getFlatData)
-		orders.POST("", handler.create)
-		orders.PUT("/:id", handler.update)
+
+		write := orders.Group("", middleware.CheckPermissions(access.Reg.R(access.ResourceOrder).Write()))
+		{
+			write.POST("", handler.create)
+			write.PUT("/:id", handler.update)
+		}
+
 		// orders.DELETE("/:id", handler.delete)
 	}
 }
@@ -90,7 +98,7 @@ func (h *Handler) getById(c *gin.Context) {
 		req.SearchId = search
 	}
 
-	order, err := h.service.GetById(c, req)
+	order, err := h.service.GetById(c, nil, req)
 	if err != nil {
 		response.NewErrorResponse(c, http.StatusInternalServerError, err.Error(), "Произошла ошибка: "+err.Error())
 		error_bot.Send(c, err.Error(), req)
@@ -229,6 +237,18 @@ func (h *Handler) create(c *gin.Context) {
 		return
 	}
 
+	u, exists := c.Get(constants.CtxUser)
+	if !exists {
+		response.NewErrorResponse(c, http.StatusUnauthorized, "empty user", "Сессия не найдена")
+		return
+	}
+	user := u.(models.User)
+
+	dto.Actor = models.Actor{
+		ID:   user.ID,
+		Name: user.Name,
+	}
+
 	if err := h.service.Create(c, dto); err != nil {
 		if errors.Is(err, models.ErrOrderAlreadyExists) {
 			response.NewErrorResponse(c, http.StatusBadRequest, err.Error(), "Заказ уже существует")
@@ -256,6 +276,18 @@ func (h *Handler) update(c *gin.Context) {
 	if id != dto.Id {
 		response.NewErrorResponse(c, http.StatusBadRequest, "id is not equal to dto.Id", "Некорректные данные")
 		return
+	}
+
+	u, exists := c.Get(constants.CtxUser)
+	if !exists {
+		response.NewErrorResponse(c, http.StatusUnauthorized, "empty user", "Сессия не найдена")
+		return
+	}
+	user := u.(models.User)
+
+	dto.Actor = models.Actor{
+		ID:   user.ID,
+		Name: user.Name,
 	}
 
 	if err := h.service.Update(c, dto); err != nil {

@@ -27,6 +27,7 @@ type Services struct {
 	AccessPolices
 
 	AuditLogs
+	Activity
 }
 
 type Deps struct {
@@ -46,8 +47,10 @@ func NewServices(deps *Deps) *Services {
 
 	ordersStream := NewOrderStreamService(deps.Repo.OrdersEvents, deps.Hub)
 
-	positions := NewPositionsService(deps.Repo.Positions, transaction)
-	orders := NewOrdersService(deps.Repo.Orders, transaction, positions, search)
+	activity := NewActivityService(deps.Repo.Activity)
+
+	positions := NewPositionsService(deps.Repo.Positions, transaction, activity)
+	orders := NewOrdersService(deps.Repo.Orders, transaction, positions, search, activity)
 	import_file := NewImportService(transaction, orders, positions)
 
 	permissions := NewPermissionService(deps.Repo.Permissions, transaction, updatePolicyEvent)
@@ -94,5 +97,6 @@ func NewServices(deps *Deps) *Services {
 		AccessPolices: policies,
 
 		AuditLogs: auditLogs,
+		Activity:  activity,
 	}
 }
