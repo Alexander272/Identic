@@ -23,6 +23,10 @@ type GetRoleInheritance struct {
 	Role string
 }
 
+type GetRolesInheritance struct {
+	Roles []string
+}
+
 type SyncRoleInheritance struct {
 	Role       string
 	ParentRole string

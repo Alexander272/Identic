@@ -15,14 +15,13 @@ type PolicyEventManager struct {
 }
 
 type PolicyEvent struct {
-	ChangedBy uuid.UUID        `json:"changedBy" db:"changed_by"`
-	Action    string           `json:"action" db:"action"`
-	RoleID    *uuid.UUID       `json:"roleId" db:"role_id"`
-	RuleID    *uuid.UUID       `json:"ruleId" db:"rule_id"`
-	RealmID   *uuid.UUID       `json:"realmId" db:"realm_id"`
-	UserID    *uuid.UUID       `json:"userId" db:"user_id"`
-	OldValues *json.RawMessage `json:"oldValues" db:"old_values"`
-	NewValues *json.RawMessage `json:"newValues" db:"new_values"`
+	ChangedBy     uuid.UUID       `json:"changedBy" db:"changed_by"`
+	ChangedByName string          `json:"changedByName" db:"changed_by_name"`
+	Action        string          `json:"action" db:"action"`
+	EntityType    string          `json:"entity" db:"entity"`
+	EntityID      *uuid.UUID      `json:"entityId" db:"entity_id"`
+	OldValues     json.RawMessage `json:"oldValues" db:"old_values"`
+	NewValues     json.RawMessage `json:"newValues" db:"new_values"`
 }
 
 func (m *PolicyEventManager) Subscribe() PolicyUpdateListener {

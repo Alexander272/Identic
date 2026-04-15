@@ -4,12 +4,15 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/Alexander272/Identic/backend/internal/events"
 	"github.com/Alexander272/Identic/backend/internal/models"
 	"github.com/Alexander272/Identic/backend/internal/repository"
 	"github.com/Alexander272/Identic/backend/internal/repository/postgres"
 	"github.com/Alexander272/Identic/backend/pkg/auth"
 	"github.com/Alexander272/Identic/backend/pkg/logger"
 	"github.com/Nerzal/gocloak/v13"
+	"github.com/goccy/go-json"
+	"github.com/google/uuid"
 )
 
 type userService struct {
@@ -17,6 +20,7 @@ type userService struct {
 	tm       TransactionManager
 	keycloak *auth.KeycloakClient
 	role     Roles
+	eventBus *events.PolicyEventManager
 }
 
 type UsersDeps struct {
@@ -24,6 +28,7 @@ type UsersDeps struct {
 	TxManager TransactionManager
 	Keycloak  *auth.KeycloakClient
 	Role      Roles
+	EventBus  *events.PolicyEventManager
 }
 
 func NewUserService(deps *UsersDeps) *userService {
@@ -32,19 +37,30 @@ func NewUserService(deps *UsersDeps) *userService {
 		tm:       deps.TxManager,
 		keycloak: deps.Keycloak,
 		role:     deps.Role,
+		eventBus: deps.EventBus,
 	}
 }
 
 type Users interface {
 	LoadPolicy(ctx context.Context, req *models.GetPoliciesDTO) ([]*models.UserRole, error)
+	GetByID(ctx context.Context, id uuid.UUID) (*models.UserData, error)
 	GetAll(ctx context.Context) ([]*models.UserData, error)
-	Sync(ctx context.Context) error
+	Sync(ctx context.Context, actor *models.Actor) error
+	Update(ctx context.Context, dto *models.UserDataDTO) error
 }
 
 func (s *userService) LoadPolicy(ctx context.Context, req *models.GetPoliciesDTO) ([]*models.UserRole, error) {
 	data, err := s.repo.LoadPolicy(ctx, req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load policy: %w", err)
+	}
+	return data, nil
+}
+
+func (s *userService) GetByID(ctx context.Context, id uuid.UUID) (*models.UserData, error) {
+	data, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user by id. error: %w", err)
 	}
 	return data, nil
 }
@@ -57,7 +73,7 @@ func (s *userService) GetAll(ctx context.Context) ([]*models.UserData, error) {
 	return data, nil
 }
 
-func (s *userService) Sync(ctx context.Context) error {
+func (s *userService) Sync(ctx context.Context, actor *models.Actor) error {
 	logger.Info("Sync users started")
 
 	token, err := s.keycloak.Login(ctx)
@@ -95,7 +111,7 @@ func (s *userService) Sync(ctx context.Context) error {
 	}
 
 	// Пред-аллокация для пачки данных из Keycloak
-	kcDataMap := make(map[string]*models.UserData, len(keycloakUsers))
+	kcDataMap := make(map[string]*models.UserDataDTO, len(keycloakUsers))
 	for _, u := range keycloakUsers {
 		if u.Enabled != nil && !*u.Enabled {
 			continue
@@ -116,19 +132,24 @@ func (s *userService) Sync(ctx context.Context) error {
 		return err
 	}
 
-	toCreate := make([]*models.UserData, 0)
-	toUpdate := make([]*models.UserData, 0)
+	toCreate := make([]*models.UserDataDTO, 0)
+	toUpdate := make([]*models.UserDataDTO, 0)
 	toDelete := make([]string, 0)
 
 	// 4. Основной цикл синхронизации
-	dbUserMap := make(map[string]*models.UserData, len(dbUsers))
-
 	for _, dbU := range dbUsers {
-		dbUserMap[dbU.SSO_ID] = dbU
+		existUser := &models.UserDataDTO{
+			ID:        dbU.ID,
+			SSO_ID:    dbU.SSO_ID,
+			Username:  dbU.Username,
+			FirstName: dbU.FirstName,
+			LastName:  dbU.LastName,
+			Email:     dbU.Email,
+		}
 
 		if kcData, exists := kcDataMap[dbU.SSO_ID]; exists {
 			// Проверяем, нужно ли реально обновлять (DeepEqual или по полям)
-			if s.isChanged(dbU, kcData) {
+			if s.isChanged(existUser, kcData) {
 				toUpdate = append(toUpdate, kcData)
 			}
 			// Удаляем из мапы Keycloak, чтобы там остались только "новые"
@@ -146,7 +167,7 @@ func (s *userService) Sync(ctx context.Context) error {
 	}
 
 	// 5. Выполнение операций (Batch processing)
-	return s.tm.WithinTransaction(ctx, func(tx postgres.Tx) error {
+	err = s.tm.WithinTransaction(ctx, func(tx postgres.Tx) error {
 		if len(toCreate) > 0 {
 			if err := s.CreateSeveral(ctx, tx, toCreate); err != nil {
 				return err
@@ -169,11 +190,26 @@ func (s *userService) Sync(ctx context.Context) error {
 			"deleted", len(toDelete))
 		return nil
 	})
+
+	if err != nil {
+		return fmt.Errorf("failed to execute batch: %w", err)
+	}
+
+	// Формируем событие для Casbin и Audit
+	event := events.PolicyEvent{
+		ChangedBy:     actor.ID,
+		ChangedByName: actor.Name,
+		Action:        "sync_users",
+		EntityType:    "users",
+	}
+	// Отправляем в шину
+	s.eventBus.Notify(event)
+	return nil
 }
 
 // Вспомогательная функция для маппинга (убирает дублирование nil-проверок)
-func (s *userService) mapToUserData(u *gocloak.User) *models.UserData {
-	return &models.UserData{
+func (s *userService) mapToUserData(u *gocloak.User) *models.UserDataDTO {
+	return &models.UserDataDTO{
 		SSO_ID:    s.nonNil(u.ID),
 		Username:  s.nonNil(u.Username),
 		Email:     s.nonNil(u.Email),
@@ -190,14 +226,14 @@ func (s *userService) nonNil(value *string) string {
 }
 
 // Функция проверки изменений, чтобы не дергать БД зря
-func (s *userService) isChanged(old, new *models.UserData) bool {
+func (s *userService) isChanged(old, new *models.UserDataDTO) bool {
 	return old.Username != new.Username ||
 		old.Email != new.Email ||
 		old.FirstName != new.FirstName ||
 		old.LastName != new.LastName
 }
 
-func (s *userService) CreateSeveral(ctx context.Context, tx postgres.Tx, dto []*models.UserData) error {
+func (s *userService) CreateSeveral(ctx context.Context, tx postgres.Tx, dto []*models.UserDataDTO) error {
 	if len(dto) == 0 {
 		return nil
 	}
@@ -207,7 +243,49 @@ func (s *userService) CreateSeveral(ctx context.Context, tx postgres.Tx, dto []*
 	return nil
 }
 
-func (s *userService) UpdateSeveral(ctx context.Context, tx postgres.Tx, dto []*models.UserData) error {
+func (s *userService) Update(ctx context.Context, dto *models.UserDataDTO) error {
+	candidate, err := s.repo.GetByID(ctx, dto.ID)
+	if err != nil {
+		return err
+	}
+
+	if err := s.repo.Update(ctx, nil, dto); err != nil {
+		return fmt.Errorf("failed to update user. error: %w", err)
+	}
+
+	oldValue, err := json.Marshal(models.UserAuditData{
+		IsActive: candidate.IsActive,
+		RoleID:   candidate.RoleID,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to marshal policy event. error: %w", err)
+	}
+
+	newValue, err := json.Marshal(models.UserAuditData{
+		IsActive: dto.IsActive,
+		RoleID:   dto.RoleID,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to marshal policy event. error: %w", err)
+	}
+
+	// Формируем событие для Casbin и Audit
+	event := events.PolicyEvent{
+		ChangedBy:     dto.Actor.ID,
+		ChangedByName: dto.Actor.Name,
+		Action:        "update_user",
+		EntityType:    "users",
+		EntityID:      &dto.ID,
+		OldValues:     oldValue,
+		NewValues:     newValue,
+	}
+	// Отправляем в шину
+	s.eventBus.Notify(event)
+
+	return nil
+}
+
+func (s *userService) UpdateSeveral(ctx context.Context, tx postgres.Tx, dto []*models.UserDataDTO) error {
 	if len(dto) == 0 {
 		return nil
 	}

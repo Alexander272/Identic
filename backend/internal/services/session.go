@@ -8,6 +8,7 @@ import (
 
 	"github.com/Alexander272/Identic/backend/internal/models"
 	"github.com/Alexander272/Identic/backend/pkg/auth"
+	"github.com/google/uuid"
 )
 
 type SessionService struct {
@@ -41,7 +42,7 @@ func (s *SessionService) SignIn(ctx context.Context, u *models.SignIn) (*models.
 	if err != nil {
 		return nil, err
 	}
-	access, err := s.policies.GetPolicies(decodedUser.ID)
+	access, err := s.policies.GetPolicies(decodedUser.ID.String())
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +77,7 @@ func (s *SessionService) Refresh(ctx context.Context, req *models.RefreshDTO) (*
 	if err != nil {
 		return nil, err
 	}
-	access, err := s.policies.GetPolicies(decodedUser.ID)
+	access, err := s.policies.GetPolicies(decodedUser.ID.String())
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +104,8 @@ func (s *SessionService) DecodeAccessToken(ctx context.Context, token string) (*
 	serviceName := os.Getenv("SERVICE_ID")
 
 	user := &models.User{}
-	var role, username, userId string
+	var role, username string
+	var userId uuid.UUID
 	c := *claims
 	access, ok := c["realm_access"]
 	if ok {
@@ -125,7 +127,11 @@ func (s *SessionService) DecodeAccessToken(ctx context.Context, token string) (*
 
 	uId, ok := c["sub"]
 	if ok {
-		userId = uId.(string)
+		strId := uId.(string)
+		userId, err = uuid.Parse(strId)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse user id. error: %w", err)
+		}
 	}
 
 	user.ID = userId

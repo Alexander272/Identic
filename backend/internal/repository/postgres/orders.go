@@ -405,10 +405,9 @@ func (r *OrderRepo) IsExistByPos(ctx context.Context, tx Tx, dto *models.OrderDT
 		Tables.Orders,
 	)
 
-	newHash := CalculateHash(dto.Positions)
 	var exists bool
 
-	err := r.db.QueryRow(ctx, query, newHash).Scan(&exists)
+	err := r.db.QueryRow(ctx, query, dto.Hash).Scan(&exists)
 	if err != nil {
 		return false, fmt.Errorf("failed to execute query: %w", err)
 	}
@@ -416,8 +415,8 @@ func (r *OrderRepo) IsExistByPos(ctx context.Context, tx Tx, dto *models.OrderDT
 }
 
 func (r *OrderRepo) Create(ctx context.Context, tx Tx, dto *models.OrderDTO) error {
-	query := fmt.Sprintf(`INSERT INTO %s (id, customer, consumer, manager, bill, date, year, notes)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+	query := fmt.Sprintf(`INSERT INTO %s (id, customer, consumer, manager, bill, date, year, notes, content_hash)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
 		Tables.Orders,
 	)
 	if dto.Id == "" {
@@ -426,7 +425,7 @@ func (r *OrderRepo) Create(ctx context.Context, tx Tx, dto *models.OrderDTO) err
 	dto.Year = dto.Date.Year()
 
 	_, err := r.getExec(tx).Exec(ctx, query,
-		dto.Id, dto.Customer, dto.Consumer, dto.Manager, dto.Bill, dto.Date, dto.Year, dto.Notes,
+		dto.Id, dto.Customer, dto.Consumer, dto.Manager, dto.Bill, dto.Date, dto.Year, dto.Notes, dto.Hash,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to execute query. error: %w", err)
@@ -515,14 +514,14 @@ func quoteLiteral(s string) string {
 }
 
 func (r *OrderRepo) Update(ctx context.Context, tx Tx, dto *models.OrderDTO) error {
-	query := fmt.Sprintf(`UPDATE %s SET customer = $2, consumer = $3, manager = $4, bill = $5, date = $6, year = $7, notes = $8 
+	query := fmt.Sprintf(`UPDATE %s SET customer = $2, consumer = $3, manager = $4, bill = $5, date = $6, year = $7, notes = $8, content_hash=$9
 		WHERE id = $1`,
 		Tables.Orders,
 	)
 	dto.Year = dto.Date.Year()
 
 	_, err := r.getExec(tx).Exec(ctx, query,
-		dto.Id, dto.Customer, dto.Consumer, dto.Manager, dto.Bill, dto.Date, dto.Year, dto.Notes,
+		dto.Id, dto.Customer, dto.Consumer, dto.Manager, dto.Bill, dto.Date, dto.Year, dto.Notes, dto.Hash,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to execute query. error: %w", err)

@@ -1,6 +1,10 @@
 package models
 
-import "time"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 // SearchItem - позиция, которую мы ищем (входящий запрос)
 type SearchItem struct {
@@ -13,6 +17,7 @@ type SearchItem struct {
 type SearchRequest struct {
 	Items    []SearchItem `json:"items"`
 	IsFuzzy  bool         `json:"isFuzzy"`
+	ActorID  uuid.UUID    `json:"actorId"`
 	SearchId string
 }
 

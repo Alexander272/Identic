@@ -23,6 +23,8 @@ func NewRoleRepo(db *pgxpool.Pool, tr Transaction) *RoleRepo {
 
 type Roles interface {
 	GetOne(ctx context.Context, req *models.GetRoleDTO) (*models.Role, error)
+	GetAll(ctx context.Context) ([]*models.Role, error)
+	GetUserCount(ctx context.Context, req []string) (map[string]int, error)
 	IsExists(ctx context.Context, roleName string) (bool, error)
 	IsExistsById(ctx context.Context, id uuid.UUID) (bool, error)
 	Create(ctx context.Context, tx Tx, dto *models.RoleDTO) error
@@ -66,6 +68,68 @@ func (r *RoleRepo) GetOne(ctx context.Context, req *models.GetRoleDTO) (*models.
 		return nil, fmt.Errorf("failed to execute query: %w", err)
 	}
 	return data, nil
+}
+
+func (r *RoleRepo) GetAll(ctx context.Context) ([]*models.Role, error) {
+	query := fmt.Sprintf(`SELECT id, slug, name, level, is_active, is_system, is_editable, created_at, updated_at FROM %s 
+		ORDER BY level`,
+		Tables.Roles,
+	)
+	data := []*models.Role{}
+
+	rows, err := r.db.Query(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute query: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		item := &models.Role{}
+		if err := rows.Scan(
+			&item.ID, &item.Slug, &item.Name, &item.Level, &item.IsActive, &item.IsSystem, &item.IsEditable,
+			&item.CreatedAt, &item.UpdatedAt,
+		); err != nil {
+			return nil, fmt.Errorf("scan row error: %w", err)
+		}
+		data = append(data, item)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("rows iteration error: %w", err)
+	}
+
+	return data, nil
+}
+
+func (r *RoleRepo) GetUserCount(ctx context.Context, req []string) (map[string]int, error) {
+	// Если входящий список пуст, сразу возвращаем пустую мапу
+	if len(req) == 0 {
+		return make(map[string]int), nil
+	}
+
+	query := fmt.Sprintf(`SELECT role_id, COUNT(*) FROM %s 
+		WHERE role_id = ANY($1)
+		GROUP BY role_id`,
+		Tables.Users,
+	)
+
+	// Передаем слайс IDs (в зависимости от драйвера может понадобиться pq.Array)
+	rows, err := r.db.Query(ctx, query, req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user counts: %w", err)
+	}
+	defer rows.Close()
+
+	counts := make(map[string]int)
+	for rows.Next() {
+		var roleID string
+		var count int
+		if err := rows.Scan(&roleID, &count); err != nil {
+			return nil, fmt.Errorf("scan count error: %w", err)
+		}
+		counts[roleID] = count
+	}
+
+	return counts, nil
 }
 
 func (r *RoleRepo) IsExists(ctx context.Context, roleName string) (bool, error) {

@@ -20,15 +20,25 @@ func NewRoleHierarchyService(repo repository.RoleHierarchy) *RoleHierarchyServic
 }
 
 type RoleHierarchy interface {
+	GetInheritedRoles(ctx context.Context, req *models.GetRolesInheritance) (map[string][]string, error)
+	GetRoleDescendants(ctx context.Context, req *models.GetRolesInheritance) (map[string][]string, error)
 	LoadPolicy(ctx context.Context, req *models.GetPoliciesDTO) ([]*models.SyncRoleInheritance, error)
 	AddInheritance(ctx context.Context, tx postgres.Tx, dto *models.RoleHierarchyDTO) error
 	RemoveInheritance(ctx context.Context, tx postgres.Tx, dto *models.RoleHierarchyDTO) error
 }
 
-func (s *RoleHierarchyService) GetInheritedRoles(ctx context.Context, req *models.GetRoleInheritance) ([]string, error) {
+func (s *RoleHierarchyService) GetInheritedRoles(ctx context.Context, req *models.GetRolesInheritance) (map[string][]string, error) {
 	data, err := s.repo.GetInheritedRoles(ctx, req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get inherited roles: %w", err)
+	}
+	return data, nil
+}
+
+func (s *RoleHierarchyService) GetRoleDescendants(ctx context.Context, req *models.GetRolesInheritance) (map[string][]string, error) {
+	data, err := s.repo.GetRoleDescendants(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get role descendants: %w", err)
 	}
 	return data, nil
 }

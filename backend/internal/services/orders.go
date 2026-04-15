@@ -143,6 +143,8 @@ func (s *OrdersService) IsExist(ctx context.Context, tx postgres.Tx, dto *models
 }
 
 func (s *OrdersService) Create(ctx context.Context, dto *models.OrderDTO) error {
+	dto.Hash = CalculateHash(dto.Positions)
+
 	return s.txManager.WithinTransaction(ctx, func(tx postgres.Tx) error {
 		isExist, err := s.repo.IsExistByPos(ctx, tx, dto)
 		if err != nil {
@@ -200,6 +202,8 @@ func (s *OrdersService) executeCreate(ctx context.Context, tx postgres.Tx, dto [
 }
 
 func (s *OrdersService) Update(ctx context.Context, dto *models.OrderDTO) error {
+	dto.Hash = CalculateHash(dto.Positions)
+
 	return s.txManager.WithinTransaction(ctx, func(tx postgres.Tx) error {
 		if err := s.repo.Update(ctx, tx, dto); err != nil {
 			return fmt.Errorf("failed to update order. error: %w", err)

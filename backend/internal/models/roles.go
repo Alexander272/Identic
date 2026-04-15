@@ -12,9 +12,24 @@ type Role struct {
 	Name        string    `json:"name" db:"name"`
 	Description string    `json:"description" db:"description"`
 	Level       int       `json:"level" db:"level"`
+	IsActive    bool      `json:"isActive" db:"is_active"`
 	IsSystem    bool      `json:"isSystem" db:"is_system"`
+	IsEditable  bool      `json:"isEditable" db:"is_editable"`
 	CreatedAt   time.Time `json:"createdAt" db:"created_at"`
 	UpdatedAt   time.Time `json:"updatedAt" db:"updated_at"`
+}
+
+type RoleWithStats struct {
+	Role
+	Inherited  []string   `json:"inherited"`
+	PermsCount PermsCount `json:"perms"`
+	UserCount  int        `json:"userCount"`
+}
+
+type RoleShort struct {
+	ID   uuid.UUID `json:"id" db:"id"`
+	Slug string    `json:"slug" db:"slug"`
+	Name string    `json:"name" db:"name"`
 }
 
 type GetRoleDTO struct {

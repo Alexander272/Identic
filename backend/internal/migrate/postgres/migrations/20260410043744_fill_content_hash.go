@@ -5,7 +5,7 @@ import (
 	"database/sql"
 
 	"github.com/Alexander272/Identic/backend/internal/models"
-	"github.com/Alexander272/Identic/backend/internal/repository/postgres"
+	"github.com/Alexander272/Identic/backend/internal/services"
 	"github.com/pressly/goose/v3"
 )
 
@@ -57,7 +57,7 @@ func upFillContentHash(ctx context.Context, tx *sql.Tx) error {
 		}
 
 		// Считаем хеш через общий пакет
-		hash := postgres.CalculateHash(pts)
+		hash := services.CalculateHash(pts)
 
 		if _, err := tx.ExecContext(ctx, `UPDATE orders SET content_hash = $1 WHERE id = $2`, hash, orderID); err != nil {
 			return err

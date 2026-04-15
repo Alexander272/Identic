@@ -3,11 +3,11 @@ package access
 import "sort"
 
 type Resource struct {
-	Slug           ResourceSlug
-	Name           string
-	Group          string
-	Description    string
-	AllowedActions map[ActionCode]struct{}
+	Slug           ResourceSlug            `json:"slug"`
+	Name           string                  `json:"name"`
+	Group          string                  `json:"group"`
+	Description    string                  `json:"description"`
+	AllowedActions map[ActionCode]struct{} `json:"actions"`
 }
 
 type Registry struct {

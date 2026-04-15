@@ -6,6 +6,8 @@ import (
 	"github.com/Alexander272/Identic/backend/internal/transport/http/handlers/auth"
 	"github.com/Alexander272/Identic/backend/internal/transport/http/handlers/import_file"
 	"github.com/Alexander272/Identic/backend/internal/transport/http/handlers/orders"
+	"github.com/Alexander272/Identic/backend/internal/transport/http/handlers/permissions"
+	"github.com/Alexander272/Identic/backend/internal/transport/http/handlers/roles"
 	"github.com/Alexander272/Identic/backend/internal/transport/http/handlers/search"
 	"github.com/Alexander272/Identic/backend/internal/transport/http/handlers/users"
 	"github.com/Alexander272/Identic/backend/internal/transport/middleware"
@@ -47,5 +49,7 @@ func (h *Handler) Init(group *gin.RouterGroup) {
 
 	orders.Register(secure, h.services.Orders)
 
+	permissions.Register(secure, h.services.Permissions, h.middleware)
+	roles.Register(secure, h.services.Roles, h.middleware)
 	users.Register(secure, h.services.Users, h.middleware)
 }

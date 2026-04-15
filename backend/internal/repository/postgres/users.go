@@ -24,9 +24,11 @@ func NewUserRepo(db *pgxpool.Pool, tr Transaction) *userRepo {
 
 type Users interface {
 	LoadPolicy(ctx context.Context, req *models.GetPoliciesDTO) ([]*models.UserRole, error)
+	GetByID(ctx context.Context, id uuid.UUID) (*models.UserData, error)
 	GetAll(ctx context.Context) ([]*models.UserData, error)
-	CreateSeveral(ctx context.Context, tx Tx, dto []*models.UserData) error
-	UpdateSeveral(ctx context.Context, tx Tx, dto []*models.UserData) error
+	CreateSeveral(ctx context.Context, tx Tx, dto []*models.UserDataDTO) error
+	Update(ctx context.Context, tx Tx, dto *models.UserDataDTO) error
+	UpdateSeveral(ctx context.Context, tx Tx, dto []*models.UserDataDTO) error
 	DeleteSeveral(ctx context.Context, tx Tx, ids []string) error
 }
 
@@ -58,8 +60,32 @@ func (r *userRepo) LoadPolicy(ctx context.Context, req *models.GetPoliciesDTO) (
 	return data, nil
 }
 
+func (r *userRepo) GetByID(ctx context.Context, id uuid.UUID) (*models.UserData, error) {
+	query := fmt.Sprintf(`SELECT u.id, role_id u.username, u.email, u.sso_id, u.first_name, u.last_name, u.is_active,
+		FROM %s u
+		WHERE u.id = $1
+		GROUP BY u.id`,
+		Tables.Users,
+	)
+	data := &models.UserData{}
+	if err := r.db.QueryRow(ctx, query, id).Scan(
+		&data.ID, &data.RoleID, &data.Username, &data.Email, &data.SSO_ID, &data.FirstName, &data.LastName, &data.IsActive,
+	); err != nil {
+		return nil, fmt.Errorf("failed to execute query. error: %w", err)
+	}
+	return data, nil
+}
+
 func (r *userRepo) GetAll(ctx context.Context) ([]*models.UserData, error) {
-	query := fmt.Sprintf(`SELECT id, username, email, sso_id, first_name, last_name FROM %s ORDER BY last_name`, Tables.Users)
+	query := fmt.Sprintf(`SELECT u.id, u.username, u.email, u.sso_id, u.first_name, u.last_name, u.is_active, u.created_at,
+			r.name as role, COALESCE(MAX(l.login_at), '1970-01-01 00:00:00') as last_login_at
+		FROM %s u
+		LEFT JOIN %s r ON u.role_id = r.id
+		LEFT JOIN %s l ON u.id = l.user_id
+		GROUP BY u.id, r.name
+		ORDER BY u.last_name`,
+		Tables.Users, Tables.Roles, Tables.UserLogins,
+	)
 	data := []*models.UserData{}
 
 	rows, err := r.db.Query(ctx, query)
@@ -70,7 +96,10 @@ func (r *userRepo) GetAll(ctx context.Context) ([]*models.UserData, error) {
 
 	for rows.Next() {
 		tmp := &models.UserData{}
-		if err := rows.Scan(&tmp.ID, &tmp.Username, &tmp.Email, &tmp.SSO_ID, &tmp.FirstName, &tmp.LastName); err != nil {
+		if err := rows.Scan(
+			&tmp.ID, &tmp.Username, &tmp.Email, &tmp.SSO_ID, &tmp.FirstName, &tmp.LastName,
+			&tmp.IsActive, &tmp.CreatedAt, &tmp.Role, &tmp.LastVisit,
+		); err != nil {
 			return nil, fmt.Errorf("failed to scan row. error: %w", err)
 		}
 		data = append(data, tmp)
@@ -81,7 +110,7 @@ func (r *userRepo) GetAll(ctx context.Context) ([]*models.UserData, error) {
 	return data, nil
 }
 
-func (r *userRepo) CreateSeveral(ctx context.Context, tx Tx, dto []*models.UserData) error {
+func (r *userRepo) CreateSeveral(ctx context.Context, tx Tx, dto []*models.UserDataDTO) error {
 	if len(dto) == 0 {
 		return nil
 	}
@@ -118,7 +147,20 @@ func (r *userRepo) CreateSeveral(ctx context.Context, tx Tx, dto []*models.UserD
 	return nil
 }
 
-func (r *userRepo) UpdateSeveral(ctx context.Context, tx Tx, dto []*models.UserData) error {
+func (r *userRepo) Update(ctx context.Context, tx Tx, dto *models.UserDataDTO) error {
+	query := fmt.Sprintf(`UPDATE %s	SET role_id = $1, is_active = $2
+		WHERE id = $3`,
+		Tables.Users,
+	)
+
+	_, err := r.getExec(tx).Exec(ctx, query, dto.RoleID, dto.IsActive, dto.ID)
+	if err != nil {
+		return fmt.Errorf("failed to execute query. error: %w", err)
+	}
+	return nil
+}
+
+func (r *userRepo) UpdateSeveral(ctx context.Context, tx Tx, dto []*models.UserDataDTO) error {
 	if len(dto) == 0 {
 		return nil
 	}

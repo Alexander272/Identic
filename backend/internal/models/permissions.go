@@ -7,11 +7,12 @@ import (
 )
 
 type Permission struct {
-	ID        uuid.UUID `json:"id" db:"id"`
-	Role      string    `json:"role" db:"role"`
-	Object    string    `json:"object" db:"object"`
-	Action    string    `json:"action" db:"action"`
-	CreatedAt time.Time `json:"createdAt" db:"created_at"`
+	ID          uuid.UUID `json:"id" db:"id"`
+	Role        string    `json:"role" db:"role"`
+	Object      string    `json:"object" db:"object"`
+	Action      string    `json:"action" db:"action"`
+	Description string    `json:"description" db:"description"`
+	CreatedAt   time.Time `json:"createdAt" db:"created_at"`
 }
 
 type GetPermsByRoleDTO struct {
@@ -20,11 +21,10 @@ type GetPermsByRoleDTO struct {
 }
 
 type PermissionDTO struct {
-	ID      uuid.UUID `json:"id" db:"id"`
-	ActorID uuid.UUID `json:"actorId" db:"actor_id"`
-	RoleID  uuid.UUID `json:"roleId" db:"role_id"`
-	Object  string    `json:"object" db:"object"`
-	Action  string    `json:"action" db:"action"`
+	ID          uuid.UUID `json:"id" db:"id"`
+	Object      string    `json:"object" db:"object"`
+	Action      string    `json:"action" db:"action"`
+	Description string    `json:"description" db:"description"`
 }
 
 type DeletePermissionDTO struct {
@@ -37,4 +37,15 @@ type Grouping struct {
 	Subject string `json:"subject" db:"subject"`
 	Role    string `json:"role" db:"role"`
 	Domain  string `json:"domain" db:"domain"`
+}
+
+type PermsCount struct {
+	Own       int `json:"own"`
+	Inherited int `json:"inherit"`
+	Total     int `json:"total"`
+}
+
+type GetPermsCountDTO struct {
+	Role      string
+	Inherited []string
 }

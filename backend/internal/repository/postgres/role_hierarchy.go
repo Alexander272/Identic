@@ -21,7 +21,8 @@ func NewRoleHierarchyRepo(db *pgxpool.Pool, tr Transaction) *RoleHierarchyRepo {
 }
 
 type RoleHierarchy interface {
-	GetInheritedRoles(ctx context.Context, req *models.GetRoleInheritance) ([]string, error)
+	GetInheritedRoles(ctx context.Context, req *models.GetRolesInheritance) (map[string][]string, error)
+	GetRoleDescendants(ctx context.Context, req *models.GetRolesInheritance) (map[string][]string, error)
 	SyncRoleInheritance(ctx context.Context, req *models.GetRoleInheritance) ([]*models.SyncRoleInheritance, error)
 	LoadPolicy(ctx context.Context, req *models.GetPoliciesDTO) ([]*models.SyncRoleInheritance, error)
 	AddInheritance(ctx context.Context, tx Tx, dto *models.RoleHierarchyDTO) error
@@ -30,44 +31,109 @@ type RoleHierarchy interface {
 
 // GetInheritedRoles — получить все родительские роли (прямые + цепочки)
 // Используется для предрасчёта прав при синхронизации с Casbin
-func (r *RoleHierarchyRepo) GetInheritedRoles(ctx context.Context, req *models.GetRoleInheritance) ([]string, error) {
+func (r *RoleHierarchyRepo) GetInheritedRoles(ctx context.Context, req *models.GetRolesInheritance) (map[string][]string, error) {
 	query := fmt.Sprintf(`WITH RECURSIVE inheritance_tree AS (
-            -- Базовый случай: прямые родители
-            SELECT r2.slug as parent_code
-            FROM %s ri
-            JOIN %s r1 ON ri.role_id = r1.id
-            JOIN %s r2 ON ri.parent_role_id = r2.id
-            WHERE r1.slug = $1 AND r2.is_active = true
-            
-            UNION
-            
-            -- Рекурсия: родители родителей
-            SELECT r3.slug
-            FROM inheritance_tree it
-            JOIN %s ri ON ri.role_id = (SELECT id FROM %s WHERE slug = it.parent_code)
-            JOIN %s r3 ON ri.parent_role_id = r3.id
-            WHERE r3.is_active = true
-        )
-        SELECT DISTINCT parent_code FROM inheritance_tree`,
+			SELECT 
+				r1.id as root_id,
+				r1.slug as root_slug,
+				r2.id as parent_id,
+				r2.slug as parent_slug
+			FROM %s ri
+			JOIN %s r1 ON ri.role_id = r1.id
+			JOIN %s r2 ON ri.parent_role_id = r2.id
+			WHERE r1.slug = ANY($1)
+			AND r2.is_active = true
+
+			UNION ALL
+
+			SELECT 
+				it.root_id,
+				it.root_slug,
+				r3.id,
+				r3.slug
+			FROM inheritance_tree it
+			JOIN %s ri ON ri.role_id = it.parent_id
+			JOIN %s r3 ON ri.parent_role_id = r3.id
+			WHERE r3.is_active = true
+		)
+		SELECT DISTINCT root_slug, parent_slug
+		FROM inheritance_tree`,
 		Tables.RoleHierarchy, Tables.Roles, Tables.Roles,
-		Tables.RoleHierarchy, Tables.Roles, Tables.Roles,
+		Tables.RoleHierarchy, Tables.Roles,
 	)
 
-	rows, err := r.db.Query(ctx, query, req.Role)
+	rows, err := r.db.Query(ctx, query, req.Roles)
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute query: %w", err)
 	}
 	defer rows.Close()
 
-	var parents []string
+	result := make(map[string][]string)
 	for rows.Next() {
-		var code string
-		if err := rows.Scan(&code); err != nil {
-			return nil, fmt.Errorf("scan row error: %w", err)
+		var root, parent string
+		if err := rows.Scan(&root, &parent); err != nil {
+			return nil, err
 		}
-		parents = append(parents, code)
+		result[root] = append(result[root], parent)
 	}
-	return parents, nil
+
+	return result, nil
+}
+
+// GetRoleDescendants — получить все дочерние роли (прямые + цепочки)
+// Обратная функция к GetInheritedRoles — идёт от родителя к потомкам
+func (r *RoleHierarchyRepo) GetRoleDescendants(ctx context.Context, req *models.GetRolesInheritance) (map[string][]string, error) {
+	query := fmt.Sprintf(`WITH RECURSIVE descendants_tree AS (
+			SELECT
+				r1.id as root_id,
+				r1.slug as root_slug,
+				r2.id as child_id,
+				r2.slug as child_slug
+			FROM %s ri
+			JOIN %s r1 ON ri.parent_role_id = r1.id
+			JOIN %s r2 ON ri.role_id = r2.id
+			WHERE r1.slug = ANY($1)
+			AND r2.is_active = true
+
+			UNION ALL
+
+			SELECT
+				dt.root_id,
+				dt.root_slug,
+				r3.id,
+				r3.slug
+			FROM descendants_tree dt
+			JOIN %s ri ON ri.parent_role_id = dt.child_id
+			JOIN %s r3 ON ri.role_id = r3.id
+			WHERE r3.is_active = true
+		)
+		SELECT DISTINCT root_slug, child_slug
+		FROM descendants_tree`,
+		Tables.RoleHierarchy, Tables.Roles, Tables.Roles,
+		Tables.RoleHierarchy, Tables.Roles,
+	)
+
+	rows, err := r.db.Query(ctx, query, req.Roles)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute query: %w", err)
+	}
+	defer rows.Close()
+
+	// Инициализируем результат для ВСЕХ запрошенных ролей (даже без потомков)
+	result := make(map[string][]string)
+	for _, slug := range req.Roles {
+		result[slug] = []string{}
+	}
+
+	for rows.Next() {
+		var root, child string
+		if err := rows.Scan(&root, &child); err != nil {
+			return nil, err
+		}
+		result[root] = append(result[root], child)
+	}
+
+	return result, nil
 }
 
 // SyncRoleInheritance — используется для синхронизации наследования ролей с Casbin

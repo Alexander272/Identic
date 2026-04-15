@@ -34,14 +34,9 @@ type Users interface {
 	postgres.Users
 }
 
-// type Search struct {
-// 	pgRepo    postgres.Search // конкретный репозиторий Postgres
-// 	redisRepo redis.Search    // конкретный репозиторий Redis
-// }
-
-// type Search interface {
-// 	searchAggregator
-// }
+type AuditLogs interface {
+	postgres.AuditLogs
+}
 
 type Repository struct {
 	Transaction
@@ -54,6 +49,8 @@ type Repository struct {
 	Roles
 	RoleHierarchy
 	Users
+
+	AuditLogs
 }
 
 func NewRepository(pool *pgxpool.Pool, memDB *memoryDB.Client) *Repository {
@@ -73,5 +70,7 @@ func NewRepository(pool *pgxpool.Pool, memDB *memoryDB.Client) *Repository {
 		Roles:         postgres.NewRoleRepo(pool, transaction),
 		RoleHierarchy: postgres.NewRoleHierarchyRepo(pool, transaction),
 		Users:         postgres.NewUserRepo(pool, transaction),
+
+		AuditLogs: postgres.NewAuditRepo(pool, transaction),
 	}
 }

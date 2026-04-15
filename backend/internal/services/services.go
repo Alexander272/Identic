@@ -20,10 +20,13 @@ type Services struct {
 	Search
 	SearchStream
 
+	Permissions
 	Roles
 	Users
 	Session
 	AccessPolices
+
+	AuditLogs
 }
 
 type Deps struct {
@@ -49,8 +52,19 @@ func NewServices(deps *Deps) *Services {
 
 	permissions := NewPermissionService(deps.Repo.Permissions, transaction, updatePolicyEvent)
 	roleHierarchy := NewRoleHierarchyService(deps.Repo.RoleHierarchy)
-	role := NewRoleService(deps.Repo.Roles)
-	user := NewUserService(&UsersDeps{Repo: deps.Repo.Users, TxManager: transaction, Keycloak: deps.Keycloak, Role: role})
+	role := NewRoleService(&RoleDeps{
+		Repo:        deps.Repo.Roles,
+		Hierarchy:   roleHierarchy,
+		Permissions: permissions,
+		EventBus:    updatePolicyEvent,
+	})
+	user := NewUserService(&UsersDeps{
+		Repo:      deps.Repo.Users,
+		TxManager: transaction,
+		Keycloak:  deps.Keycloak,
+		Role:      role,
+		EventBus:  updatePolicyEvent,
+	})
 
 	adapter := NewAdapter(&AdapterDeps{Permissions: permissions, Users: user, RoleHierarchy: roleHierarchy})
 	policies := NewAccessPoliciesService(&PoliciesDeps{
@@ -61,6 +75,9 @@ func NewServices(deps *Deps) *Services {
 
 	session := NewSessionService(deps.Keycloak, user, policies)
 
+	auditLogs := NewAuditLogService(deps.Repo.AuditLogs, transaction)
+	auditLogs.StartListening(updatePolicyEvent)
+
 	return &Services{
 		Import:       import_file,
 		Orders:       orders,
@@ -69,10 +86,13 @@ func NewServices(deps *Deps) *Services {
 		Search:       search,
 		SearchStream: searchStream,
 
-		Roles:   role,
-		Users:   user,
-		Session: session,
+		Permissions: permissions,
+		Roles:       role,
+		Users:       user,
+		Session:     session,
 
 		AccessPolices: policies,
+
+		AuditLogs: auditLogs,
 	}
 }

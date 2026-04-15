@@ -1,15 +1,11 @@
 package postgres
 
 import (
-	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"sort"
 	"strings"
 	"time"
-
-	"github.com/Alexander272/Identic/backend/internal/models"
 )
 
 type QueryBuilder struct {
@@ -373,35 +369,4 @@ func (c *CursorState) ParseCursorValues() ([]interface{}, error) {
 		}
 	}
 	return result, nil
-}
-
-func CalculateHash(positions []*models.PositionDTO) string {
-	if len(positions) == 0 {
-		return ""
-	}
-
-	// 1. Агрегируем (на случай дублей в строках)
-	totals := make(map[string]float32)
-	for _, p := range positions {
-		name := strings.ToLower(strings.TrimSpace(p.Name))
-		totals[name] += p.Quantity
-	}
-
-	// 2. Выгружаем в слайс для сортировки (важно для консистентности хеша)
-	keys := make([]string, 0, len(totals))
-	for k := range totals {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-
-	// 3. Собираем строку: "товар1:10.000;товар2:5.500"
-	var sb strings.Builder
-	for _, k := range keys {
-		// Используем %.3f, чтобы избежать проблем с точностью float
-		sb.WriteString(fmt.Sprintf("%s:%.3f;", k, totals[k]))
-	}
-
-	// 4. Считаем SHA256
-	hash := sha256.Sum256([]byte(sb.String()))
-	return fmt.Sprintf("%x", hash)
 }

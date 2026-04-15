@@ -1,6 +1,8 @@
 package models
 
-import "time"
+import (
+	"time"
+)
 
 type GetOrderByIdDTO struct {
 	Id          string   `json:"id" db:"id"`
@@ -44,7 +46,8 @@ type OrderFilterDTO struct {
 }
 
 type OrderDTO struct {
-	Id        string         `json:"id" db:"id"`
+	Id        string `json:"id" db:"id"`
+	Actor     Actor
 	Customer  string         `json:"customer" db:"customer"`
 	Consumer  string         `json:"consumer" db:"consumer"`
 	Manager   string         `json:"manager" db:"manager"`
@@ -52,6 +55,7 @@ type OrderDTO struct {
 	Date      time.Time      `json:"date" db:"date"`
 	Year      int            `json:"year" db:"year"`
 	Notes     string         `json:"notes" db:"notes"`
+	Hash      string         `json:"hash" db:"hash"`
 	Positions []*PositionDTO `json:"positions"`
 }
 

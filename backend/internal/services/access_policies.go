@@ -6,7 +6,6 @@ import (
 
 	"github.com/Alexander272/Identic/backend/internal/config"
 	"github.com/Alexander272/Identic/backend/internal/events"
-	"github.com/Alexander272/Identic/backend/pkg/logger"
 	"github.com/casbin/casbin/v3"
 )
 
@@ -77,7 +76,6 @@ func (s *accessPolicesService) GetPolicies(user string) (*Access, error) {
 		// обработка ошибки
 		return nil, fmt.Errorf("failed to get implicit permissions for user: %w", err)
 	}
-	logger.Debug("access_policies", logger.StringAttr("user", user), logger.StringAttr("permissions", fmt.Sprintf("%v", allPermissions)))
 
 	var perms []string
 	seen := make(map[string]bool)

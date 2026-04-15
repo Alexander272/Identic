@@ -80,7 +80,7 @@ func (h *AuthHandler) SignIn(c *gin.Context) {
 		logger.StringAttr("section", "auth"),
 		logger.StringAttr("ip", c.ClientIP()),
 		logger.StringAttr("user", user.Name),
-		logger.StringAttr("user_id", user.ID),
+		logger.StringAttr("user_id", user.ID.String()),
 	)
 
 	c.SetSameSite(http.SameSiteLaxMode)

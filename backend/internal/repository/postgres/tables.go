@@ -8,6 +8,10 @@ var Tables = struct {
 	Permissions     string
 	RolePermissions string
 	Users           string
+	UserLogins      string
+	AuditLogs       string
+	ActivityLogs    string
+	SearchLogs      string
 }{
 	Orders:          "orders",
 	Positions:       "positions",
@@ -16,4 +20,8 @@ var Tables = struct {
 	Permissions:     "permissions",
 	RolePermissions: "role_permissions",
 	Users:           "users",
+	UserLogins:      "user_logins",
+	AuditLogs:       "policy_audit_logs",
+	ActivityLogs:    "activity_logs",
+	SearchLogs:      "search_logs",
 }

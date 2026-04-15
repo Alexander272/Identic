@@ -25,21 +25,33 @@ func (m *Middleware) CheckPermissions(required ...access.Permission) gin.Handler
 		}
 		user := u.(models.User)
 
+		var accessAllowed bool
+		var lastErr error
+
 		for _, r := range required {
-			accessAllowed, err := m.services.AccessPolices.Enforce(user.ID, string(r.Resource), string(r.Action))
-
+			ok, err := m.services.AccessPolices.Enforce(user.ID.String(), string(r.Resource), string(r.Action))
 			if err != nil {
-				response.NewErrorResponse(c, http.StatusInternalServerError, err.Error(), "Произошла ошибка: "+err.Error())
-				c.Abort()
-				return
+				lastErr = err
+				continue
 			}
-
-			if !accessAllowed {
-				response.NewErrorResponse(c, http.StatusForbidden, "forbidden", "недостаточно прав")
-				c.Abort()
-				return
+			if ok {
+				accessAllowed = true
+				break
 			}
 		}
+
+		if lastErr != nil && !accessAllowed {
+			response.NewErrorResponse(c, http.StatusInternalServerError, lastErr.Error(), "ошибка проверки прав")
+			c.Abort()
+			return
+		}
+
+		if !accessAllowed {
+			response.NewErrorResponse(c, http.StatusForbidden, "forbidden", "недостаточно прав")
+			c.Abort()
+			return
+		}
+
 		c.Next()
 	}
 }

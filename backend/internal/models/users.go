@@ -1,25 +1,57 @@
 package models
 
-import "github.com/google/uuid"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 type User struct {
-	ID          string   `json:"id" db:"id"`
-	Name        string   `json:"name" db:"name"`
-	Role        string   `json:"role"`
-	Permissions []string `json:"permissions"`
+	ID          uuid.UUID `json:"id" db:"id"`
+	Name        string    `json:"name" db:"name"`
+	Role        string    `json:"role"`
+	Permissions []string  `json:"permissions"`
 
 	AccessToken  string `json:"token"`
 	RefreshToken string `json:"-"`
 }
 
+type Actor struct {
+	ID   uuid.UUID
+	Name string
+}
+
+type UserShort struct {
+	ID        uuid.UUID `json:"id" db:"id"`
+	SSO_ID    string    `json:"ssoId" db:"sso_id"`
+	FirstName string    `json:"firstName" db:"first_name"`
+	LastName  string    `json:"lastName" db:"last_name"`
+}
+
 type UserData struct {
 	ID        uuid.UUID `json:"id" db:"id"`
+	SSO_ID    string    `json:"ssoId" db:"sso_id"`
+	Role      string    `json:"role" db:"role"`
+	RoleID    uuid.UUID `json:"roleId,omitempty" db:"role_id"`
+	Username  string    `json:"username" db:"username"`
+	FirstName string    `json:"firstName" db:"first_name"`
+	LastName  string    `json:"lastName" db:"last_name"`
+	Email     string    `json:"email" db:"email"`
+	IsActive  bool      `json:"isActive" db:"is_active"`
+	CreatedAt time.Time `json:"createdAt" db:"created_at"`
+	LastVisit time.Time `json:"lastVisit,omitempty" db:"last_visit"`
+}
+
+type UserDataDTO struct {
+	ID        uuid.UUID `json:"id" db:"id"`
+	Actor     Actor
 	SSO_ID    string    `json:"ssoId" db:"sso_id"`
 	RoleID    uuid.UUID `json:"roleId" db:"role_id"`
 	Username  string    `json:"username" db:"username"`
 	FirstName string    `json:"firstName" db:"first_name"`
 	LastName  string    `json:"lastName" db:"last_name"`
 	Email     string    `json:"email" db:"email"`
+	IsActive  bool      `json:"isActive" db:"is_active"`
 }
 
 type GetUserInfoDTO struct {
@@ -34,7 +66,7 @@ type UserRole struct {
 type UserRoleDTO struct {
 	UserID  uuid.UUID `json:"userId" db:"user_id"`
 	RoleID  uuid.UUID `json:"roleId" db:"role_id"`
-	ActorID uuid.UUID `json:"actorId" db:"actor_id"`
+	ActorID Actor
 }
 
 // type GetByRealmDTO struct {
