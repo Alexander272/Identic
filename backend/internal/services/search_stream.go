@@ -11,33 +11,47 @@ import (
 )
 
 type SearchStreamService struct {
-	service Search
-	hub     MessageBroadcaster
+	service    Search
+	hub        MessageBroadcaster
+	searchLogs SearchLogRecorder
 }
 
-func NewSearchStreamService(service Search, hub MessageBroadcaster) *SearchStreamService {
+func NewSearchStreamService(service Search, hub MessageBroadcaster, searchLogs SearchLogRecorder) *SearchStreamService {
 	return &SearchStreamService{
-		service: service,
-		hub:     hub,
+		service:    service,
+		hub:        hub,
+		searchLogs: searchLogs,
 	}
 }
 
 type SearchStream interface {
 	Streaming(ctx context.Context, req *models.SearchRequest)
+	GetSearchLogService() *SearchLogService
 }
 
 func (s *SearchStreamService) Streaming(ctx context.Context, req *models.SearchRequest) {
 	start := time.Now()
+
+	originalItems := make([]models.SearchItem, len(req.Items))
+	copy(originalItems, req.Items)
+
 	results, err := s.service.Search(ctx, req)
+	duration := time.Since(start)
+
 	if err != nil {
 		s.sendError(req.SearchId, err)
 		return
 	}
+
 	logger.Debug("search",
 		logger.StringAttr("search_id", req.SearchId),
 		logger.IntAttr("count", len(results)),
-		logger.AnyAttr("time", time.Since(start)),
+		logger.AnyAttr("time", duration),
 	)
+
+	if s.searchLogs != nil {
+		s.searchLogs.LogAsync(req, originalItems, duration, len(results))
+	}
 
 	const batchSize = 10
 	total := len(results)
@@ -110,4 +124,11 @@ func (s *SearchStreamService) sendError(searchId string, err error) {
 	}
 
 	s.hub.BroadcastMessage("SEARCH_RESULTS_"+searchId, data)
+}
+
+func (s *SearchStreamService) GetSearchLogService() *SearchLogService {
+	if service, ok := s.searchLogs.(*SearchLogService); ok {
+		return service
+	}
+	return nil
 }

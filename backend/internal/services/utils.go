@@ -10,6 +10,7 @@ import (
 
 	"github.com/Alexander272/Identic/backend/internal/models"
 	"github.com/google/uuid"
+	"github.com/mileusna/useragent"
 )
 
 var (
@@ -107,4 +108,51 @@ func splitPositions(orderId string, dto []*models.PositionDTO) (created, updated
 	}
 
 	return
+}
+
+func ParseUserAgent(ua string) models.LoginMetadataDTO {
+	meta := models.LoginMetadataDTO{
+		Success: true,
+	}
+
+	if ua == "" {
+		meta.IsDesktop = true
+		meta.Device = "unknown"
+		meta.Browser = "Unknown"
+		meta.OS = "Unknown"
+		return meta
+	}
+
+	uaParsed := useragent.Parse(ua)
+
+	meta.Browser = uaParsed.Name
+	meta.BrowserVersion = uaParsed.Version
+	meta.OS = uaParsed.OS
+	meta.OSVersion = uaParsed.OSVersion
+
+	meta.IsMobile = uaParsed.Mobile
+	meta.IsTablet = uaParsed.Tablet
+	meta.IsBot = uaParsed.Bot
+	meta.IsDesktop = uaParsed.Desktop
+
+	if meta.IsMobile {
+		meta.Device = "mobile"
+	} else if meta.IsTablet {
+		meta.Device = "tablet"
+	} else if meta.IsBot {
+		meta.Device = "bot"
+	} else if meta.IsDesktop {
+		meta.Device = "desktop"
+	} else {
+		meta.Device = "unknown"
+	}
+
+	if meta.Browser == "" {
+		meta.Browser = "Unknown"
+	}
+	if meta.OS == "" {
+		meta.OS = "Unknown"
+	}
+
+	return meta
 }

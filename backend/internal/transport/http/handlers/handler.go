@@ -3,12 +3,14 @@ package handlers
 import (
 	"github.com/Alexander272/Identic/backend/internal/config"
 	"github.com/Alexander272/Identic/backend/internal/services"
+	"github.com/Alexander272/Identic/backend/internal/transport/http/handlers/audit"
 	"github.com/Alexander272/Identic/backend/internal/transport/http/handlers/auth"
 	"github.com/Alexander272/Identic/backend/internal/transport/http/handlers/import_file"
 	"github.com/Alexander272/Identic/backend/internal/transport/http/handlers/orders"
 	"github.com/Alexander272/Identic/backend/internal/transport/http/handlers/permissions"
 	"github.com/Alexander272/Identic/backend/internal/transport/http/handlers/roles"
 	"github.com/Alexander272/Identic/backend/internal/transport/http/handlers/search"
+	"github.com/Alexander272/Identic/backend/internal/transport/http/handlers/stats"
 	"github.com/Alexander272/Identic/backend/internal/transport/http/handlers/users"
 	"github.com/Alexander272/Identic/backend/internal/transport/middleware"
 	"github.com/Alexander272/Identic/backend/pkg/ws_hub"
@@ -52,4 +54,8 @@ func (h *Handler) Init(group *gin.RouterGroup) {
 	permissions.Register(secure, h.services.Permissions, h.middleware)
 	roles.Register(secure, h.services.Roles, h.middleware)
 	users.Register(secure, h.services.Users, h.middleware)
+
+	audit.Register(secure, h.services.AuditLogs, h.middleware)
+
+	stats.Register(secure, h.services.Statistic, h.middleware)
 }

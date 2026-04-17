@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type QueryBuilder struct {
@@ -15,6 +17,7 @@ type QueryBuilder struct {
 	groupBy   string
 	orderBy   string
 	limit     int
+	offset    int
 	cursor    interface{}
 }
 
@@ -144,6 +147,37 @@ func (qb *QueryBuilder) SetLimit(limit int) {
 	qb.limit = limit
 }
 
+func (qb *QueryBuilder) SetOffset(offset int) {
+	qb.offset = offset
+}
+
+func (qb *QueryBuilder) AddUUIDFilter(field string, value *uuid.UUID) {
+	if value == nil {
+		return
+	}
+	qb.args = append(qb.args, *value)
+	qb.where = append(qb.where, fmt.Sprintf("%s = $%d", field, len(qb.args)))
+}
+
+func (qb *QueryBuilder) AddStringFilter(field string, value string) {
+	if value == "" {
+		return
+	}
+	qb.args = append(qb.args, value)
+	qb.where = append(qb.where, fmt.Sprintf("%s = $%d", field, len(qb.args)))
+}
+
+func (qb *QueryBuilder) AddDateRangeFilter(field string, start, end *time.Time) {
+	if start != nil {
+		qb.args = append(qb.args, *start)
+		qb.where = append(qb.where, fmt.Sprintf("%s >= $%d", field, len(qb.args)))
+	}
+	if end != nil {
+		qb.args = append(qb.args, *end)
+		qb.where = append(qb.where, fmt.Sprintf("%s <= $%d", field, len(qb.args)))
+	}
+}
+
 func (qb *QueryBuilder) AddCompositeFilter(fieldNames []string, compare []string, values []string) {
 	if len(fieldNames) != len(compare) || len(fieldNames) != len(values) {
 		return
@@ -261,6 +295,10 @@ func (qb *QueryBuilder) Build() (string, []interface{}) {
 
 	if qb.limit > 0 {
 		query += fmt.Sprintf(" LIMIT %d", qb.limit)
+	}
+
+	if qb.offset > 0 {
+		query += fmt.Sprintf(" OFFSET %d", qb.offset)
 	}
 
 	return query, qb.args

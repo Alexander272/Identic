@@ -18,7 +18,8 @@ type PolicyEvent struct {
 	ChangedBy     uuid.UUID       `json:"changedBy" db:"changed_by"`
 	ChangedByName string          `json:"changedByName" db:"changed_by_name"`
 	Action        string          `json:"action" db:"action"`
-	EntityType    string          `json:"entity" db:"entity"`
+	EntityType    string          `json:"entityType" db:"entity_type"`
+	Entity        *string         `json:"entity"` // Название объекта (напр. "john@email.com", "Администратор")
 	EntityID      *uuid.UUID      `json:"entityId" db:"entity_id"`
 	OldValues     json.RawMessage `json:"oldValues" db:"old_values"`
 	NewValues     json.RawMessage `json:"newValues" db:"new_values"`

@@ -15,10 +15,11 @@ type SearchItem struct {
 
 // SearchRequest - весь запрос на поиск похожего заказа
 type SearchRequest struct {
-	Items    []SearchItem `json:"items"`
-	IsFuzzy  bool         `json:"isFuzzy"`
-	ActorID  uuid.UUID    `json:"actorId"`
-	SearchId string
+	Items     []SearchItem `json:"items"`
+	IsFuzzy   bool         `json:"isFuzzy"`
+	ActorID   uuid.UUID    `json:"actorId"`
+	ActorName string       `json:"actorName"`
+	SearchId  string
 }
 
 // MatchedPosition - структура, соответствующая таблице positions

@@ -8,6 +8,8 @@ import (
 	"github.com/Alexander272/Identic/backend/internal/models"
 	"github.com/Alexander272/Identic/backend/internal/repository"
 	"github.com/Alexander272/Identic/backend/internal/repository/postgres"
+	"github.com/Alexander272/Identic/backend/pkg/error_bot"
+	"github.com/Alexander272/Identic/backend/pkg/logger"
 )
 
 type auditLogService struct {
@@ -15,38 +17,66 @@ type auditLogService struct {
 	tm   TransactionManager
 }
 
-func NewAuditLogService(repo repository.AuditLogs, tm TransactionManager) *auditLogService {
-	return &auditLogService{
+func NewAuditLogService(repo repository.AuditLogs, tm TransactionManager, bus *events.PolicyEventManager) *auditLogService {
+	s := &auditLogService{
 		repo: repo,
 		tm:   tm,
 	}
-}
 
-type AuditLogs interface {
-	StartListening(bus *events.PolicyEventManager)
-	Get(ctx context.Context, req *models.GetAuditLogsDTO) ([]*models.AuditLog, error)
-	Create(ctx context.Context, tx postgres.Tx, dto *models.AuditLogDTO) error
-}
-
-func (s *auditLogService) StartListening(bus *events.PolicyEventManager) {
 	go func() {
 		events := bus.Subscribe()
 		for event := range events {
+			logger.Info("Received audit log event", logger.StringAttr("event", fmt.Sprintf("%+v", event)))
+
 			dto := &models.AuditLogDTO{
 				ChangedBy:     event.ChangedBy,
 				ChangedByName: event.ChangedByName,
 				Action:        event.Action,
 				EntityType:    event.EntityType,
+				Entity:        event.Entity,
 				EntityID:      event.EntityID,
 				OldValues:     event.OldValues,
 				NewValues:     event.NewValues,
 			}
 
 			// Записываем в базу данных
-			s.Create(context.Background(), nil, dto)
+			if err := s.Create(context.Background(), nil, dto); err != nil {
+				logger.Error("Failed to create audit log", logger.StringAttr("error", err.Error()))
+				error_bot.Send(nil, fmt.Sprintf("Failed to create audit log. error: %v", err), event)
+			}
 		}
 	}()
+
+	return s
 }
+
+type AuditLogs interface {
+	// StartListening(bus *events.PolicyEventManager)
+	Get(ctx context.Context, req *models.GetAuditLogsDTO) ([]*models.AuditLog, error)
+	Create(ctx context.Context, tx postgres.Tx, dto *models.AuditLogDTO) error
+}
+
+// func (s *auditLogService) StartListening(bus *events.PolicyEventManager) {
+// 	go func() {
+// 		events := bus.Subscribe()
+// 		for event := range events {
+// 			logger.Info("Received audit log event", logger.StringAttr("event", fmt.Sprintf("%+v", event)))
+
+// 			dto := &models.AuditLogDTO{
+// 				ChangedBy:     event.ChangedBy,
+// 				ChangedByName: event.ChangedByName,
+// 				Action:        event.Action,
+// 				EntityType:    event.EntityType,
+// 				EntityID:      event.EntityID,
+// 				OldValues:     event.OldValues,
+// 				NewValues:     event.NewValues,
+// 			}
+
+// 			// Записываем в базу данных
+// 			s.Create(context.Background(), nil, dto)
+// 		}
+// 	}()
+// }
 
 func (s *auditLogService) Get(ctx context.Context, req *models.GetAuditLogsDTO) ([]*models.AuditLog, error) {
 	data, err := s.repo.Get(ctx, req)

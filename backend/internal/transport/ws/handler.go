@@ -9,6 +9,7 @@ import (
 	"github.com/Alexander272/Identic/backend/internal/services"
 	"github.com/Alexander272/Identic/backend/internal/transport/ws/router"
 	"github.com/Alexander272/Identic/backend/internal/transport/ws/search"
+	"github.com/Alexander272/Identic/backend/internal/transport/ws/search_logs"
 	"github.com/Alexander272/Identic/backend/internal/transport/ws/subscribe"
 	"github.com/Alexander272/Identic/backend/pkg/logger"
 	"github.com/Alexander272/Identic/backend/pkg/ws_hub"
@@ -36,6 +37,7 @@ func NewWsHandler(hub *ws_hub.Hub, conf config.HttpConfig, services *services.Se
 	router.Register("PING", wsHandler.HandlePing)
 	subscribe.Register(router)
 	search.Register(router, wsHandler.services.Search)
+	search_logs.Register(router, wsHandler.services.SearchStream.GetSearchLogService())
 
 	return wsHandler
 }

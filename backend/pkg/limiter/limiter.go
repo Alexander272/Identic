@@ -1,13 +1,13 @@
 package limiter
 
 import (
+	"log/slog"
 	"net"
 	"net/http"
 	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/sirupsen/logrus"
 	"golang.org/x/time/rate"
 )
 
@@ -80,7 +80,7 @@ func Limit(rps, burst int, ttl time.Duration) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ip, _, err := net.SplitHostPort(c.Request.RemoteAddr)
 		if err != nil {
-			logrus.Errorf("failed to run limiter middleware. error: %s", err.Error())
+			slog.Error("failed to run limiter middleware", slog.String("error", err.Error()))
 			c.AbortWithStatus(http.StatusInternalServerError)
 			return
 		}

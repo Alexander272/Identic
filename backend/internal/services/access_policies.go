@@ -6,6 +6,7 @@ import (
 
 	"github.com/Alexander272/Identic/backend/internal/config"
 	"github.com/Alexander272/Identic/backend/internal/events"
+	"github.com/Alexander272/Identic/backend/pkg/logger"
 	"github.com/casbin/casbin/v3"
 )
 
@@ -39,7 +40,7 @@ func NewAccessPoliciesService(deps *PoliciesDeps) *accessPolicesService {
 	go func() {
 		updateChan := deps.EventBus.Subscribe()
 		for range updateChan {
-			log.Println("Received policy update event, reloading...")
+			logger.Info("Received policy update event, reloading...")
 			s.enforcer.LoadPolicy()
 		}
 	}()

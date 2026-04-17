@@ -61,7 +61,7 @@ func (r *userRepo) LoadPolicy(ctx context.Context, req *models.GetPoliciesDTO) (
 }
 
 func (r *userRepo) GetByID(ctx context.Context, id uuid.UUID) (*models.UserData, error) {
-	query := fmt.Sprintf(`SELECT u.id, role_id u.username, u.email, u.sso_id, u.first_name, u.last_name, u.is_active,
+	query := fmt.Sprintf(`SELECT u.id, role_id, u.username, u.email, u.sso_id, u.first_name, u.last_name, u.is_active
 		FROM %s u
 		WHERE u.id = $1
 		GROUP BY u.id`,
@@ -78,10 +78,10 @@ func (r *userRepo) GetByID(ctx context.Context, id uuid.UUID) (*models.UserData,
 
 func (r *userRepo) GetAll(ctx context.Context) ([]*models.UserData, error) {
 	query := fmt.Sprintf(`SELECT u.id, u.username, u.email, u.sso_id, u.first_name, u.last_name, u.is_active, u.created_at,
-			r.name as role, COALESCE(MAX(l.login_at), '1970-01-01 00:00:00') as last_login_at
+			u.role_id, r.name as role, COALESCE(MAX(l.login_at), '1970-01-01 00:00:00') as last_login_at
 		FROM %s u
 		LEFT JOIN %s r ON u.role_id = r.id
-		LEFT JOIN %s l ON u.id = l.user_id
+		LEFT JOIN %s l ON u.sso_id = l.user_id
 		GROUP BY u.id, r.name
 		ORDER BY u.last_name`,
 		Tables.Users, Tables.Roles, Tables.UserLogins,
@@ -98,7 +98,7 @@ func (r *userRepo) GetAll(ctx context.Context) ([]*models.UserData, error) {
 		tmp := &models.UserData{}
 		if err := rows.Scan(
 			&tmp.ID, &tmp.Username, &tmp.Email, &tmp.SSO_ID, &tmp.FirstName, &tmp.LastName,
-			&tmp.IsActive, &tmp.CreatedAt, &tmp.Role, &tmp.LastVisit,
+			&tmp.IsActive, &tmp.CreatedAt, &tmp.RoleID, &tmp.Role, &tmp.LastVisit,
 		); err != nil {
 			return nil, fmt.Errorf("failed to scan row. error: %w", err)
 		}

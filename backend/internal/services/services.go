@@ -28,6 +28,8 @@ type Services struct {
 
 	AuditLogs
 	Activity
+	UserLogins
+	Statistic
 }
 
 type Deps struct {
@@ -43,7 +45,8 @@ func NewServices(deps *Deps) *Services {
 	updatePolicyEvent := &events.PolicyEventManager{}
 
 	search := NewSearchService(deps.Repo.Search, deps.Conf.Links.Orders, deps.Conf.Search.CacheTTL)
-	searchStream := NewSearchStreamService(search, deps.Hub)
+	searchLog := NewSearchLogService(deps.Repo.SearchLogs)
+	searchStream := NewSearchStreamService(search, deps.Hub, searchLog)
 
 	ordersStream := NewOrderStreamService(deps.Repo.OrdersEvents, deps.Hub)
 
@@ -76,10 +79,12 @@ func NewServices(deps *Deps) *Services {
 		EventBus: updatePolicyEvent,
 	})
 
-	session := NewSessionService(deps.Keycloak, user, policies)
+	userLogins := NewUserLoginService(deps.Repo.UserLogins, transaction)
 
-	auditLogs := NewAuditLogService(deps.Repo.AuditLogs, transaction)
-	auditLogs.StartListening(updatePolicyEvent)
+	session := NewSessionService(deps.Keycloak, user, policies, userLogins)
+
+	auditLogs := NewAuditLogService(deps.Repo.AuditLogs, transaction, updatePolicyEvent)
+	stats := NewStatisticService(activity, searchLog)
 
 	return &Services{
 		Import:       import_file,
@@ -96,7 +101,9 @@ func NewServices(deps *Deps) *Services {
 
 		AccessPolices: policies,
 
-		AuditLogs: auditLogs,
-		Activity:  activity,
+		AuditLogs:  auditLogs,
+		Activity:   activity,
+		UserLogins: userLogins,
+		Statistic:  stats,
 	}
 }

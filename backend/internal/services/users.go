@@ -244,7 +244,7 @@ func (s *userService) CreateSeveral(ctx context.Context, tx postgres.Tx, dto []*
 }
 
 func (s *userService) Update(ctx context.Context, dto *models.UserDataDTO) error {
-	candidate, err := s.repo.GetByID(ctx, dto.ID)
+	candidate, err := s.GetByID(ctx, dto.ID)
 	if err != nil {
 		return err
 	}
@@ -275,6 +275,7 @@ func (s *userService) Update(ctx context.Context, dto *models.UserDataDTO) error
 		ChangedByName: dto.Actor.Name,
 		Action:        "update_user",
 		EntityType:    "users",
+		Entity:        &dto.Username,
 		EntityID:      &dto.ID,
 		OldValues:     oldValue,
 		NewValues:     newValue,

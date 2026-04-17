@@ -24,6 +24,7 @@ func NewActivityService(repo repository.Activity) *ActivityService {
 }
 
 type Activity interface {
+	Get(ctx context.Context, req *models.GetAllActivityLogsDTO) ([]*models.ActivityLog, error)
 	GetByOrder(ctx context.Context, orderID string) ([]*models.ActivityLog, error)
 	GetByEntity(ctx context.Context, req *models.GetActivityLogsDTO) ([]*models.ActivityLog, error)
 	LogOrderCreate(ctx context.Context, tx postgres.Tx, order *models.OrderDTO) error
@@ -32,6 +33,14 @@ type Activity interface {
 
 	BatchLogPositions(ctx context.Context, tx postgres.Tx, req *models.BatchLogPositionsDTO) error
 	AsyncLog(ctx context.Context, fn func() error, debugInfo map[string]any)
+}
+
+func (s *ActivityService) Get(ctx context.Context, req *models.GetAllActivityLogsDTO) ([]*models.ActivityLog, error) {
+	logs, err := s.repo.Get(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get activity logs: %w", err)
+	}
+	return logs, nil
 }
 
 func (s *ActivityService) GetByOrder(ctx context.Context, orderID string) ([]*models.ActivityLog, error) {
@@ -57,6 +66,7 @@ func (s *ActivityService) LogOrderCreate(ctx context.Context, tx postgres.Tx, or
 		ChangedByName: order.Actor.Name,
 		EntityType:    models.EntityOrder,
 		EntityID:      order.Id,
+		Entity:        formatOrderEntity(order),
 		NewValues:     order,
 	}
 	return s.repo.Create(ctx, nil, dto)
@@ -74,6 +84,7 @@ func (s *ActivityService) LogOrderUpdate(ctx context.Context, actor models.Actor
 		ChangedByName: actor.Name,
 		EntityType:    models.EntityOrder,
 		EntityID:      newOrder.Id,
+		Entity:        formatOrderEntity(newOrder),
 		OldValues:     diff.OldValues,
 		NewValues:     diff.NewValues,
 	}
@@ -87,6 +98,7 @@ func (s *ActivityService) LogOrderDelete(ctx context.Context, actor models.Actor
 		ChangedByName: actor.Name,
 		EntityType:    models.EntityOrder,
 		EntityID:      order.Id,
+		Entity:        formatOrderEntityByParts(order.Customer, order.Consumer),
 		OldValues:     order,
 	}
 	return s.repo.Create(ctx, nil, dto)
@@ -100,34 +112,42 @@ func (s *ActivityService) BatchLogPositions(ctx context.Context, tx postgres.Tx,
 		oldPosMap[p.Id] = p
 	}
 
-	log := models.CreateActivityLogDTO{
-		ChangedBy:     req.Actor.ID,
-		ChangedByName: req.Actor.Name,
-		EntityType:    models.EntityOrderItem,
-		ParentID:      &req.OrderID,
-	}
-
 	for _, pos := range req.Created {
-		newLog := log
-		newLog.Action = models.ActionInsert
-		newLog.EntityID = pos.Id
-		newLog.NewValues = pos
-		logs = append(logs, &newLog)
+		logs = append(logs, &models.CreateActivityLogDTO{
+			Action:        models.ActionInsert,
+			ChangedBy:     req.Actor.ID,
+			ChangedByName: req.Actor.Name,
+			EntityType:    models.EntityOrderItem,
+			EntityID:      pos.Id,
+			Entity:        formatPositionEntity(pos),
+			ParentID:      &req.OrderID,
+			NewValues:     pos,
+		})
 	}
 	for _, pos := range req.Deleted {
-		newLog := log
-		newLog.Action = models.ActionDelete
-		newLog.EntityID = pos.Id
-		newLog.OldValues = pos
-		logs = append(logs, &newLog)
+		logs = append(logs, &models.CreateActivityLogDTO{
+			Action:        models.ActionDelete,
+			ChangedBy:     req.Actor.ID,
+			ChangedByName: req.Actor.Name,
+			EntityType:    models.EntityOrderItem,
+			EntityID:      pos.Id,
+			Entity:        formatPositionEntity(pos),
+			ParentID:      &req.OrderID,
+			OldValues:     pos,
+		})
 	}
 	for _, pos := range req.Updated {
-		newLog := log
-		newLog.Action = models.ActionUpdate
-		newLog.EntityID = pos.Id
-		newLog.OldValues = oldPosMap[pos.Id]
-		newLog.NewValues = pos
-		logs = append(logs, &newLog)
+		logs = append(logs, &models.CreateActivityLogDTO{
+			Action:        models.ActionUpdate,
+			ChangedBy:     req.Actor.ID,
+			ChangedByName: req.Actor.Name,
+			EntityType:    models.EntityOrderItem,
+			EntityID:      pos.Id,
+			Entity:        formatPositionEntity(pos),
+			ParentID:      &req.OrderID,
+			OldValues:     oldPosMap[pos.Id],
+			NewValues:     pos,
+		})
 	}
 
 	return s.repo.CreateBatch(ctx, tx, logs)
@@ -191,4 +211,29 @@ func orderFieldsDiffer(oldOrder *models.Order, newOrder *models.OrderDTO) *model
 	}
 
 	return diff
+}
+
+func formatOrderEntity(order *models.OrderDTO) string {
+	return formatOrderEntityByParts(order.Customer, order.Consumer)
+}
+
+func formatOrderEntityByParts(customer, consumer string) string {
+	if customer != "" && consumer != "" {
+		return customer + " / " + consumer
+	}
+	if customer != "" {
+		return customer
+	}
+	if consumer != "" {
+		return consumer
+	}
+	return "Новый заказ"
+}
+
+func formatPositionEntity(pos *models.PositionDTO) string {
+	name := pos.Name
+	if pos.Quantity > 0 {
+		return name + " (" + fmt.Sprintf("%.2f", pos.Quantity) + " шт.)"
+	}
+	return name
 }

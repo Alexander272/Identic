@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/Alexander272/Identic/backend/internal/constants"
 	"github.com/Alexander272/Identic/backend/internal/models"
 	"github.com/Alexander272/Identic/backend/internal/models/response"
 	"github.com/Alexander272/Identic/backend/internal/services"
@@ -43,6 +44,16 @@ func (h *Handler) search(c *gin.Context) {
 		return
 	}
 	dto.SearchId = uuid.NewString()
+
+	u, exists := c.Get(constants.CtxUser)
+	if !exists {
+		response.NewErrorResponse(c, http.StatusUnauthorized, "empty user", "Сессия не найдена")
+		return
+	}
+	user := u.(models.User)
+
+	dto.ActorID = user.ID
+	dto.ActorName = user.Name
 
 	go func() {
 		ctx := context.Background()

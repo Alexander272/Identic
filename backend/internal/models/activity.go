@@ -29,6 +29,7 @@ type ActivityLog struct {
 	ChangedByName string          `json:"changedByName" db:"changed_by_name"`
 	EntityType    EntityType      `json:"entityType" db:"entity_type"`
 	EntityID      string          `json:"entityId" db:"entity_id"`
+	Entity        *string         `json:"entity,omitempty" db:"entity"`
 	ParentID      *string         `json:"parentId,omitempty" db:"parent_id"`
 	OldValues     json.RawMessage `json:"oldValues,omitempty" db:"old_values"`
 	NewValues     json.RawMessage `json:"newValues,omitempty" db:"new_values"`
@@ -41,6 +42,7 @@ type CreateActivityLogDTO struct {
 	ChangedByName string      `json:"changedByName"`
 	EntityType    EntityType  `json:"entityType"`
 	EntityID      string      `json:"entityId"`
+	Entity        string      `json:"entity"` // Название объекта (напр. "Заказ #123: Иванов")
 	ParentID      *string     `json:"parentId,omitempty"`
 	OldValues     interface{} `json:"oldValues,omitempty"`
 	NewValues     interface{} `json:"newValues,omitempty"`
@@ -50,6 +52,14 @@ type GetActivityLogsDTO struct {
 	EntityID   string     `json:"entityId"`
 	EntityType EntityType `json:"entityType,omitempty"`
 	ParentID   *uuid.UUID `json:"parentId,omitempty"`
+}
+
+type GetAllActivityLogsDTO struct {
+	ActorID   *uuid.UUID `json:"actorId,omitempty"`
+	StartDate *time.Time `json:"startDate,omitempty"`
+	EndDate   *time.Time `json:"endDate,omitempty"`
+	Limit     int        `json:"limit,omitempty"`
+	Offset    int        `json:"offset,omitempty"`
 }
 
 type BatchLogPositionsDTO struct {

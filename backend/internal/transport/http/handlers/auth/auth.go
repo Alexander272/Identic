@@ -53,6 +53,9 @@ func (h *AuthHandler) SignIn(c *gin.Context) {
 		return
 	}
 
+	dto.IPAddress = c.ClientIP()
+	dto.UserAgent = c.GetHeader("User-Agent")
+
 	user, err := h.service.SignIn(c, dto)
 	if err != nil {
 		logger.Info("Неудачная попытка авторизации",
@@ -125,18 +128,27 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 		return
 	}
 
-	req := &models.RefreshDTO{
-		Token: refreshToken,
+	dto := &models.RefreshDTO{
+		Token:     refreshToken,
+		IPAddress: c.ClientIP(),
+		UserAgent: c.GetHeader("User-Agent"),
 	}
 
-	user, err := h.service.Refresh(c, req)
+	if c.Request.ContentLength > 0 {
+		if err := c.ShouldBindJSON(dto); err != nil {
+			response.NewErrorResponse(c, http.StatusBadRequest, err.Error(), "Отправлены некорректные данные")
+			return
+		}
+	}
+
+	user, err := h.service.Refresh(c, dto)
 	if err != nil {
 		if strings.Contains(err.Error(), "invalid_grant") {
 			response.NewErrorResponse(c, http.StatusUnauthorized, err.Error(), "Сессия не найдена")
 			return
 		}
 		response.NewErrorResponse(c, http.StatusInternalServerError, err.Error(), "Произошла ошибка: "+err.Error())
-		error_bot.Send(c, err.Error(), req)
+		error_bot.Send(c, err.Error(), dto)
 		return
 	}
 

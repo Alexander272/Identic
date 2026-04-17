@@ -29,10 +29,9 @@ type AuditLogs interface {
 }
 
 func (r *auditRepo) Get(ctx context.Context, req *models.GetAuditLogsDTO) ([]*models.AuditLog, error) {
-	//TODO наверное мне какие-нибудь фильтры или ограничения понадобятся
-	query := fmt.Sprintf(`SELECT id, changed_by, changed_by_name, action, entity_type, entity_id, 
+	query := fmt.Sprintf(`SELECT id, changed_by, changed_by_name, action, entity_type, entity, entity_id, 
 		old_values, new_values, created_at 
-		FROM %s`,
+		FROM %s ORDER BY created_at DESC`,
 		Tables.AuditLogs,
 	)
 	var data []*models.AuditLog
@@ -46,7 +45,7 @@ func (r *auditRepo) Get(ctx context.Context, req *models.GetAuditLogsDTO) ([]*mo
 	for rows.Next() {
 		tmp := &models.AuditLog{}
 		if err := rows.Scan(
-			&tmp.ID, &tmp.ChangedBy, &tmp.ChangedByName, &tmp.Action, &tmp.EntityType, &tmp.EntityID,
+			&tmp.ID, &tmp.ChangedBy, &tmp.ChangedByName, &tmp.Action, &tmp.EntityType, &tmp.Entity, &tmp.EntityID,
 			&tmp.OldValues, &tmp.NewValues, &tmp.CreatedAt,
 		); err != nil {
 			return nil, fmt.Errorf("failed to scan row. error: %w", err)
@@ -60,14 +59,14 @@ func (r *auditRepo) Get(ctx context.Context, req *models.GetAuditLogsDTO) ([]*mo
 }
 
 func (r *auditRepo) Create(ctx context.Context, tx Tx, dto *models.AuditLogDTO) error {
-	query := fmt.Sprintf(`INSERT INTO %s (id, changed_by, changed_by_name, action, entity_type, entity_id, old_values, new_values) 
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+	query := fmt.Sprintf(`INSERT INTO %s (id, changed_by, changed_by_name, action, entity_type, entity, entity_id, old_values, new_values) 
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
 		Tables.AuditLogs,
 	)
 	dto.ID = uuid.New()
 
 	_, err := r.getExec(tx).Exec(ctx, query,
-		dto.ID, dto.ChangedBy, dto.ChangedByName, dto.Action, dto.EntityType, dto.EntityID, dto.OldValues, dto.NewValues,
+		dto.ID, dto.ChangedBy, dto.ChangedByName, dto.Action, dto.EntityType, dto.Entity, dto.EntityID, dto.OldValues, dto.NewValues,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to execute query: %w", err)
@@ -93,13 +92,14 @@ func (r *auditRepo) CreateSeveral(ctx context.Context, tx Tx, dto []*models.Audi
 			v.ChangedByName,
 			v.Action,
 			v.EntityType,
+			v.Entity,
 			v.EntityID,
 			v.OldValues,
 			v.NewValues,
 		}
 	}
 
-	columns := []string{"id", "changed_by", "changed_by_name", "action", "entity_type", "entity_id", "old_values", "new_values"}
+	columns := []string{"id", "changed_by", "changed_by_name", "action", "entity_type", "entity", "entity_id", "old_values", "new_values"}
 	_, err := r.getExec(tx).CopyFrom(
 		ctx,
 		pgx.Identifier{Tables.AuditLogs},

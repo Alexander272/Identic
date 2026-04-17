@@ -54,7 +54,7 @@ func (r *SearchRepo) FetchExact(ctx context.Context, req *models.SearchRequest) 
             r.req_qty, p.quantity as db_qty,
             1.0 as similarity -- Для точного поиска всегда 1.0
         FROM req r
-        JOIN %s p ON p.search = r.req_name OR p.normalized_notes = r.req_name
+        JOIN %s p ON p.search LIKE '%%' || r.req_name || '%%' OR p.normalized_notes LIKE '%%' || r.req_name || '%%'
         JOIN %s o ON o.id = p.order_id`,
 		Tables.Positions, Tables.Orders,
 	)

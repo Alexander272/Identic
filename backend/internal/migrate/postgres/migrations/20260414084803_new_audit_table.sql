@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS public.policy_audit_logs (
     action TEXT COLLATE pg_catalog."default" NOT NULL,          -- "add_role", "remove_permission", etc.
     
     entity_type TEXT NOT NULL,          -- 'user' или 'role'
-    entity_id UUID NOT NULL,           
+    entity_id UUID,           
     
     old_values JSONB,
     new_values JSONB,

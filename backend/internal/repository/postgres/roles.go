@@ -71,7 +71,7 @@ func (r *RoleRepo) GetOne(ctx context.Context, req *models.GetRoleDTO) (*models.
 }
 
 func (r *RoleRepo) GetAll(ctx context.Context) ([]*models.Role, error) {
-	query := fmt.Sprintf(`SELECT id, slug, name, level, is_active, is_system, is_editable, created_at, updated_at FROM %s 
+	query := fmt.Sprintf(`SELECT id, slug, name, description, level, is_active, is_system, is_editable, created_at, updated_at FROM %s 
 		ORDER BY level`,
 		Tables.Roles,
 	)
@@ -86,7 +86,7 @@ func (r *RoleRepo) GetAll(ctx context.Context) ([]*models.Role, error) {
 	for rows.Next() {
 		item := &models.Role{}
 		if err := rows.Scan(
-			&item.ID, &item.Slug, &item.Name, &item.Level, &item.IsActive, &item.IsSystem, &item.IsEditable,
+			&item.ID, &item.Slug, &item.Name, &item.Description, &item.Level, &item.IsActive, &item.IsSystem, &item.IsEditable,
 			&item.CreatedAt, &item.UpdatedAt,
 		); err != nil {
 			return nil, fmt.Errorf("scan row error: %w", err)
