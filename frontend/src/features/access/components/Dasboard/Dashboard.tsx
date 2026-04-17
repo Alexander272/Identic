@@ -1,5 +1,9 @@
 import { Box, Typography, Grid, Paper, Skeleton } from '@mui/material'
 
+import { useGetRolesQuery } from '@/features/user/roleApiSlice'
+import { useGetAllUsersQuery } from '@/features/user/usersApiSlice'
+import { LastActions } from './LastActions'
+
 const statCards: { label: string; key: 'users' | 'active' | 'roles'; color: string }[] = [
 	{ label: 'Пользователи', key: 'users', color: '#2196f3' },
 	{ label: 'Активные', key: 'active', color: '#4caf50' },
@@ -7,13 +11,15 @@ const statCards: { label: string; key: 'users' | 'active' | 'roles'; color: stri
 ]
 
 export const Dashboard = () => {
-	const isLoading = false
+	const { data: users, isFetching: isFetchingUsers } = useGetAllUsersQuery(null)
+	const { data: roles, isFetching: isFetchingRoles } = useGetRolesQuery(null)
 
 	const stats = {
-		users: 0,
-		active: 0,
-		roles: 0,
+		users: users?.data.length,
+		active: users?.data.filter(u => u.isActive).length,
+		roles: roles?.data.length,
 	}
+	const isLoading = isFetchingUsers || isFetchingRoles
 
 	return (
 		<Box id='section-dashboard' className='section active' sx={{ p: 3 }}>
@@ -50,31 +56,7 @@ export const Dashboard = () => {
 			</Grid>
 
 			{/* Activity Card */}
-			<Paper elevation={0} sx={{ border: '1px solid rgba(0, 0, 0, 0.12)', borderRadius: 2 }}>
-				<Box sx={{ p: '20px' }}>
-					<Typography variant='subtitle1' sx={{ fontSize: '15px', fontWeight: 'bold', mb: 2 }}>
-						Последние действия
-					</Typography>
-					<Box id='activity-log' sx={{ fontSize: '13px', color: 'text.secondary' }}>
-						<Typography variant='body2'>Действий пока нет.</Typography>
-					</Box>
-
-					{/* {isLoading ? (
-						<Box>
-							<Skeleton height={20} sx={{ mb: 1 }} />
-							<Skeleton height={20} width='80%' />
-						</Box>
-					) : (
-						<Box sx={{ fontSize: '13px', color: 'text.secondary' }}>
-							{stats?.recentActivity?.length > 0 ? (
-								stats.recentActivity.map((log, i) => <Typography key={i}>{log.text}</Typography>)
-							) : (
-								<Typography variant='body2'>Действий пока нет.</Typography>
-							)}
-						</Box>
-					)} */}
-				</Box>
-			</Paper>
+			<LastActions />
 		</Box>
 	)
 }

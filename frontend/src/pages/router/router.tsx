@@ -15,6 +15,7 @@ import { Dashboard } from '@/pages/accesses/dashboard/DashboardLazy'
 import { Users } from '@/pages/accesses/users/UsersLazy'
 import { Role } from '@/pages/accesses/role/RoleLazy'
 import { Permissions } from '@/pages/accesses/permissions/PermsLazy'
+import { Statistics } from '@/pages/statistics/StatisticsLazy'
 import PrivateRoute from './PrivateRoute'
 
 const config: RouteObject[] = [
@@ -53,6 +54,10 @@ const config: RouteObject[] = [
 					{
 						path: AppRoutes.Search,
 						element: <Search />,
+					},
+					{
+						path: AppRoutes.Statistics,
+						element: <Statistics />,
 					},
 
 					{

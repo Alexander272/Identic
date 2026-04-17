@@ -1,6 +1,6 @@
 import { Box } from '@mui/material'
 
-import { Dashboard } from '@/features/access/components/Dashboard'
+import { Dashboard } from '@/features/access/components/Dasboard/Dashboard'
 
 export default function DashboardPage() {
 	return (

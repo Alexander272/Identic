@@ -18,6 +18,8 @@ import {
 	useTheme,
 	Avatar,
 	Chip,
+	Tooltip,
+	CircularProgress,
 } from '@mui/material'
 import dayjs from 'dayjs'
 
@@ -25,10 +27,15 @@ import type { IUserData } from '@/features/user/types/user'
 import { getAvatarColor, getInitials } from './utils'
 import { stringToHSLA } from '@/utils/colors'
 import { getSmartDate } from '@/utils/date'
-import { SearchIcon } from '@/components/Icons/SearchIcon'
-import { PlusIcon } from '@/components/Icons/PlusIcon'
-import { useGetAllUsersQuery } from '@/features/user/usersApiSlice'
+import { useDebounce } from '@/hooks/useDebounce'
+import { useGetAllUsersQuery, useSyncUsersMutation } from '@/features/user/usersApiSlice'
+import { useGetRolesQuery } from '@/features/user/roleApiSlice'
 import { BoxFallback } from '@/components/Fallback/BoxFallback'
+import { SearchIcon } from '@/components/Icons/SearchIcon'
+import { SyncIcon } from '@/components/Icons/SyncIcon'
+import { ModifyIcon } from '@/components/Icons/ModifyIcon'
+import { StatusBadge } from '../StatusBadge'
+import { UpdateModal } from '../../../user/components/Update'
 
 export const Users = () => {
 	const { palette } = useTheme()
@@ -36,18 +43,44 @@ export const Users = () => {
 	const [roleFilter, setRoleFilter] = useState<string[]>([''])
 	const [statusFilter, setStatusFilter] = useState('')
 
+	const [userToUpdate, setUserToUpdate] = useState<IUserData | null>(null)
+
+	const debouncedSearch = useDebounce(search, 300)
+
 	const { data, isFetching } = useGetAllUsersQuery(null)
+	const { data: roles, isFetching: isFetchingRoles } = useGetRolesQuery(null)
+	const [sync, { isLoading }] = useSyncUsersMutation()
 
-	const roles = [
-		{ id: '1', slug: 'admin', name: 'Администратор' },
-		{ id: '2', slug: 'manager', name: 'Менеджер' },
-		{ id: '3', slug: 'reader', name: 'Наблюдатель' },
-	]
+	const filteredUsers = useMemo(() => {
+		if (!data) return []
 
-	// const filteredUsers = useMemo(() => {
-	// 	// Здесь будет логика users.filter(...) на основе search, roleFilter и statusFilter
-	// 	return []
-	// }, [search, roleFilter, statusFilter])
+		const lowSearch = (debouncedSearch as string).toLowerCase().trim()
+
+		return data?.data.filter(user => {
+			// 1. Поиск (по имени или почте)
+			const matchesSearch =
+				!lowSearch ||
+				[user.lastName, user.firstName, user.email].some(field => field?.toLowerCase().includes(lowSearch))
+
+			// 2. Фильтр по ролям (проверяем, есть ли роль пользователя в массиве выбранных)
+			// Если массив пустой, обычно показывают всех (или никого, зависит от вашей логики)
+			const matchesRole = !roleFilter.includes('') ? roleFilter.includes(user.role) : true
+
+			// 3. Фильтр по статусу
+			const matchesStatus =
+				statusFilter && statusFilter !== ''
+					? statusFilter === 'active'
+						? user.isActive
+						: !user.isActive
+					: true
+
+			return matchesSearch && matchesRole && matchesStatus
+		})
+	}, [data, debouncedSearch, roleFilter, statusFilter])
+
+	const syncHandler = async () => {
+		await sync(null)
+	}
 
 	const roleHandler = (event: SelectChangeEvent<string[]>) => {
 		const value = event.target.value
@@ -66,7 +99,7 @@ export const Users = () => {
 
 			// 3. Если выбраны все доступные опции (кроме ''),
 			// тут можно добавить условие сравнения с длиной исходного массива ролей
-			if (newValue.length === roles.length) {
+			if (newValue.length === roles?.data.length) {
 				newValue = ['']
 			}
 		}
@@ -89,16 +122,18 @@ export const Users = () => {
 				<Button
 					variant='outlined'
 					sx={{ borderRadius: '8px', textTransform: 'none', background: '#fff' }}
-					onClick={() => {
-						/* openUserModal() */
-					}}
+					onClick={syncHandler}
 				>
-					<PlusIcon fill={palette.primary.main} fontSize={16} mr={1.5} />
-					Добавить
+					{isLoading ? (
+						<CircularProgress size={16} sx={{ mr: 1.5 }} />
+					) : (
+						<SyncIcon fill={palette.primary.main} fontSize={16} mr={1.5} />
+					)}
+					Синхронизировать
 				</Button>
 			</Box>
 
-			{isFetching && <BoxFallback />}
+			{isFetching || isFetchingRoles || isLoading ? <BoxFallback /> : null}
 
 			{/* Toolbar */}
 			<Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap' }}>
@@ -127,9 +162,11 @@ export const Users = () => {
 					onChange={roleHandler}
 					sx={{ width: '400px', background: '#fff' }}
 				>
-					<MenuItem value=''>Все роли</MenuItem>
-					{roles.map(role => (
-						<MenuItem key={role.id} value={role.slug}>
+					<MenuItem value='' disabled>
+						Все роли
+					</MenuItem>
+					{roles?.data.map(role => (
+						<MenuItem key={role.id} value={role.name}>
 							{role.name}
 						</MenuItem>
 					))}
@@ -148,44 +185,46 @@ export const Users = () => {
 				</Select>
 			</Box>
 
+			<UpdateModal user={userToUpdate} onClose={() => setUserToUpdate(null)} />
+
 			{/* Table Container */}
 			<TableContainer component={Paper} elevation={0} sx={{ border: '1px solid #eee', borderRadius: 2 }}>
 				<Table>
 					<TableHead>
 						<TableRow sx={{ borderBottom: '1px solid #f3f4f6' }}>
-							<TableCell sx={{ py: 2.5, px: 4, color: 'text.secondary', fontSize: '0.875rem' }}>
-								Пользователь
-							</TableCell>
+							<TableCell sx={{ color: 'text.secondary', fontSize: '0.875rem' }}>Пользователь</TableCell>
 							<TableCell
-								sx={{ py: 2.5, px: 4, color: 'text.secondary', fontSize: '0.875rem', width: 250 }}
+								align='center'
+								sx={{ color: 'text.secondary', fontSize: '0.875rem', width: 250 }}
 							>
 								Роль
 							</TableCell>
 							<TableCell
-								sx={{ py: 2.5, px: 4, color: 'text.secondary', fontSize: '0.875rem', width: 200 }}
+								align='center'
+								sx={{ color: 'text.secondary', fontSize: '0.875rem', width: 200 }}
 							>
 								Статус
 							</TableCell>
 							<TableCell
-								sx={{ py: 2.5, px: 4, color: 'text.secondary', fontSize: '0.875rem', width: 250 }}
+								align='center'
+								sx={{ color: 'text.secondary', fontSize: '0.875rem', width: 250 }}
 							>
 								Создан
 							</TableCell>
 							<TableCell
-								sx={{ py: 2.5, px: 4, color: 'text.secondary', fontSize: '0.875rem', width: 250 }}
+								align='center'
+								sx={{ color: 'text.secondary', fontSize: '0.875rem', width: 250 }}
 							>
 								Последний вход
 							</TableCell>
-							<TableCell
-								sx={{ py: 2.5, px: 4, color: 'text.secondary', fontSize: '0.875rem', width: 100 }}
-							>
+							<TableCell sx={{ color: 'text.secondary', fontSize: '0.875rem', width: 100 }}>
 								Действия
 							</TableCell>
 						</TableRow>
 					</TableHead>
 					<TableBody>
-						{data?.data.map(user => (
-							<UserRow key={user.id} u={user} />
+						{filteredUsers.map(user => (
+							<UserRow key={user.id} u={user} setUser={setUserToUpdate} />
 						))}
 						{!data?.data.length && !isFetching ? (
 							<TableRow>
@@ -201,8 +240,21 @@ export const Users = () => {
 	)
 }
 
-const UserRow: FC<{ u: IUserData }> = ({ u }) => {
+type RowProps = {
+	u: IUserData
+	setUser: (user: IUserData | null) => void
+}
+
+const UserRow: FC<RowProps> = ({ u, setUser }) => {
+	const { palette } = useTheme()
 	const colors = useMemo(() => stringToHSLA(u.role), [u.role])
+
+	const editHandler = (e: React.MouseEvent) => {
+		e.stopPropagation()
+		e.preventDefault()
+
+		setUser(u)
+	}
 
 	return (
 		<TableRow key={u.id} hover>
@@ -231,7 +283,7 @@ const UserRow: FC<{ u: IUserData }> = ({ u }) => {
 			</TableCell>
 
 			{/* Роль */}
-			<TableCell>
+			<TableCell align='center'>
 				<Chip
 					label={u.role}
 					size={'small'}
@@ -248,39 +300,35 @@ const UserRow: FC<{ u: IUserData }> = ({ u }) => {
 			</TableCell>
 
 			{/* Статус */}
-			<TableCell>
-				<Chip
-					label={u.isActive ? 'Активный' : 'Неактивный'}
-					size='small'
-					variant='outlined'
-					color={u.isActive ? 'success' : 'default'}
-					sx={{ borderRadius: '6px', fontWeight: 500 }}
-				/>
+			<TableCell align='center'>
+				<StatusBadge active={u.isActive} label={u.isActive ? 'Активный' : 'Неактивный'} />
 			</TableCell>
 
 			{/* Создан */}
-			<TableCell sx={{ color: 'text.secondary', fontSize: '13px' }}>
-				{dayjs(u.createdAt).format('ddd, DD MMM, YYYY HH:mm')}
+			<TableCell align='center' sx={{ color: 'text.secondary', fontSize: '13px' }}>
+				{dayjs(u.createdAt).format('dddd, DD MMM YYYY HH:mm')}
 			</TableCell>
 
 			{/* Последний вход */}
-			<TableCell sx={{ color: 'text.secondary', fontSize: '13px' }}>{getSmartDate(u.lastVisit)}</TableCell>
+			<TableCell align='center' sx={{ color: 'text.secondary', fontSize: '13px' }}>
+				{getSmartDate(u.lastVisit)}
+			</TableCell>
 
 			{/* Действия */}
-			<TableCell>
-				<Box sx={{ display: 'flex', gap: 0.5 }}>
-					{/* <IconButton size='small' onClick={() => editUser(u.id)} title='Редактировать'>
-						<EditIcon fontSize='small' />
-					</IconButton>
-					<IconButton
-						size='small'
-						onClick={() => deleteUser(u.id)}
-						title='Удалить'
-						sx={{ color: 'error.main' }}
+			<TableCell align='center' sx={{ p: 0 }}>
+				<Tooltip title='Редактировать пользователя'>
+					<Button
+						onClick={editHandler}
+						sx={{
+							minWidth: 60,
+							minHeight: 60,
+							borderRadius: '6px',
+							':hover': { svg: { fill: palette.secondary.main } },
+						}}
 					>
-						<DeleteIcon fontSize='small' />
-					</IconButton> */}
-				</Box>
+						<ModifyIcon sx={{ fontSize: 18 }} />
+					</Button>
+				</Tooltip>
 			</TableCell>
 		</TableRow>
 	)

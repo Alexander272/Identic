@@ -13,8 +13,20 @@ export interface IUserData {
 	firstName: string
 	lastName: string
 	email: string
+	roleId: string
 	role: string
 	isActive: boolean
 	createdAt: string
 	lastVisit: string
+}
+
+export interface IUserDataDTO {
+	id: string
+	ssoId: string
+	roleId: string
+	username: string
+	firstName: string
+	lastName: string
+	email: string
+	isActive: boolean
 }

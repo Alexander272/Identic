@@ -20,9 +20,17 @@ export const API = {
 		sync: '/users/sync' as const,
 		access: '/users/access' as const,
 	},
-	roles: '/roles' as const,
+	roles: {
+		base: '/roles' as const,
+		stats: '/roles/all/stats' as const,
+	},
 	permissions: {
 		base: '/permissions' as const,
 		resources: '/permissions/resources' as const,
+	},
+	audit: '/audit' as const,
+	statistics: {
+		search: '/statistics/search' as const,
+		activity: '/statistics/activity' as const,
 	},
 }

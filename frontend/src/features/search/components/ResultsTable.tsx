@@ -114,7 +114,9 @@ const ResultRow: FC<{ order: IOrderMatchResult; search: ISearchItem[]; searchId:
 		>
 			<TableCell align='center'>
 				<Typography>{dayjs(order.date).format('DD.MM')}</Typography>
-				<Typography fontSize={'0.9rem'}>{order.year}</Typography>
+				<Typography fontWeight={'bold'} fontSize={'0.9rem'}>
+					{order.year}
+				</Typography>
 			</TableCell>
 			<TableCell>
 				<Typography>Конечник: {order.consumer || '-'}</Typography>

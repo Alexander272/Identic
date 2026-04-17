@@ -1,6 +1,6 @@
 import React from 'react'
 import { Box, Typography } from '@mui/material'
-import { diffWords } from 'diff'
+import { diffChars } from 'diff'
 
 interface DiffTextProps {
 	expected: string // То, что просил пользователь
@@ -8,8 +8,11 @@ interface DiffTextProps {
 }
 
 export const DiffText: React.FC<DiffTextProps> = ({ expected, actual }) => {
-	// Вычисляем разницу посимвольно
-	const diff = diffWords(expected, actual)
+	// Вычисляем разницу
+	const diff = diffChars(expected, actual)
+
+	console.log('expected', expected)
+	console.log('actual', actual)
 
 	return (
 		<Typography>

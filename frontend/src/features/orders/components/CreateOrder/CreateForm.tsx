@@ -29,7 +29,7 @@ const defaultValues: IOrderCreate = {
 	bill: '',
 	date: dayjs().startOf('d').toISOString(),
 	notes: '',
-	positions: [{ rowNumber: 1, name: '', quantity: null, notes: '' }],
+	positions: [{ rowNumber: 1, name: null, quantity: null, notes: null }],
 }
 
 const columns: Column<IPositionCreate>[] = [

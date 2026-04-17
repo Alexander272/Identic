@@ -113,7 +113,7 @@ export const OrdersTable: FC<Props> = ({ orders }) => {
 							<TableCell align='center'>{d.bill || '—'}</TableCell>
 							<TableCell>{d.notes || '—'}</TableCell>
 							<TableCell sx={{ padding: 0, borderTopRightRadius: 8, borderBottomRightRadius: 8 }}>
-								<Tooltip title=' Редактировать заказ'>
+								<Tooltip title='Редактировать заказ'>
 									<Button
 										onClick={editHandler(d.id)}
 										sx={{

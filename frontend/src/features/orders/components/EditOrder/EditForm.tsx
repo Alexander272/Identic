@@ -157,6 +157,7 @@ const Grid: FC<{ orderId: string; data?: IOrder }> = ({ orderId, data }) => {
 	const { fields } = useFieldArray({
 		control,
 		name: 'positions',
+		keyName: '_rhf_id',
 	})
 
 	const genId = () => new Date().getTime().toString()
@@ -180,7 +181,6 @@ const Grid: FC<{ orderId: string; data?: IOrder }> = ({ orderId, data }) => {
 		}
 		if (form.id == '') form.id = orderId
 
-		form.positions = form.positions.filter(item => item.status != 'DELETED')
 		form.positions.forEach((element, idx) => {
 			element.rowNumber = idx + 1
 		})

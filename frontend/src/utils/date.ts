@@ -8,9 +8,15 @@ dayjs.extend(calendar)
 dayjs.locale('ru')
 
 export const getSmartDate = (date: string) => {
+	if (!date) {
+		return '-'
+	}
+
 	const now = dayjs()
 	const target = dayjs(date)
 	const diffInDays = now.diff(target, 'day')
+
+	if (target.year() == 1970) return '-'
 
 	// Если прошло больше 1 дня (но меньше месяца), используем "X дней назад"
 	if (diffInDays > 1 && diffInDays < 30) {
@@ -21,6 +27,6 @@ export const getSmartDate = (date: string) => {
 	return target.calendar(null, {
 		sameDay: '[Сегодня в] HH:mm',
 		lastDay: '[Вчера в] HH:mm',
-		sameElse: 'DD.MM.YYYY',
+		sameElse: 'dddd, DD MMM YYYY HH:mm',
 	})
 }

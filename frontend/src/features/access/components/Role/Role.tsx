@@ -1,10 +1,8 @@
-import { EditBoxIcon } from '@/components/Icons/EditBoxIcon'
-import { PlusIcon } from '@/components/Icons/PlusIcon'
+import { Fragment } from 'react'
 import {
 	Box,
 	Button,
 	Chip,
-	IconButton,
 	Paper,
 	Table,
 	TableBody,
@@ -12,45 +10,33 @@ import {
 	TableContainer,
 	TableHead,
 	TableRow,
+	Tooltip,
 	Typography,
 	useTheme,
 } from '@mui/material'
 import { ArrowRightIcon } from '@mui/x-date-pickers'
-import { Fragment } from 'react/jsx-runtime'
 
-const roles = [
-	{
-		id: 1,
-		name: 'Администратор',
-		slug: 'admin',
-		desc: 'Полный доступ ко всем ресурсам системы',
-		icon: '👑',
-		iconBg: '#eef2ff', // indigo-100
-		iconColor: '#4f46e5', // indigo-600
-		status: 'active',
-		parents: null,
-		perms: { total: 48, own: 48, inherited: 0 },
-		userCount: 3,
-	},
-	{
-		id: 2,
-		name: 'Менеджер',
-		slug: 'manager',
-		desc: 'Управляет пользователями и процессами',
-		icon: '⚙️',
-		iconBg: '#fffbeb', // amber-100
-		iconColor: '#d97706', // amber-600
-		status: 'active',
-		parents: ['Администратор'],
-		perms: { total: 42, own: 10, inherited: 32 },
-		userCount: 12,
-	},
-]
+import { PlusIcon } from '@/components/Icons/PlusIcon'
+import { ModifyIcon } from '@/components/Icons/ModifyIcon'
+import { StatusBadge } from '../StatusBadge'
+import { useGetRolesWithStatsQuery } from '@/features/user/roleApiSlice'
 
 export const Role = () => {
 	const { palette } = useTheme()
 
-	const isFetching = false
+	const { data, isFetching } = useGetRolesWithStatsQuery(null)
+
+	const createHandler = () => {
+		//TODO openRoleModal
+	}
+
+	const editHandler = (id: string) => (e: React.MouseEvent) => {
+		e.stopPropagation()
+		e.preventDefault()
+
+		console.log('edit role', id)
+		// TODO openRoleModal
+	}
 
 	return (
 		<Box sx={{ p: 3 }}>
@@ -67,9 +53,7 @@ export const Role = () => {
 				<Button
 					variant='outlined'
 					sx={{ borderRadius: '8px', textTransform: 'none', background: '#fff' }}
-					onClick={() => {
-						/* openUserModal() */
-					}}
+					onClick={createHandler}
 				>
 					<PlusIcon fill={palette.primary.main} fontSize={16} mr={1.5} />
 					Добавить
@@ -99,12 +83,12 @@ export const Role = () => {
 							<TableCell sx={{ py: 2.5, px: 3, color: 'text.secondary', fontSize: '0.875rem' }}>
 								Пользователей
 							</TableCell>
-							<TableCell align='right' sx={{ py: 2.5, px: 3, width: 64 }}></TableCell>
+							<TableCell align='right' sx={{ p: 0, width: 64 }}></TableCell>
 						</TableRow>
 					</TableHead>
 
 					<TableBody sx={{ '& tr:not(:last-child)': { borderBottom: '1px solid #f3f4f6' } }}>
-						{roles.map(role => (
+						{data?.data.map(role => (
 							<TableRow key={role.id} hover sx={{ cursor: 'pointer', '&:hover': { bgcolor: '#fafafa' } }}>
 								{/* Роль */}
 								<TableCell sx={{ py: 3, px: 4 }}>
@@ -114,66 +98,25 @@ export const Role = () => {
 											{role.slug}
 										</Typography>
 										<Typography sx={{ fontSize: '0.875rem', color: '#6b7280', mt: 0.5 }}>
-											{role.desc}
+											{role.description}
 										</Typography>
 									</Box>
 								</TableCell>
 
 								{/* Статус */}
 								<TableCell sx={{ px: 3 }}>
-									{role.status === 'active' ? (
-										// Активный статус (Зеленый)
-										<Box
-											sx={{
-												display: 'inline-flex',
-												alignItems: 'center',
-												gap: 1,
-												bgcolor: '#ecfdf5',
-												color: '#047857',
-												px: 2,
-												py: 0.75,
-												borderRadius: '16px',
-												fontSize: '0.875rem',
-												fontWeight: 500,
-											}}
-										>
-											<Box
-												component='span'
-												sx={{ width: 8, height: 8, bgcolor: '#10b981', borderRadius: '50%' }}
-											/>
-											Активна
-										</Box>
-									) : (
-										// Неактивный статус (Красный/Серый)
-										<Box
-											sx={{
-												display: 'inline-flex',
-												alignItems: 'center',
-												gap: 1,
-												bgcolor: '#fef2f2',
-												color: '#b91c1c',
-												px: 2,
-												py: 0.75,
-												borderRadius: '16px',
-												fontSize: '0.875rem',
-												fontWeight: 500,
-											}}
-										>
-											<Box
-												component='span'
-												sx={{ width: 8, height: 8, bgcolor: '#ef4444', borderRadius: '50%' }}
-											/>
-											Неактивна
-										</Box>
-									)}
+									<StatusBadge
+										active={role.isActive}
+										label={role.isActive ? 'Активна' : 'Неактивна'}
+									/>
 								</TableCell>
 
 								{/* Наследование */}
 								<TableCell sx={{ px: 3 }}>
-									{role.parents && role.parents.length > 0 ? (
+									{role.inherited && role.inherited.length > 0 ? (
 										<Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 0.5 }}>
-											{role.parents.map((parentName, index) => (
-												<Fragment key={parentName}>
+											{role.inherited.map((name, index) => (
+												<Fragment key={name}>
 													<Typography
 														variant='caption'
 														sx={{
@@ -184,10 +127,10 @@ export const Role = () => {
 															color: '#6b7280',
 														}}
 													>
-														{parentName}
+														{name}
 													</Typography>
 													{/* Если это не последний родитель, можно поставить какой-то разделитель, но обычно в множественном наследовании они равноправны */}
-													{index < role.parents.length - 1 && (
+													{index < role.inherited.length - 1 && (
 														<Typography variant='caption' sx={{ color: '#d1d5db' }}>
 															+
 														</Typography>
@@ -247,22 +190,24 @@ export const Role = () => {
 								</TableCell>
 
 								{/* Действия */}
-								<TableCell align='right' sx={{ px: 3 }}>
-									<Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
-										<IconButton sx={{ color: '#9ca3af', '&:hover': { color: 'primary.main' } }}>
-											<EditBoxIcon sx={{ fontSize: 18 }} />
-										</IconButton>
-										{/* <IconButton
-											size='small'
-											sx={{ color: '#9ca3af', '&:hover': { color: 'error.main' } }}
+								<TableCell align='center' sx={{ p: 0, pr: 1 }}>
+									<Tooltip title='Редактировать роль'>
+										<Button
+											onClick={editHandler(role.id)}
+											sx={{
+												minWidth: 60,
+												minHeight: 60,
+												borderRadius: '6px',
+												':hover': { svg: { fill: palette.secondary.main } },
+											}}
 										>
-											<DeleteIcon fontSize='small' />
-										</IconButton> */}
-									</Box>
+											<ModifyIcon sx={{ fontSize: 18 }} />
+										</Button>
+									</Tooltip>
 								</TableCell>
 							</TableRow>
 						))}
-						{!roles.length && !isFetching ? (
+						{!data?.data.length && !isFetching ? (
 							<TableRow>
 								<TableCell colSpan={6} align='center' sx={{ py: 3, color: 'text.secondary' }}>
 									Роли не найдены.

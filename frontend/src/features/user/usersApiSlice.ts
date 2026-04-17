@@ -1,7 +1,7 @@
 import { toast } from 'react-toastify'
 
 import type { IBaseFetchError } from '@/app/types/error'
-import type { IUserData } from './types/user'
+import type { IUserData, IUserDataDTO } from './types/user'
 import { API } from '@/app/api'
 import { apiSlice } from '@/app/apiSlice'
 
@@ -13,7 +13,7 @@ export const usersApiSlice = apiSlice.injectEndpoints({
 				url: API.users.base,
 				method: 'GET',
 			}),
-			providesTags: [{ type: 'Users', id: 'all' }],
+			providesTags: [{ type: 'Users', id: 'All' }],
 			onQueryStarted: async (_arg, api) => {
 				try {
 					await api.queryFulfilled
@@ -29,7 +29,7 @@ export const usersApiSlice = apiSlice.injectEndpoints({
 				method: 'GET',
 			}),
 			providesTags: [
-				{ type: 'Users', id: 'all' },
+				{ type: 'Users', id: 'All' },
 				{ type: 'Users', id: 'access' },
 			],
 			onQueryStarted: async (_arg, api) => {
@@ -47,9 +47,19 @@ export const usersApiSlice = apiSlice.injectEndpoints({
 				url: API.users.sync,
 				method: 'POST',
 			}),
-			invalidatesTags: [{ type: 'Users', id: 'all' }],
+			invalidatesTags: [{ type: 'Users', id: 'All' }],
+		}),
+
+		updateUser: builder.mutation<null, IUserDataDTO>({
+			query: user => ({
+				url: `${API.users.base}/${user.id}`,
+				method: 'PUT',
+				body: user,
+			}),
+			invalidatesTags: [{ type: 'Users', id: 'All' }],
 		}),
 	}),
 })
 
-export const { useGetAllUsersQuery, useGetUserByAccessQuery, useSyncUsersMutation } = usersApiSlice
+export const { useGetAllUsersQuery, useGetUserByAccessQuery, useSyncUsersMutation, useUpdateUserMutation } =
+	usersApiSlice

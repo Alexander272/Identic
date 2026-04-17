@@ -1,19 +1,19 @@
 import { toast } from 'react-toastify'
 
 import type { IBaseFetchError } from '@/app/types/error'
-import type { IRole, IRoleWithStats } from './types/role'
+import type { SearchLogResponse, ActivityLogResponse } from './types'
 import { API } from '@/app/api'
 import { apiSlice } from '@/app/apiSlice'
 
-export const rolesApiSlice = apiSlice.injectEndpoints({
+export const statisticsApiSlice = apiSlice.injectEndpoints({
 	overrideExisting: false,
 	endpoints: builder => ({
-		getRoles: builder.query<{ data: IRole[] }, null>({
+		getSearchLogs: builder.query<SearchLogResponse, null>({
 			query: () => ({
-				url: API.roles.base,
+				url: API.statistics.search,
 				method: 'GET',
 			}),
-			providesTags: [{ type: 'Roles', id: 'all' }],
+			providesTags: [{ type: 'SearchLogs', id: 'All' }],
 			onQueryStarted: async (_arg, api) => {
 				try {
 					await api.queryFulfilled
@@ -23,13 +23,12 @@ export const rolesApiSlice = apiSlice.injectEndpoints({
 				}
 			},
 		}),
-
-		getRolesWithStats: builder.query<{ data: IRoleWithStats[] }, null>({
+		getActivityLogs: builder.query<ActivityLogResponse, null>({
 			query: () => ({
-				url: API.roles.stats,
+				url: API.statistics.activity,
 				method: 'GET',
 			}),
-			providesTags: [{ type: 'Roles', id: 'stats' }],
+			providesTags: [{ type: 'ActivityLogs', id: 'All' }],
 			onQueryStarted: async (_arg, api) => {
 				try {
 					await api.queryFulfilled
@@ -42,4 +41,4 @@ export const rolesApiSlice = apiSlice.injectEndpoints({
 	}),
 })
 
-export const { useGetRolesQuery, useGetRolesWithStatsQuery } = rolesApiSlice
+export const { useGetSearchLogsQuery, useGetActivityLogsQuery } = statisticsApiSlice

@@ -11,4 +11,5 @@ export const AppRoutes = Object.freeze({
 	UserAccess: '/accesses/user' as const,
 	RoleAccess: '/accesses/roles' as const,
 	Permissions: '/accesses/permissions' as const,
+	Statistics: '/statistics' as const,
 })
