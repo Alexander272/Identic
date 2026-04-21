@@ -25,12 +25,14 @@ const (
 type ActivityLog struct {
 	ID            uuid.UUID       `json:"id" db:"id"`
 	Action        ActionType      `json:"action" db:"action"`
+	Actor         UserShort       `json:"actor" db:"actor"`
 	ChangedBy     uuid.UUID       `json:"changedBy" db:"changed_by"`
 	ChangedByName string          `json:"changedByName" db:"changed_by_name"`
 	EntityType    EntityType      `json:"entityType" db:"entity_type"`
 	EntityID      string          `json:"entityId" db:"entity_id"`
 	Entity        *string         `json:"entity,omitempty" db:"entity"`
 	ParentID      *string         `json:"parentId,omitempty" db:"parent_id"`
+	Order         string          `json:"order,omitempty" db:"order"`
 	OldValues     json.RawMessage `json:"oldValues,omitempty" db:"old_values"`
 	NewValues     json.RawMessage `json:"newValues,omitempty" db:"new_values"`
 	CreatedAt     time.Time       `json:"createdAt" db:"created_at"`

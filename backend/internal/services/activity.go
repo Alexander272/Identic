@@ -219,7 +219,7 @@ func formatOrderEntity(order *models.OrderDTO) string {
 
 func formatOrderEntityByParts(customer, consumer string) string {
 	if customer != "" && consumer != "" {
-		return customer + " / " + consumer
+		return consumer + " / " + customer
 	}
 	if customer != "" {
 		return customer

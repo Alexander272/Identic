@@ -53,15 +53,16 @@ func (r *SearchLogRepo) Create(ctx context.Context, dto *models.CreateSearchLogD
 
 func (r *SearchLogRepo) Get(ctx context.Context, dto *models.GetSearchLogsDTO) ([]*models.SearchLog, error) {
 	baseQuery := fmt.Sprintf(`
-		SELECT id, search_id, actor_id, actor_name, search_type, query, duration_ms, results_count, items_count, created_at
-		FROM %s`,
-		Tables.SearchLogs,
+		SELECT s.id, search_id, actor_id, actor_name, search_type, query, duration_ms, results_count, items_count, s.created_at,
+		COALESCE(u.last_name, ''), COALESCE(u.first_name, ''), COALESCE(u.email, '')
+		FROM %s s LEFT JOIN %s u ON actor_id::text=u.sso_id`,
+		Tables.SearchLogs, Tables.Users,
 	)
 
 	qb := NewQueryBuilder(baseQuery)
 	qb.AddUUIDFilter("actor_id", dto.ActorID)
-	qb.AddDateRangeFilter("created_at", dto.StartDate, dto.EndDate)
-	qb.SetSort("created_at", true)
+	qb.AddDateRangeFilter("s.created_at", dto.StartDate, dto.EndDate)
+	qb.SetSort("s.created_at", true)
 
 	if dto.Limit > 0 {
 		qb.SetLimit(dto.Limit)
@@ -86,6 +87,7 @@ func (r *SearchLogRepo) Get(ctx context.Context, dto *models.GetSearchLogsDTO) (
 		if err := rows.Scan(
 			&log.ID, &log.SearchId, &log.ActorID, &log.ActorName, &log.SearchType,
 			&queryBytes, &log.DurationMs, &log.ResultsCount, &log.ItemsCount, &log.CreatedAt,
+			&log.Actor.LastName, &log.Actor.FirstName, &log.Actor.Email,
 		); err != nil {
 			return nil, fmt.Errorf("failed to scan search log: %w", err)
 		}

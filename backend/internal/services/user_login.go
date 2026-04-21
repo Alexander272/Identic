@@ -26,6 +26,7 @@ type UserLogins interface {
 	RecordLogin(ctx context.Context, dto *models.UserLoginDTO) error
 	GetByUser(ctx context.Context, req *models.GetUserLoginsDTO) ([]*models.UserLogin, int64, error)
 	GetLastByUser(ctx context.Context, userID string) (*models.UserLogin, error)
+	GetLastByUsers(ctx context.Context, req *models.GetUserLoginsDTO) ([]*models.UserLoginWithUser, error)
 	UpdateLastActivity(ctx context.Context, tx postgres.Tx, userID string) (bool, error)
 }
 
@@ -68,6 +69,14 @@ func (s *userLoginService) GetLastByUser(ctx context.Context, userID string) (*m
 		return nil, fmt.Errorf("failed to get last user login: %w", err)
 	}
 	return login, nil
+}
+
+func (s *userLoginService) GetLastByUsers(ctx context.Context, req *models.GetUserLoginsDTO) ([]*models.UserLoginWithUser, error) {
+	logins, err := s.repo.GetLastByUsers(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get last user logins: %w", err)
+	}
+	return logins, nil
 }
 
 func (s *userLoginService) UpdateLastActivity(ctx context.Context, tx postgres.Tx, userID string) (bool, error) {

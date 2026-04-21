@@ -34,7 +34,7 @@ func (r *auditRepo) Get(ctx context.Context, req *models.GetAuditLogsDTO) ([]*mo
 		FROM %s ORDER BY created_at DESC`,
 		Tables.AuditLogs,
 	)
-	var data []*models.AuditLog
+	data := []*models.AuditLog{}
 
 	rows, err := r.db.Query(ctx, query)
 	if err != nil {

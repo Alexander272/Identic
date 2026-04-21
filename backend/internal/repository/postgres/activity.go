@@ -68,16 +68,20 @@ func (r *ActivityRepo) CreateBatch(ctx context.Context, tx Tx, dtos []*models.Cr
 }
 
 func (r *ActivityRepo) Get(ctx context.Context, req *models.GetAllActivityLogsDTO) ([]*models.ActivityLog, error) {
-	baseQuery := fmt.Sprintf(`SELECT id, action, changed_by, changed_by_name, entity_type, entity_id, entity, 
-		parent_id, old_values, new_values, created_at
-		FROM %s`,
-		Tables.ActivityLogs,
+	baseQuery := fmt.Sprintf(`SELECT a.id, action, changed_by, changed_by_name, entity_type, entity_id, entity, 
+		parent_id, old_values, new_values, a.created_at,
+		COALESCE(u.last_name, ''), COALESCE(u.first_name, ''), COALESCE(u.email, ''),
+		CONCAT_WS(' / ', o.consumer, o.customer)
+		FROM %s a 
+		LEFT JOIN %s u ON changed_by::text=u.sso_id
+		LEFT JOIN %s o ON parent_id=o.id`,
+		Tables.ActivityLogs, Tables.Users, Tables.Orders,
 	)
 
 	qb := NewQueryBuilder(baseQuery)
-	qb.AddUUIDFilter("actor_id", req.ActorID)
-	qb.AddDateRangeFilter("created_at", req.StartDate, req.EndDate)
-	qb.SetSort("created_at", true)
+	qb.AddUUIDFilter("changed_by", req.ActorID)
+	qb.AddDateRangeFilter("a.created_at", req.StartDate, req.EndDate)
+	qb.SetSort("a.created_at", true)
 
 	if req.Limit > 0 {
 		qb.SetLimit(req.Limit)
@@ -145,7 +149,10 @@ func (r *ActivityRepo) scanLogs(rows pgx.Rows) ([]*models.ActivityLog, error) {
 		var oldBytes, newBytes []byte
 
 		err := rows.Scan(&log.ID, &log.Action, &log.ChangedBy, &log.ChangedByName,
-			&log.EntityType, &log.EntityID, &log.Entity, &log.ParentID, &oldBytes, &newBytes, &log.CreatedAt)
+			&log.EntityType, &log.EntityID, &log.Entity, &log.ParentID, &oldBytes, &newBytes, &log.CreatedAt,
+			&log.Actor.LastName, &log.Actor.FirstName, &log.Actor.Email,
+			&log.Order,
+		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan activity log: %w", err)
 		}

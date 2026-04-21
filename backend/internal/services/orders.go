@@ -278,6 +278,7 @@ func (s *OrdersService) Update(ctx context.Context, dto *models.OrderDTO) error 
 				Created: created,
 				Updated: updated,
 				Deleted: deleted,
+				Old:     oldOrder.Positions,
 			})
 		})
 	}, map[string]any{

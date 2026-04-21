@@ -17,6 +17,7 @@ const (
 type SearchLog struct {
 	ID           uuid.UUID       `json:"id" db:"id"`
 	SearchId     string          `json:"searchId" db:"search_id"`
+	Actor        UserShort       `json:"actor" db:"actor"`
 	ActorID      uuid.UUID       `json:"actorId" db:"actor_id"`
 	ActorName    string          `json:"actorName" db:"actor_name"`
 	SearchType   SearchType      `json:"searchType" db:"search_type"`

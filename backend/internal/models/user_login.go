@@ -50,3 +50,8 @@ type LoginMetadata struct {
 	IsBot          bool   `json:"isBot"`
 	Success        bool   `json:"success"`
 }
+
+type UserLoginWithUser struct {
+	UserLogin
+	User UserShort `json:"user"`
+}

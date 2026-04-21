@@ -84,7 +84,7 @@ func NewServices(deps *Deps) *Services {
 	session := NewSessionService(deps.Keycloak, user, policies, userLogins)
 
 	auditLogs := NewAuditLogService(deps.Repo.AuditLogs, transaction, updatePolicyEvent)
-	stats := NewStatisticService(activity, searchLog)
+	stats := NewStatisticService(activity, searchLog, userLogins)
 
 	return &Services{
 		Import:       import_file,

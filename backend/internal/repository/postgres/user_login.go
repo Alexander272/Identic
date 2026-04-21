@@ -28,6 +28,8 @@ type UserLogins interface {
 	GetByUser(ctx context.Context, req *models.GetUserLoginsDTO) ([]*models.UserLogin, error)
 	GetByUserCount(ctx context.Context, userID string) (int64, error)
 	GetLastByUser(ctx context.Context, userID string) (*models.UserLogin, error)
+	GetLastWithUser(ctx context.Context, userID string) (*models.UserLoginWithUser, error)
+	GetLastByUsers(ctx context.Context, req *models.GetUserLoginsDTO) ([]*models.UserLoginWithUser, error)
 	Create(ctx context.Context, tx Tx, dto *models.UserLoginDTO) error
 	UpdateLastActivity(ctx context.Context, tx Tx, userID string) (bool, error)
 }
@@ -83,7 +85,7 @@ func (r *userLoginRepo) GetByUserCount(ctx context.Context, userID string) (int6
 }
 
 func (r *userLoginRepo) GetLastByUser(ctx context.Context, userID string) (*models.UserLogin, error) {
-	query := fmt.Sprintf(`SELECT id, user_id, login_at, ip_address::text, user_agent, metadata, last_activity_at 
+	query := fmt.Sprintf(`SELECT id, user_id, login_at, ip_address::text, user_agent, metadata, last_activity_at
 		FROM %s WHERE user_id = $1 ORDER BY login_at DESC LIMIT 1`, Tables.UserLogins)
 
 	var login models.UserLogin
@@ -97,6 +99,79 @@ func (r *userLoginRepo) GetLastByUser(ctx context.Context, userID string) (*mode
 		return nil, fmt.Errorf("failed to get last user login: %w", err)
 	}
 	return &login, nil
+}
+
+func (r *userLoginRepo) GetLastWithUser(ctx context.Context, userID string) (*models.UserLoginWithUser, error) {
+	query := fmt.Sprintf(`SELECT ul.id, ul.user_id, ul.login_at, ul.ip_address::text, ul.user_agent, ul.metadata, ul.last_activity_at,
+			u.id, u.sso_id, u.first_name, u.last_name, u.email
+		FROM %s ul
+		JOIN %s u ON u.sso_id = ul.user_id
+		WHERE ul.user_id = $1
+		ORDER BY ul.login_at DESC
+		LIMIT 1`,
+		Tables.UserLogins, Tables.Users,
+	)
+
+	var result models.UserLoginWithUser
+	err := r.db.QueryRow(ctx, query, userID).Scan(
+		&result.ID, &result.UserID, &result.LoginAt, &result.IPAddress, &result.UserAgent, &result.Metadata, &result.LastActivityAt,
+		&result.User.ID, &result.User.SSO_ID, &result.User.FirstName, &result.User.LastName, &result.User.Email,
+	)
+	if err != nil {
+		if err.Error() == "no rows in result set" {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to get last user login with user: %w", err)
+	}
+	return &result, nil
+}
+
+func (r *userLoginRepo) GetLastByUsers(ctx context.Context, req *models.GetUserLoginsDTO) ([]*models.UserLoginWithUser, error) {
+	baseQuery := fmt.Sprintf(`SELECT ul.id, ul.user_id, ul.login_at, ul.ip_address::text, ul.user_agent, ul.metadata, ul.last_activity_at,
+		u.id, u.sso_id, u.first_name, u.last_name, u.email
+		FROM (
+			SELECT DISTINCT ON (user_id) id, user_id, login_at, ip_address, user_agent, metadata, last_activity_at
+			FROM %s
+			ORDER BY user_id, login_at DESC
+		) ul
+		JOIN %s u ON u.sso_id = ul.user_id`,
+		Tables.UserLogins, Tables.Users,
+	)
+
+	qb := NewQueryBuilder(baseQuery)
+	qb.AddDateRangeFilter("ul.login_at", req.StartDate, req.EndDate)
+	qb.SetSort("ul.login_at", true)
+
+	if req.Limit > 0 {
+		qb.SetLimit(req.Limit)
+	}
+	if req.Offset > 0 {
+		qb.SetOffset(req.Offset)
+	}
+
+	query, args := qb.Build()
+
+	rows, err := r.db.Query(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute query: %w", err)
+	}
+	defer rows.Close()
+
+	var data []*models.UserLoginWithUser
+	for rows.Next() {
+		tmp := &models.UserLoginWithUser{}
+		if err := rows.Scan(
+			&tmp.ID, &tmp.UserID, &tmp.LoginAt, &tmp.IPAddress, &tmp.UserAgent, &tmp.Metadata, &tmp.LastActivityAt,
+			&tmp.User.ID, &tmp.User.SSO_ID, &tmp.User.FirstName, &tmp.User.LastName, &tmp.User.Email,
+		); err != nil {
+			return nil, fmt.Errorf("failed to scan row: %w", err)
+		}
+		data = append(data, tmp)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error during rows iteration: %w", err)
+	}
+	return data, nil
 }
 
 func (r *userLoginRepo) Create(ctx context.Context, tx Tx, dto *models.UserLoginDTO) error {
