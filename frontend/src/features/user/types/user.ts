@@ -6,6 +6,14 @@ export interface IUser {
 	token: string
 }
 
+export interface IUserShort {
+	id: string
+	ssoId: string
+	firstName: string
+	lastName: string
+	email: string
+}
+
 export interface IUserData {
 	id: string
 	ssoId: string

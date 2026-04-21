@@ -32,5 +32,6 @@ export const API = {
 	statistics: {
 		search: '/statistics/search' as const,
 		activity: '/statistics/activity' as const,
+		logins: '/statistics/logins' as const,
 	},
 }

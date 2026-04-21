@@ -43,7 +43,8 @@ export const Users = () => {
 	const [roleFilter, setRoleFilter] = useState<string[]>([''])
 	const [statusFilter, setStatusFilter] = useState('')
 
-	const [userToUpdate, setUserToUpdate] = useState<IUserData | null>(null)
+	const [modalType, setModalType] = useState<'edit' | 'logins'>('edit')
+	const [user, setUser] = useState<IUserData | null>(null)
 
 	const debouncedSearch = useDebounce(search, 300)
 
@@ -105,6 +106,11 @@ export const Users = () => {
 		}
 
 		setRoleFilter(newValue)
+	}
+
+	const userHandler = (user: IUserData | null, type: 'edit' | 'logins') => {
+		setUser(user)
+		setModalType(type)
 	}
 
 	return (
@@ -185,7 +191,7 @@ export const Users = () => {
 				</Select>
 			</Box>
 
-			<UpdateModal user={userToUpdate} onClose={() => setUserToUpdate(null)} />
+			<UpdateModal user={modalType == 'edit' ? user : null} onClose={() => setUser(null)} />
 
 			{/* Table Container */}
 			<TableContainer component={Paper} elevation={0} sx={{ border: '1px solid #eee', borderRadius: 2 }}>
@@ -224,7 +230,7 @@ export const Users = () => {
 					</TableHead>
 					<TableBody>
 						{filteredUsers.map(user => (
-							<UserRow key={user.id} u={user} setUser={setUserToUpdate} />
+							<UserRow key={user.id} u={user} setUser={userHandler} />
 						))}
 						{!data?.data.length && !isFetching ? (
 							<TableRow>
@@ -242,7 +248,7 @@ export const Users = () => {
 
 type RowProps = {
 	u: IUserData
-	setUser: (user: IUserData | null) => void
+	setUser: (user: IUserData | null, type: 'edit' | 'logins') => void
 }
 
 const UserRow: FC<RowProps> = ({ u, setUser }) => {
@@ -253,7 +259,14 @@ const UserRow: FC<RowProps> = ({ u, setUser }) => {
 		e.stopPropagation()
 		e.preventDefault()
 
-		setUser(u)
+		setUser(u, 'edit')
+	}
+
+	const openLoginsHandler = (e: React.MouseEvent) => {
+		e.stopPropagation()
+		e.preventDefault()
+
+		setUser(u, 'logins')
 	}
 
 	return (
@@ -310,7 +323,17 @@ const UserRow: FC<RowProps> = ({ u, setUser }) => {
 			</TableCell>
 
 			{/* Последний вход */}
-			<TableCell align='center' sx={{ color: 'text.secondary', fontSize: '13px' }}>
+			<TableCell
+				onClick={openLoginsHandler}
+				align='center'
+				sx={{
+					color: 'text.secondary',
+					fontSize: '13px',
+					cursor: 'pointer',
+					transition: 'all 0.3s ease-in-out',
+					':hover': { color: palette.secondary.main },
+				}}
+			>
 				{getSmartDate(u.lastVisit)}
 			</TableCell>
 

@@ -8,20 +8,20 @@ import { ShieldLockIcon } from '@/components/Icons/ShieldLockIcon'
 import { ShieldIcon } from '@/components/Icons/ShieldIcon'
 import { UserIcon } from '@/components/Icons/UserIcon'
 
+const menuItems = [
+	{ path: AppRoutes.Accesses, label: 'Дашборд', icon: <DashboardIcon sx={{ fontSize: 18 }} /> },
+	{
+		path: AppRoutes.UserAccess,
+		label: 'Пользователи',
+		icon: <UserIcon sx={{ fill: '#000', fontSize: 22 }} />,
+	},
+	{ path: AppRoutes.RoleAccess, label: 'Роли', icon: <ShieldLockIcon sx={{ fontSize: 22 }} /> },
+	{ path: AppRoutes.Permissions, label: 'Права доступа', icon: <AccessHandleIcon fontSize='small' /> },
+]
+
 const Sidebar = () => {
 	const location = useLocation()
 	const navigate = useNavigate()
-
-	const menuItems = [
-		{ path: AppRoutes.Accesses, label: 'Дашборд', icon: <DashboardIcon sx={{ fontSize: 18 }} /> },
-		{
-			path: AppRoutes.UserAccess,
-			label: 'Пользователи',
-			icon: <UserIcon sx={{ fill: '#000', fontSize: 22 }} />,
-		},
-		{ path: AppRoutes.RoleAccess, label: 'Роли', icon: <ShieldLockIcon sx={{ fontSize: 22 }} /> },
-		{ path: AppRoutes.Permissions, label: 'Права доступа', icon: <AccessHandleIcon fontSize='small' /> },
-	]
 
 	const handleSwitch = (path: string) => {
 		navigate(path)

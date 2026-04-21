@@ -10,6 +10,7 @@ import { AddFileIcon } from '../Icons/AddFileIcon'
 import { SearchIcon } from '../Icons/SearchIcon'
 import { LogoutIcon } from '../Icons/LogoutIcon'
 import { ShieldIcon } from '../Icons/ShieldIcon'
+import { ReportsIcon } from '../Icons/ReportsIcon'
 
 export const LayoutHeader = () => {
 	const { palette } = useTheme()
@@ -21,6 +22,7 @@ export const LayoutHeader = () => {
 	}
 
 	const canEditSettings = useCheckPermission(PermRules.Users.Write)
+	const canSeeStats = useCheckPermission([PermRules.SearchLog.Read, PermRules.ActivityLog.Read])
 
 	return (
 		<AppBar position='relative' sx={{ borderRadius: 0, alignItems: 'center' }}>
@@ -40,7 +42,7 @@ export const LayoutHeader = () => {
 
 				<Stack ml={'auto'} direction={'row'} spacing={0.5}>
 					{canEditSettings ? (
-						<Link to={AppRoutes.Accesses} aria-label='roles page'>
+						<Link to={AppRoutes.Accesses}>
 							<Tooltip title='Настройка доступа' disableInteractive>
 								<NavBox sx={{ ':hover': { svg: { stroke: palette.primary.main } } }}>
 									<ShieldIcon sx={{ fontSize: 26, transition: '0.3s all ease-in-out' }} />
@@ -49,21 +51,25 @@ export const LayoutHeader = () => {
 						</Link>
 					) : null}
 
-					<Link to={AppRoutes.CreateOrder} aria-label='roles page'>
+					{canSeeStats ? (
+						<Link to={AppRoutes.Statistics}>
+							<Tooltip title='Статистика' disableInteractive>
+								<NavBox sx={{ ':hover': { svg: { stroke: palette.primary.main } } }}>
+									<ReportsIcon sx={{ fontSize: 26, transition: '0.3s all ease-in-out' }} />
+								</NavBox>
+							</Tooltip>
+						</Link>
+					) : null}
+
+					<Link to={AppRoutes.CreateOrder}>
 						<Tooltip title='Добавить заказ' disableInteractive>
 							<NavBox sx={{ ':hover': { svg: { fill: palette.primary.main } } }}>
 								<AddFileIcon fill={'#000'} fontSize={26} transition={'0.3s all ease-in-out'} />
 							</NavBox>
 						</Tooltip>
 					</Link>
-					{/* <Link to={AppRoutes.OrdersList} aria-label='roles page'>
-						<Tooltip title='Список всех позиций' disableInteractive>
-							<NavBox sx={{ ':hover': { svg: { fill: palette.primary.main } } }}>
-								<TextDocIcon fill={'#000'} fontSize={26} transition={'0.3s all ease-in-out'} />
-							</NavBox>
-						</Tooltip>
-					</Link> */}
-					<Link to={AppRoutes.Search} aria-label='roles page'>
+
+					<Link to={AppRoutes.Search}>
 						<Tooltip title='Поиск' disableInteractive>
 							<NavBox sx={{ ':hover': { svg: { fill: palette.primary.main } } }}>
 								<SearchIcon fill={'#000'} fontSize={24} transition={'0.3s all ease-in-out'} />

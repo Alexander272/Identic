@@ -1,0 +1,1589 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Аналитика — Система заказов</title>
+    <style>
+        :root {
+            --bg-primary: #0f1117;
+            --bg-secondary: #1a1d27;
+            --bg-card: #222633;
+            --bg-hover: #2a2f3e;
+            --border: #2e3348;
+            --text-primary: #e4e6f0;
+            --text-secondary: #8b8fa3;
+            --text-muted: #5c6078;
+            --accent: #6c5ce7;
+            --accent-light: #a29bfe;
+            --green: #00b894;
+            --green-bg: rgba(0, 184, 148, 0.1);
+            --red: #ff6b6b;
+            --red-bg: rgba(255, 107, 107, 0.1);
+            --orange: #fdcb6e;
+            --orange-bg: rgba(253, 203, 110, 0.1);
+            --blue: #74b9ff;
+            --blue-bg: rgba(116, 185, 255, 0.1);
+            --radius: 12px;
+            --radius-sm: 8px;
+            --shadow: 0 4px 24px rgba(0,0,0,0.3);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        /* ===== SIDEBAR ===== */
+        .layout {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            width: 260px;
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border);
+            padding: 24px 16px;
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            z-index: 100;
+            transition: transform 0.3s ease;
+        }
+
+        .sidebar-logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 0 8px 24px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 24px;
+        }
+
+        .sidebar-logo .icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--accent), var(--accent-light));
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+
+        .sidebar-logo h1 {
+            font-size: 18px;
+            font-weight: 700;
+        }
+
+        .sidebar-logo span {
+            font-size: 11px;
+            color: var(--text-muted);
+            display: block;
+        }
+
+        .nav-section {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--text-muted);
+            padding: 0 8px;
+            margin-bottom: 8px;
+            margin-top: 20px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 12px;
+            border-radius: var(--radius-sm);
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-bottom: 2px;
+        }
+
+        .nav-item:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+
+        .nav-item.active {
+            background: rgba(108, 92, 231, 0.15);
+            color: var(--accent-light);
+        }
+
+        .nav-item .nav-icon {
+            font-size: 18px;
+            width: 24px;
+            text-align: center;
+        }
+
+        .nav-item .badge {
+            margin-left: auto;
+            background: var(--accent);
+            color: white;
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-weight: 600;
+        }
+
+        /* ===== MAIN CONTENT ===== */
+        .main {
+            flex: 1;
+            margin-left: 260px;
+            padding: 32px;
+            max-width: 1400px;
+        }
+
+        /* ===== HEADER ===== */
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 32px;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .page-header h2 {
+            font-size: 28px;
+            font-weight: 700;
+        }
+
+        .page-header p {
+            color: var(--text-secondary);
+            font-size: 14px;
+            margin-top: 4px;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .date-filter {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 8px 16px;
+            color: var(--text-primary);
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        .date-filter select {
+            background: transparent;
+            border: none;
+            color: var(--text-primary);
+            font-size: 13px;
+            cursor: pointer;
+            outline: none;
+        }
+
+        .date-filter select option {
+            background: var(--bg-card);
+        }
+
+        .btn {
+            padding: 8px 20px;
+            border-radius: var(--radius-sm);
+            border: none;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5b4bd5;
+            transform: translateY(-1px);
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+        }
+
+        .btn-outline:hover {
+            border-color: var(--accent);
+            color: var(--accent-light);
+        }
+
+        /* ===== KPI CARDS ===== */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+
+        .kpi-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 24px;
+            transition: all 0.3s;
+        }
+
+        .kpi-card:hover {
+            border-color: var(--accent);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow);
+        }
+
+        .kpi-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .kpi-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+        }
+
+        .kpi-icon.purple { background: rgba(108, 92, 231, 0.15); }
+        .kpi-icon.green { background: var(--green-bg); }
+        .kpi-icon.orange { background: var(--orange-bg); }
+        .kpi-icon.blue { background: var(--blue-bg); }
+        .kpi-icon.red { background: var(--red-bg); }
+
+        .kpi-change {
+            font-size: 12px;
+            font-weight: 600;
+            padding: 4px 8px;
+            border-radius: 6px;
+        }
+
+        .kpi-change.up {
+            color: var(--green);
+            background: var(--green-bg);
+        }
+
+        .kpi-change.down {
+            color: var(--red);
+            background: var(--red-bg);
+        }
+
+        .kpi-value {
+            font-size: 32px;
+            font-weight: 800;
+            margin-bottom: 4px;
+        }
+
+        .kpi-label {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        /* ===== TABS ===== */
+        .tabs-container {
+            margin-bottom: 24px;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 4px;
+            background: var(--bg-secondary);
+            padding: 4px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border);
+            width: fit-content;
+        }
+
+        .tab {
+            padding: 8px 20px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+            background: transparent;
+        }
+
+        .tab:hover {
+            color: var(--text-primary);
+        }
+
+        .tab.active {
+            background: var(--accent);
+            color: white;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* ===== CHARTS SECTION ===== */
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+
+        .chart-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 24px;
+        }
+
+        .chart-card h3 {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .chart-card .subtitle {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: 20px;
+        }
+
+        /* Simple bar chart using CSS */
+        .bar-chart {
+            display: flex;
+            align-items: flex-end;
+            gap: 8px;
+            height: 200px;
+            padding-top: 20px;
+        }
+
+        .bar-group {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            height: 100%;
+            justify-content: flex-end;
+        }
+
+        .bar {
+            width: 100%;
+            max-width: 48px;
+            border-radius: 6px 6px 0 0;
+            transition: all 0.3s;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .bar:hover {
+            opacity: 0.8;
+            transform: scaleY(1.02);
+        }
+
+        .bar-label {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .bar-value {
+            font-size: 11px;
+            color: var(--text-secondary);
+            font-weight: 600;
+        }
+
+        /* Donut chart */
+        .donut-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 24px;
+        }
+
+        .donut {
+            width: 180px;
+            height: 180px;
+            border-radius: 50%;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .donut-center {
+            position: absolute;
+            width: 110px;
+            height: 110px;
+            background: var(--bg-card);
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .donut-center .value {
+            font-size: 28px;
+            font-weight: 800;
+        }
+
+        .donut-center .label {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .donut-legend {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            width: 100%;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+        }
+
+        .legend-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+
+        .legend-item span:last-child {
+            margin-left: auto;
+            font-weight: 600;
+        }
+
+        /* ===== TABLES ===== */
+        .table-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+            margin-bottom: 24px;
+        }
+
+        .table-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .table-header h3 {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .table-search {
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 8px 14px;
+            color: var(--text-primary);
+            font-size: 13px;
+            outline: none;
+            width: 260px;
+            transition: border-color 0.2s;
+        }
+
+        .table-search:focus {
+            border-color: var(--accent);
+        }
+
+        .table-search::placeholder {
+            color: var(--text-muted);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead th {
+            text-align: left;
+            padding: 12px 24px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+        }
+
+        tbody td {
+            padding: 14px 24px;
+            font-size: 13px;
+            border-bottom: 1px solid var(--border);
+            vertical-align: middle;
+        }
+
+        tbody tr {
+            transition: background 0.2s;
+        }
+
+        tbody tr:hover {
+            background: var(--bg-hover);
+        }
+
+        tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .status {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+        }
+
+        .status.success { background: var(--green-bg); color: var(--green); }
+        .status.success .status-dot { background: var(--green); }
+
+        .status.warning { background: var(--orange-bg); color: var(--orange); }
+        .status.warning .status-dot { background: var(--orange); }
+
+        .status.error { background: var(--red-bg); color: var(--red); }
+        .status.error .status-dot { background: var(--red); }
+
+        .status.info { background: var(--blue-bg); color: var(--blue); }
+        .status.info .status-dot { background: var(--blue); }
+
+        .user-cell {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            font-weight: 700;
+            color: white;
+        }
+
+        .user-info .name {
+            font-weight: 600;
+            font-size: 13px;
+        }
+
+        .user-info .email {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .search-query {
+            font-family: 'JetBrains Mono', 'Fira Code', monospace;
+            font-size: 12px;
+            background: var(--bg-primary);
+            padding: 4px 8px;
+            border-radius: 4px;
+            max-width: 280px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .match-count {
+            font-weight: 700;
+            color: var(--accent-light);
+        }
+
+        /* ===== ACTIVITY FEED ===== */
+        .activity-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        .activity-feed {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+        }
+
+        .activity-item {
+            display: flex;
+            gap: 14px;
+            padding: 14px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .activity-item:last-child {
+            border-bottom: none;
+        }
+
+        .activity-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+
+        .activity-icon.search { background: rgba(108, 92, 231, 0.15); }
+        .activity-icon.order { background: var(--green-bg); }
+        .activity-icon.login { background: var(--blue-bg); }
+        .activity-icon.export { background: var(--orange-bg); }
+        .activity-icon.delete { background: var(--red-bg); }
+
+        .activity-content {
+            flex: 1;
+        }
+
+        .activity-content .title {
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 2px;
+        }
+
+        .activity-content .title strong {
+            color: var(--accent-light);
+        }
+
+        .activity-content .time {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        /* ===== TOP SEARCHES ===== */
+        .top-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .top-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .top-rank {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 700;
+            background: var(--bg-primary);
+            color: var(--text-muted);
+        }
+
+        .top-rank.gold { background: rgba(253, 203, 110, 0.2); color: var(--orange); }
+        .top-rank.silver { background: rgba(116, 185, 255, 0.2); color: var(--blue); }
+        .top-rank.bronze { background: rgba(0, 184, 148, 0.2); color: var(--green); }
+
+        .top-info {
+            flex: 1;
+        }
+
+        .top-info .query {
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .top-info .bar-bg {
+            height: 4px;
+            background: var(--bg-primary);
+            border-radius: 2px;
+            margin-top: 6px;
+            overflow: hidden;
+        }
+
+        .top-info .bar-fill {
+            height: 100%;
+            border-radius: 2px;
+            transition: width 0.6s ease;
+        }
+
+        .top-count {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-secondary);
+            min-width: 30px;
+            text-align: right;
+        }
+
+        /* ===== PAGINATION ===== */
+        .table-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 24px;
+            border-top: 1px solid var(--border);
+        }
+
+        .table-footer .info {
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        .pagination {
+            display: flex;
+            gap: 4px;
+        }
+
+        .page-btn {
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--text-secondary);
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .page-btn:hover {
+            border-color: var(--accent);
+            color: var(--accent-light);
+        }
+
+        .page-btn.active {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: white;
+        }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 1200px) {
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+            .activity-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+            .sidebar.open {
+                transform: translateX(0);
+            }
+            .main {
+                margin-left: 0;
+                padding: 20px;
+            }
+            .kpi-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+            .page-header {
+                flex-direction: column;
+            }
+        }
+
+        /* ===== SCROLLBAR ===== */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: var(--bg-primary);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-muted);
+        }
+
+        /* ===== TOOLTIP ===== */
+        .tooltip {
+            position: relative;
+        }
+        .tooltip::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: calc(100% + 8px);
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+        }
+        .tooltip:hover::after {
+            opacity: 1;
+        }
+
+        /* ===== ANIMATIONS ===== */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .kpi-card, .chart-card, .table-card {
+            animation: fadeIn 0.4s ease forwards;
+        }
+
+        .kpi-card:nth-child(2) { animation-delay: 0.05s; }
+        .kpi-card:nth-child(3) { animation-delay: 0.1s; }
+        .kpi-card:nth-child(4) { animation-delay: 0.15s; }
+        .kpi-card:nth-child(5) { animation-delay: 0.2s; }
+
+        /* ===== LIVE DOT ===== */
+        .live-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--green);
+            border-radius: 50%;
+            display: inline-block;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        .live-indicator {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: var(--green);
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+
+<div class="layout">
+    <!-- ===== SIDEBAR ===== -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-logo">
+            <div class="icon">📦</div>
+            <div>
+                <h1>OrderAnalytics</h1>
+                <span>Система заказов v2.4</span>
+            </div>
+        </div>
+
+        <div class="nav-section">Основное</div>
+        <a class="nav-item active">
+            <span class="nav-icon">📊</span>
+            Дашборд
+        </a>
+        <a class="nav-item">
+            <span class="nav-icon">🔍</span>
+            Логи поиска
+            <span class="badge">24</span>
+        </a>
+        <a class="nav-item">
+            <span class="nav-icon">📋</span>
+            Заказы
+        </a>
+        <a class="nav-item">
+            <span class="nav-icon">🏷️</span>
+            Позиции
+        </a>
+
+        <div class="nav-section">Мониторинг</div>
+        <a class="nav-item">
+            <span class="nav-icon">👥</span>
+            Пользователи
+        </a>
+        <a class="nav-item">
+            <span class="nav-icon">⚡</span>
+            Активность
+        </a>
+        <a class="nav-item">
+            <span class="nav-icon">🚨</span>
+            Ошибки
+            <span class="badge">3</span>
+        </a>
+
+        <div class="nav-section">Настройки</div>
+        <a class="nav-item">
+            <span class="nav-icon">⚙️</span>
+            Конфигурация
+        </a>
+        <a class="nav-item">
+            <span class="nav-icon">📤</span>
+            Экспорт данных
+        </a>
+    </aside>
+
+    <!-- ===== MAIN ===== -->
+    <main class="main">
+
+        <!-- Page Header -->
+        <div class="page-header">
+            <div>
+                <h2>📊 Аналитика</h2>
+                <p>Обзор поисковых запросов, активности пользователей и заказов</p>
+            </div>
+            <div class="header-actions">
+                <div class="live-indicator">
+                    <span class="live-dot"></span>
+                    Live
+                </div>
+                <div class="date-filter">
+                    📅
+                    <select id="periodSelect">
+                        <option value="today">Сегодня</option>
+                        <option value="week" selected>Последние 7 дней</option>
+                        <option value="month">Последние 30 дней</option>
+                        <option value="quarter">Квартал</option>
+                        <option value="year">Год</option>
+                    </select>
+                </div>
+                <button class="btn btn-outline" onclick="exportData()">📤 Экспорт</button>
+                <button class="btn btn-primary" onclick="refreshData()">🔄 Обновить</button>
+            </div>
+        </div>
+
+        <!-- KPI Cards -->
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-header">
+                    <div class="kpi-icon purple">🔍</div>
+                    <span class="kpi-change up">↑ 12.5%</span>
+                </div>
+                <div class="kpi-value">1,847</div>
+                <div class="kpi-label">Поисковых запросов</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-header">
+                    <div class="kpi-icon green">📦</div>
+                    <span class="kpi-change up">↑ 8.3%</span>
+                </div>
+                <div class="kpi-value">342</div>
+                <div class="kpi-label">Найдено заказов</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-header">
+                    <div class="kpi-icon orange">👥</div>
+                    <span class="kpi-change up">↑ 4.1%</span>
+                </div>
+                <div class="kpi-value">89</div>
+                <div class="kpi-label">Активных пользователей</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-header">
+                    <div class="kpi-icon blue">⏱️</div>
+                    <span class="kpi-change down">↓ 15.2%</span>
+                </div>
+                <div class="kpi-value">0.8s</div>
+                <div class="kpi-label">Среднее время поиска</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-header">
+                    <div class="kpi-icon red">❌</div>
+                    <span class="kpi-change down">↓ 3.7%</span>
+                </div>
+                <div class="kpi-value">23</div>
+                <div class="kpi-label">Запросов без результатов</div>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs-container">
+            <div class="tabs">
+                <button class="tab active" onclick="switchTab('search-logs', this)">🔍 Логи поиска</button>
+                <button class="tab" onclick="switchTab('user-activity', this)">👥 Активность</button>
+                <button class="tab" onclick="switchTab('analytics', this)">📈 Аналитика</button>
+            </div>
+        </div>
+
+        <!-- ===== TAB: Search Logs ===== -->
+        <div class="tab-content active" id="tab-search-logs">
+            <div class="table-card">
+                <div class="table-header">
+                    <h3>📋 Логи поисковых запросов</h3>
+                    <div style="display:flex;gap:8px;align-items:center;">
+                        <input type="text" class="table-search" placeholder="Поиск по пользователю или запросу..." id="searchLogFilter" oninput="filterSearchLogs()">
+                        <select class="date-filter" style="padding:8px 12px;font-size:13px;" id="statusFilter" onchange="filterSearchLogs()">
+                            <option value="all">Все статусы</option>
+                            <option value="success">Успешно</option>
+                            <option value="empty">Без результатов</option>
+                            <option value="error">Ошибка</option>
+                        </select>
+                    </div>
+                </div>
+                <table id="searchLogsTable">
+                    <thead>
+                        <tr>
+                            <th>Время</th>
+                            <th>Пользователь</th>
+                            <th>Поисковый запрос</th>
+                            <th>Позиций</th>
+                            <th>Результатов</th>
+                            <th>Время отклика</th>
+                            <th>Статус</th>
+                        </tr>
+                    </thead>
+                    <tbody id="searchLogsBody">
+                        <tr>
+                            <td style="white-space:nowrap;color:var(--text-muted)">17.04 14:32:05</td>
+                            <td>
+                                <div class="user-cell">
+                                    <div class="user-avatar" style="background:#6c5ce7">АК</div>
+                                    <div class="user-info">
+                                        <div class="name">Алексей Козлов</div>
+                                        <div class="email">a.kozlov@company.ru</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td><div class="search-query">SKD-2024, BLT-8841, WAS-1123</div></td>
+                            <td>3</td>
+                            <td><span class="match-count">12</span> заказов</td>
+                            <td>0.42s</td>
+                            <td><span class="status success"><span class="status-dot"></span>Успешно</span></td>
+                        </tr>
+                        <tr>
+                            <td style="white-space:nowrap;color:var(--text-muted)">17.04 14:28:17</td>
+                            <td>
+                                <div class="user-cell">
+                                    <div class="user-avatar" style="background:#00b894">МС</div>
+                                    <div class="user-info">
+                                        <div class="name">Мария Соколова</div>
+                                        <div class="email">m.sokolova@company.ru</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td><div class="search-query">NUT-M10X1.5, WAS-M10, SPR-10</div></td>
+                            <td>3</td>
+                            <td><span class="match-count">47</span> заказов</td>
+                            <td>0.68s</td>
+                            <td><span class="status success"><span class="status-dot"></span>Успешно</span></td>
+                        </tr>
+                        <tr>
+                            <td style="white-space:nowrap;color:var(--text-muted)">17.04 14:15:42</td>
+                            <td>
+                                <div class="user-cell">
+                                    <div class="user-avatar" style="background:#fdcb6e">ИП</div>
+                                    <div class="user-info">
+                                        <div class="name">Игорь Петров</div>
+                                        <div class="email">i.petrov@company.ru</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td><div class="search-query">BRG-6205ZZ, SHF-25</div></td>
+                            <td>2</td>
+                            <td><span class="match-count">0</span> заказов</td>
+                            <td>0.31s</td>
+                            <td><span class="status warning"><span class="status-dot"></span>Без результатов</span></td>
+                        </tr>
+                        <tr>
+                            <td style="white-space:nowrap;color:var(--text-muted)">17.04 13:58:33</td>
+                            <td>
+                                <div class="user-cell">
+                                    <div class="user-avatar" style="background:#74b9ff">ЕВ</div>
+                                    <div class="user-info">
+                                        <div class="name">Елена Волкова</div>
+                                        <div class="email">e.volkova@company.ru</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td><div class="search-query">BLT-7721, BLT-7722, BLT-7723, BLT-7724</div></td>
+                            <td>4</td>
+                            <td><span class="match-count">8</span> заказов</td>
+                            <td>0.95s</td>
+                            <td><span class="status success"><span class="status-dot"></span>Успешно</span></td>
+                        </tr>
+                        <tr>
+                            <td style="white-space:nowrap;color:var(--text-muted)">17.04 13:41:09</td>
+                            <td>
+                                <div class="user-cell">
+                                    <div class="user-avatar" style="background:#ff6b6b">ДН</div>
+                                    <div class="user-info">
+                                        <div class="name">Дмитрий Новиков</div>
+                                        <div class="email">d.novikov@company.ru</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td><div class="search-query">ERR_TIMEOUT</div></td>
+                            <td>12</td>
+                            <td>—</td>
+                            <td>5.02s</td>
+                            <td><span class="status error"><span class="status-dot"></span>Ошибка</span></td>
+                        </tr>
+                        <tr>
+                            <td style="white-space:nowrap;color:var(--text-muted)">17.04 13:22:51</td>
+                            <td>
+                                <div class="user-cell">
+                                    <div class="user-avatar" style="background:#a29bfe">ОМ</div>
+                                    <div class="user-info">
+                                        <div class="name">Ольга Морозова</div>
+                                        <div class="email">o.morozova@company.ru</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td><div class="search-query">WAS-M8, NUT-M8, SPR-8</div></td>
+                            <td>3</td>
+                            <td><span class="match-count">23</span> заказов</td>
+                            <td>0.55s</td>
+                            <td><span class="status success"><span class="status-dot"></span>Успешно</span></td>
+                        </tr>
+                        <tr>
+                            <td style="white-space:nowrap;color:var(--text-muted)">17.04 12:55:18</td>
+                            <td>
+                                <div class="user-cell">
+                                    <div class="user-avatar" style="background:#6c5ce7">АК</div>
+                                    <div class="user-info">
+                                        <div class="name">Алексей Козлов</div>
+                                        <div class="email">a.kozlov@company.ru</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td><div class="search-query">BLT-XPA2000, BLT-XPB1800</div></td>
+                            <td>2</td>
+                            <td><span class="match-count">5</span> заказов</td>
+                            <td>0.38s</td>
+                            <td><span class="status success"><span class="status-dot"></span>Успешно</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div class="table-footer">
+                    <span class="info">Показано 1–7 из 1,847 записей</span>
+                    <div class="pagination">
+                        <button class="page-btn">‹</button>
+                        <button class="page-btn active">1</button>
+                        <button class="page-btn">2</button>
+                        <button class="page-btn">3</button>
+                        <button class="page-btn">...</button>
+                        <button class="page-btn">264</button>
+                        <button class="page-btn">›</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== TAB: User Activity ===== -->
+        <div class="tab-content" id="tab-user-activity">
+            <div class="activity-grid">
+                <!-- Activity Feed -->
+                <div class="chart-card">
+                    <h3>⚡ Лента активности</h3>
+                    <p class="subtitle">Последние действия пользователей</p>
+                    <div class="activity-feed">
+                        <div class="activity-item">
+                            <div class="activity-icon search">🔍</div>
+                            <div class="activity-content">
+                                <div class="title"><strong>Алексей Козлов</strong> выполнил поиск по 3 позициям</div>
+                                <div class="time">2 минуты назад</div>
+                            </div>
+                        </div>
+                        <div class="activity-item">
+                            <div class="activity-icon login">🔑</div>
+                            <div class="activity-content">
+                                <div class="title"><strong>Мария Соколова</strong> вошла в систему</div>
+                                <div class="time">15 минут назад</div>
+                            </div>
+                        </div>
+                        <div class="activity-item">
+                            <div class="activity-icon order">📦</div>
+                            <div class="activity-content">
+                                <div class="title"><strong>Игорь Петров</strong> открыл заказ #ORD-2024-1847</div>
+                                <div class="time">23 минуты назад</div>
+                            </div>
+                        </div>
+                        <div class="activity-item">
+                            <div class="activity-icon export">📤</div>
+                            <div class="activity-content">
+                                <div class="title"><strong>Елена Волкова</strong> экспортировала результаты поиска (Excel)</div>
+                                <div class="time">34 минуты назад</div>
+                            </div>
+                        </div>
+                        <div class="activity-item">
+                            <div class="activity-icon search">🔍</div>
+                            <div class="activity-content">
+                                <div class="title"><strong>Дмитрий Новиков</strong> выполнил поиск по 12 позициям</div>
+                                <div class="time">41 минуту назад</div>
+                            </div>
+                        </div>
+                        <div class="activity-item">
+                            <div class="activity-icon delete">🗑️</div>
+                            <div class="activity-content">
+                                <div class="title"><strong>Ольга Морозова</strong> удалил сохранённый фильтр «Крепёж M10»</div>
+                                <div class="time">58 минут назад</div>
+                            </div>
+                        </div>
+                        <div class="activity-item">
+                            <div class="activity-icon login">🔑</div>
+                            <div class="activity-content">
+                                <div class="title"><strong>Дмитрий Новиков</strong> вошёл в систему</div>
+                                <div class="time">1 час назад</div>
+                            </div>
+                        </div>
+                        <div class="activity-item">
+                            <div class="activity-icon order">📦</div>
+                            <div class="activity-content">
+                                <div class="title"><strong>Алексей Козлов</strong> создал новый заказ #ORD-2024-1852</div>
+                                <div class="time">1 час назад</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Top Users -->
+                <div class="chart-card">
+                    <h3>👥 Топ пользователей</h3>
+                    <p class="subtitle">По количеству поисковых запросов</p>
+                    <div style="margin-top:16px;">
+                        <div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);">
+                            <div class="user-avatar" style="background:#6c5ce7;width:40px;height:40px;font-size:15px;">АК</div>
+                            <div style="flex:1;">
+                                <div style="font-weight:600;font-size:14px;">Алексей Козлов</div>
+                                <div style="font-size:12px;color:var(--text-muted);">Менеджер отдела закупок</div>
+                            </div>
+                            <div style="text-align:right;">
+                                <div style="font-weight:700;font-size:16px;color:var(--accent-light);">342</div>
+                                <div style="font-size:11px;color:var(--text-muted);">запросов</div>
+                            </div>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);">
+                            <div class="user-avatar" style="background:#00b894;width:40px;height:40px;font-size:15px;">МС</div>
+                            <div style="flex:1;">
+                                <div style="font-weight:600;font-size:14px;">Мария Соколова</div>
+                                <div style="font-size:12px;color:var(--text-muted);">Снабженец</div>
+                            </div>
+                            <div style="text-align:right;">
+                                <div style="font-weight:700;font-size:16px;color:var(--accent-light);">287</div>
+                                <div style="font-size:11px;color:var(--text-muted);">запросов</div>
+                            </div>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);">
+                            <div class="user-avatar" style="background:#74b9ff;width:40px;height:40px;font-size:15px;">ЕВ</div>
+                            <div style="flex:1;">
+                                <div style="font-weight:600;font-size:14px;">Елена Волкова</div>
+                                <div style="font-size:12px;color:var(--text-muted);">Логист</div>
+                            </div>
+                            <div style="text-align:right;">
+                                <div style="font-weight:700;font-size:16px;color:var(--accent-light);">215</div>
+                                <div style="font-size:11px;color:var(--text-muted);">запросов</div>
+                            </div>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);">
+                            <div class="user-avatar" style="background:#fdcb6e;width:40px;height:40px;font-size:15px;">ИП</div>
+                            <div style="flex:1;">
+                                <div style="font-weight:600;font-size:14px;">Игорь Петров</div>
+                                <div style="font-size:12px;color:var(--text-muted);">Инженер</div>
+                            </div>
+                            <div style="text-align:right;">
+                                <div style="font-weight:700;font-size:16px;color:var(--accent-light);">198</div>
+                                <div style="font-size:11px;color:var(--text-muted);">запросов</div>
+                            </div>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:12px;padding:12px 0;">
+                            <div class="user-avatar" style="background:#ff6b6b;width:40px;height:40px;font-size:15px;">ДН</div>
+                            <div style="flex:1;">
+                                <div style="font-weight:600;font-size:14px;">Дмитрий Новиков</div>
+                                <div style="font-size:12px;color:var(--text-muted);">Руководитель отдела</div>
+                            </div>
+                            <div style="text-align:right;">
+                                <div style="font-weight:700;font-size:16px;color:var(--accent-light);">156</div>
+                                <div style="font-size:11px;color:var(--text-muted);">запросов</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== TAB: Analytics ===== -->
+        <div class="tab-content" id="tab-analytics">
+            <div class="charts-grid">
+                <!-- Bar Chart -->
+                <div class="chart-card">
+                    <h3>📈 Поисковые запросы по дням</h3>
+                    <p class="subtitle">Количество запросов за последние 7 дней</p>
+                    <div class="bar-chart" id="barChart">
+                        <div class="bar-group">
+                            <div class="bar-value">187</div>
+                            <div class="bar" style="height:72%;background:linear-gradient(180deg, var(--accent-light), var(--accent));"></div>
+                            <div class="bar-label">Пн</div>
+                        </div>
+                        <div class="bar-group">
+                            <div class="bar-value">245</div>
+                            <div class="bar" style="height:94%;background:linear-gradient(180deg, var(--accent-light), var(--accent));"></div>
+                            <div class="bar-label">Вт</div>
+                        </div>
+                        <div class="bar-group">
+                            <div class="bar-value">198</div>
+                            <div class="bar" style="height:76%;background:linear-gradient(180deg, var(--accent-light), var(--accent));"></div>
+                            <div class="bar-label">Ср</div>
+                        </div>
+                        <div class="bar-group">
+                            <div class="bar-value">312</div>
+                            <div class="bar" style="height:100%;background:linear-gradient(180deg, var(--accent-light), var(--accent));"></div>
+                            <div class="bar-label">Чт</div>
+                        </div>
+                        <div class="bar-group">
+                            <div class="bar-value">276</div>
+                            <div class="bar" style="height:88%;background:linear-gradient(180deg, var(--accent-light), var(--accent));"></div>
+                            <div class="bar-label">Пт</div>
+                        </div>
+                        <div class="bar-group">
+                            <div class="bar-value">143</div>
+                            <div class="bar" style="height:55%;background:linear-gradient(180deg, var(--accent-light), var(--accent));"></div>
+                            <div class="bar-label">Сб</div>
+                        </div>
+                        <div class="bar-group">
+                            <div class="bar-value">89</div>
+                            <div class="bar" style="height:34%;background:linear-gradient(180deg, var(--accent-light), var(--accent));"></div>
+                            <div class="bar-label">Вс</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Donut Chart -->
+                <div class="chart-card">
+                    <h3>🎯 Результаты поиска</h3>
+                    <p class="subtitle">Распределение по типам результатов</p>
+                    <div class="donut-container">
+                        <div class="donut" style="background: conic-gradient(
+                            var(--green) 0deg 252deg,
+                            var(--orange) 252deg 310deg,
+                            var(--red) 310deg 340deg,
+                            var(--text-muted) 340deg 360deg
+                        );">
+                            <div class="donut-center">
+                                <div class="value">1,847</div>
+                                <div class="label">Всего</div>
+                            </div>
+                        </div>
+                        <div class="donut-legend">
+                            <div class="legend-item">
+                                <div class="legend-dot" style="background:var(--green)"></div>
+                                <span>Найдено</span>
+                                <span>70%</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-dot" style="background:var(--orange)"></div>
+                                <span>Без результатов</span>
+                                <span>16%</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-dot" style="background:var(--red)"></div>
+                                <span>Ошибки</span>
+                                <span>8%</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-dot" style="background:var(--text-muted)"></div>
+                                <span>Отменённые</span>
+                                <span>6%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Top Searches -->
+            <div class="charts-grid">
+                <div class="chart-card">
+                    <h3>🔥 Топ поисковых запросов</h3>
+                    <p class="subtitle">Самые популярные комбинации позиций</p>
+                    <div class="top-list" style="margin-top:16px;">
+                        <div class="top-item">
+                            <div class="top-rank gold">1</div>
+                            <div class="top-info">
+                                <div class="query">WAS-M10, NUT-M10, SPR-10</div>
+                                <div class="bar-bg"><div class="bar-fill" style="width:100%;background:var(--orange);"></div></div>
+                            </div>
+                            <div class="top-count">142</div>
+                        </div>
+                        <div class="top-item">
+                            <div class="top-rank silver">2</div>
+                            <div class="top-info">
+                                <div class="query">BLT-8841, BLT-8842</div>
+                                <div class="bar-bg"><div class="bar-fill" style="width:78%;background:var(--blue);"></div></div>
+                            </div>
+                            <div class="top-count">111</div>
+                        </div>
+                        <div class="top-item">
+                            <div class="top-rank bronze">3</div>
+                            <div class="top-info">
+                                <div class="query">BRG-6205ZZ, BRG-6206ZZ</div>
+                                <div class="bar-bg"><div class="bar-fill" style="width:65%;background:var(--green);"></div></div>
+                            </div>
+                            <div class="top-count">93</div>
+                        </div>
+                        <div class="top-item">
+                            <div class="top-rank">4</div>
+                            <div class="top-info">
+                                <div class="query">SKD-2024, SKD-2025</div>
+                                <div class="bar-bg"><div class="bar-fill" style="width:52%;background:var(--accent);"></div></div>
+                            </div>
+                            <div class="top-count">74</div>
+                        </div>
+                        <div class="top-item">
+                            <div class="top-rank">5</div>
+                            <div class="top-info">
+                                <div class="query">NUT-M8, WAS-M8</div>
+                                <div class="bar-bg"><div class="bar-fill" style="width:41%;background:var(--text-muted);"></div></div>
+                            </div>
+                            <div class="top-count">58</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Peak Hours -->
+                <div class="chart-card">
+                    <h3>🕐 Часы активности</h3>
+                    <p class="subtitle">Распределение запросов по часам</p>
+                    <div class="bar-chart" style="height:180px;">
+                        <div class="bar-group"><div class="bar" style="height:15%;background:var(--blue);border-radius:4px;"></div><div class="bar-label">8</div></div>
+                        <div class="bar-group"><div class="bar" style="height:35%;background:var(--blue);border-radius:4px;"></div><div class="bar-label">9</div></div>
+                        <div class="bar-group"><div class="bar" style="height:65%;background:var(--blue);border-radius:4px;"></div><div class="bar-label">10</div></div>
+                        <div class="bar-group"><div class="bar" style="height:85%;background:var(--blue);border-radius:4px;"></div><div class="bar-label">11</div></div>
+                        <div class="bar-group"><div class="bar" style="height:100%;background:var(--accent);border-radius:4px;"></div><div class="bar-label">12</div></div>
+                        <div class="bar-group"><div class="bar" style="height:75%;background:var(--blue);border-radius:4px;"></div><div class="bar-label">13</div></div>
+                        <div class="bar-group"><div class="bar" style="height:90%;background:var(--blue);border-radius:4px;"></div><div class="bar-label">14</div></div>
+                        <div class="bar-group"><div class="bar" style="height:80%;background:var(--blue);border-radius:4px;"></div><div class="bar-label">15</div></div>
+                        <div class="bar-group"><div class="bar" style="height:55%;background:var(--blue);border-radius:4px;"></div><div class="bar-label">16</div></div>
+                        <div class="bar-group"><div class="bar" style="height:40%;background:var(--blue);border-radius:4px;"></div><div class="bar-label">17</div></div>
+                        <div class="bar-group"><div class="bar" style="height:25%;background:var(--blue);border-radius:4px;"></div><div class="bar-label">18</div></div>
+                        <div class="bar-group"><div class="bar" style="height:10%;background:var(--blue);border-radius:4px;"></div><div class="bar-label">19</div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+</div>
+
+<script>
+    // ===== TAB SWITCHING =====
+    function switchTab(tabId, btn) {
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+        document.getElementById('tab-' + tabId).classList.add('active');
+        btn.classList.add('active');
+    }
+
+    // ===== FILTER SEARCH LOGS =====
+    function filterSearchLogs() {
+        const searchText = document.getElementById('searchLogFilter').value.toLowerCase();
+        const statusFilter = document.getElementById('statusFilter').value;
+        const rows = document.querySelectorAll('#searchLogsBody tr');
+
+        rows.forEach(row => {
+            const text = row.textContent.toLowerCase();
+            const statusCell = row.querySelector('.status');
+            let matchText = !searchText || text.includes(searchText);
+            let matchStatus = statusFilter === 'all';
+
+            if (!matchStatus && statusCell) {
+                if (statusFilter === 'success') matchStatus = statusCell.classList.contains('success');
+                if (statusFilter === 'empty') matchStatus = statusCell.classList.contains('warning');
+                if (statusFilter === 'error') matchStatus = statusCell.classList.contains('error');
+            }
+
+            row.style.display = (matchText && matchStatus) ? '' : 'none';
+        });
+    }
+
+    // ===== REFRESH DATA =====
+    function refreshData() {
+        const btn = event.target;
+        btn.textContent = '⏳ Загрузка...';
+        btn.disabled = true;
+        setTimeout(() => {
+            btn.textContent = '🔄 Обновить';
+            btn.disabled = false;
+            // Здесь будет запрос к API
+            console.log('Данные обновлены');
+        }, 1500);
+    }
+
+    // ===== EXPORT DATA =====
+    function exportData() {
+        console.log('Экспорт данных...');
+        alert('Экспорт данных в CSV запущен. Файл будет скачан автоматически.');
+    }
+
+    // ===== PERIOD CHANGE =====
+    document.getElementById('periodSelect').addEventListener('change', function() {
+        console.log('Выбран период:', this.value);
+        // Здесь будет перезагрузка данных с API
+    });
+
+    // ===== SIMULATE LIVE UPDATES =====
+    function simulateLiveUpdate() {
+        const times = document.querySelectorAll('.activity-item .time');
+        // В реальном приложении здесь будет WebSocket или polling
+    }
+
+    // ===== SIDEBAR TOGGLE (MOBILE) =====
+    function toggleSidebar() {
+        document.getElementById('sidebar').classList.toggle('open');
+    }
+</script>
+
+</body>
+</html>

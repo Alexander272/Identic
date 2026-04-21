@@ -11,25 +11,26 @@ import { useAppSelector } from '@/hooks/redux'
 // 	return false
 // }
 
-export const useCheckPermission = (requiredRule: string): boolean => {
-	const permissions = useAppSelector(getPermissions) // Например, ["order:*", "user:read"]
+export const useCheckPermission = (requiredRules: string | string[]): boolean => {
+	const permissions = useAppSelector(getPermissions)
 
 	if (!permissions || !permissions.length) return false
 
-	return permissions.some(p => {
-		// 1. Полное совпадение (например, "order:read" === "order:read")
-		if (p === requiredRule) return true
+	// Приводим к массиву, если пришла одиночная строка
+	const rulesToCheck = Array.isArray(requiredRules) ? requiredRules : [requiredRules]
 
-		// 2. Если в правах есть полный доступ "admin" или "*:*"
-		if (p === '*' || p === '*:*') return true
+	// Если хотя бы одно из требуемых правил (rulesToCheck) совпадает с имеющимися (permissions)
+	return rulesToCheck.some(requiredRule =>
+		permissions.some(p => {
+			if (p === requiredRule || p === '*' || p === '*:*') return true
 
-		// 3. Логика со звездочкой (например, "order:*" покроет "order:read")
-		const [pObj, pAct] = p.split(':')
-		const [reqObj, reqAct] = requiredRule.split(':')
+			const [pObj, pAct] = p.split(':')
+			const [reqObj, reqAct] = requiredRule.split(':')
 
-		const objMatch = pObj === '*' || pObj === reqObj
-		const actMatch = pAct === '*' || pAct === reqAct
+			const objMatch = pObj === '*' || pObj === reqObj
+			const actMatch = pAct === '*' || pAct === reqAct
 
-		return objMatch && actMatch
-	})
+			return objMatch && actMatch
+		}),
+	)
 }

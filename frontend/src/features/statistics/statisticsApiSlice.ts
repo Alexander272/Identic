@@ -1,19 +1,20 @@
 import { toast } from 'react-toastify'
 
 import type { IBaseFetchError } from '@/app/types/error'
-import type { SearchLogResponse, ActivityLogResponse } from './types'
+import type { SearchLogResponse, ActivityLogResponse, SearchLogRequest } from './types'
 import { API } from '@/app/api'
 import { apiSlice } from '@/app/apiSlice'
+import type { IUserLoginsRequest, IUserLoginsResponse } from './types/userLogins'
 
 export const statisticsApiSlice = apiSlice.injectEndpoints({
 	overrideExisting: false,
 	endpoints: builder => ({
-		getSearchLogs: builder.query<SearchLogResponse, null>({
-			query: () => ({
+		getSearchLogs: builder.query<SearchLogResponse, SearchLogRequest | undefined>({
+			query: params => ({
 				url: API.statistics.search,
 				method: 'GET',
+				params,
 			}),
-			providesTags: [{ type: 'SearchLogs', id: 'All' }],
 			onQueryStarted: async (_arg, api) => {
 				try {
 					await api.queryFulfilled
@@ -23,12 +24,27 @@ export const statisticsApiSlice = apiSlice.injectEndpoints({
 				}
 			},
 		}),
-		getActivityLogs: builder.query<ActivityLogResponse, null>({
-			query: () => ({
+		getActivityLogs: builder.query<ActivityLogResponse, SearchLogRequest | undefined>({
+			query: params => ({
 				url: API.statistics.activity,
 				method: 'GET',
+				params,
 			}),
-			providesTags: [{ type: 'ActivityLogs', id: 'All' }],
+			onQueryStarted: async (_arg, api) => {
+				try {
+					await api.queryFulfilled
+				} catch (error) {
+					const fetchError = (error as IBaseFetchError).error
+					toast.error(fetchError.data.message, { autoClose: false })
+				}
+			},
+		}),
+		getUserLogins: builder.query<IUserLoginsResponse, IUserLoginsRequest>({
+			query: params => ({
+				url: API.statistics.logins,
+				method: 'GET',
+				params,
+			}),
 			onQueryStarted: async (_arg, api) => {
 				try {
 					await api.queryFulfilled
@@ -41,4 +57,11 @@ export const statisticsApiSlice = apiSlice.injectEndpoints({
 	}),
 })
 
-export const { useGetSearchLogsQuery, useGetActivityLogsQuery } = statisticsApiSlice
+export const {
+	useGetSearchLogsQuery,
+	useGetActivityLogsQuery,
+	useGetUserLoginsQuery,
+	useLazyGetActivityLogsQuery,
+	useLazyGetSearchLogsQuery,
+	useLazyGetUserLoginsQuery,
+} = statisticsApiSlice
