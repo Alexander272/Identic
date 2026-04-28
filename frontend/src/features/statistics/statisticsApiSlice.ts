@@ -39,7 +39,7 @@ export const statisticsApiSlice = apiSlice.injectEndpoints({
 				}
 			},
 		}),
-		getUserLogins: builder.query<IUserLoginsResponse, IUserLoginsRequest>({
+		getLastUserLogins: builder.query<IUserLoginsResponse, IUserLoginsRequest>({
 			query: params => ({
 				url: API.statistics.logins,
 				method: 'GET',
@@ -60,8 +60,8 @@ export const statisticsApiSlice = apiSlice.injectEndpoints({
 export const {
 	useGetSearchLogsQuery,
 	useGetActivityLogsQuery,
-	useGetUserLoginsQuery,
+	useGetLastUserLoginsQuery,
 	useLazyGetActivityLogsQuery,
 	useLazyGetSearchLogsQuery,
-	useLazyGetUserLoginsQuery,
+	useLazyGetLastUserLoginsQuery,
 } = statisticsApiSlice

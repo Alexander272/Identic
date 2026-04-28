@@ -58,6 +58,8 @@ export const Filters: FC<Props> = ({ filters, onChange }) => {
 		// 	field: f.field.split('@')[0],
 		// }))
 
+		console.log('form', form)
+
 		onChange(form.filters)
 		closeHandler()
 	})

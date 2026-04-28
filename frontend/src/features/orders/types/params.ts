@@ -1,4 +1,4 @@
-export type ColumnTypes = 'text' | 'number' | 'date' | 'list' | 'autocomplete'
+export type ColumnTypes = 'text' | 'number' | 'date' | 'list' | 'autocomplete' | 'bool'
 
 export interface IParams {
 	page?: number

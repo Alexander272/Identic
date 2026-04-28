@@ -42,9 +42,9 @@ export const detectPeriod = (range: DateRange): Period => {
 
 	if (start.isSame(today, 'day') && end.isSame(today, 'day')) return 'today'
 	if (start.isSame(today.subtract(7, 'day'), 'day') && end.isSame(today, 'day')) return 'week'
-	if (start.isSame(today.subtract(30, 'day'), 'day') && end.isSame(today, 'day')) return 'month'
-	if (start.isSame(today.subtract(90, 'day'), 'day') && end.isSame(today, 'day')) return 'quarter'
-	if (start.isSame(today.subtract(365, 'day'), 'day') && end.isSame(today, 'day')) return 'year'
+	if (start.isSame(today.subtract(1, 'month'), 'day') && end.isSame(today, 'day')) return 'month'
+	if (start.isSame(today.subtract(3, 'month'), 'day') && end.isSame(today, 'day')) return 'quarter'
+	if (start.isSame(today.subtract(1, 'year'), 'day') && end.isSame(today, 'day')) return 'year'
 
 	return 'custom'
 }
@@ -52,14 +52,14 @@ export const detectPeriod = (range: DateRange): Period => {
 export const formatDateLabel = (start: string, end: string) =>
 	`${dayjs(start).format('DD.MM.YYYY')} – ${dayjs(end).format('DD.MM.YYYY')}`
 
-export const getPresetDates = (preset: Period, days?: number): DateRange => {
+export const getPresetDates = (preset: Period, type: 'day' | 'month' | 'year', count?: number): DateRange => {
 	const end = dayjs().endOf('day')
-	const start =
-		preset === 'today'
-			? dayjs().startOf('day')
-			: dayjs()
-					.subtract((days || 7) - 1, 'day')
-					.startOf('day')
+	let start = dayjs().startOf('day')
+	if (preset != 'today') {
+		start = dayjs()
+			.subtract(count || 1, type)
+			.startOf('day')
+	}
 
 	return {
 		startDate: start.toISOString(),

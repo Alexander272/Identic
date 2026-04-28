@@ -4,7 +4,7 @@ import { Box, Typography, Tabs, Tab } from '@mui/material'
 import {
 	useLazyGetSearchLogsQuery,
 	useLazyGetActivityLogsQuery,
-	useLazyGetUserLoginsQuery,
+	useLazyGetLastUserLoginsQuery,
 } from '../../statisticsApiSlice'
 import { getDateRange } from '../utils'
 import { BoxFallback } from '@/components/Fallback/BoxFallback'
@@ -14,6 +14,8 @@ import { ActivityTable } from '../Activity/Table'
 import { LoginsTable } from '../Logins/Table'
 import { SearchCards } from './SearchCards'
 import { OrderCards } from './OrderCards'
+import { useCheckPermission } from '@/features/user/hooks/check'
+import { PermRules } from '@/features/access/constants/permissions'
 
 interface TabPanelProps {
 	children?: React.ReactNode
@@ -34,7 +36,8 @@ export const Statistics = () => {
 
 	const [triggerSearch, { data: searchData, isFetching: isFetchingSearch }] = useLazyGetSearchLogsQuery()
 	const [triggerActivity, { data: activityData, isFetching: isFetchingActivity }] = useLazyGetActivityLogsQuery()
-	const [triggerUserLogins, { data: userLoginsData, isFetching: isFetchingUserLogins }] = useLazyGetUserLoginsQuery()
+	const [triggerUserLogins, { data: userLoginsData, isFetching: isFetchingUserLogins }] =
+		useLazyGetLastUserLoginsQuery()
 
 	const fetchSearchLogs = useCallback(() => {
 		const params = dateRange ? { startDate: dateRange.startDate, endDate: dateRange.endDate } : {}
@@ -61,6 +64,10 @@ export const Statistics = () => {
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [])
 
+	const canSeeSearch = useCheckPermission(PermRules.SearchLog.Read)
+	const canSeeActivity = useCheckPermission(PermRules.ActivityLog.Read)
+	const canSeeLogins = useCheckPermission(PermRules.Logins.Read)
+
 	return (
 		<Box sx={{ p: 3 }}>
 			<Box
@@ -85,38 +92,44 @@ export const Statistics = () => {
 				}}
 				sx={{ borderBottom: 1, borderColor: 'divider' }}
 			>
-				<Tab label='Поисковые запросы' sx={{ textTransform: 'none' }} />
-				<Tab label='Заявки' sx={{ textTransform: 'none' }} />
-				<Tab label='Пользователи' sx={{ textTransform: 'none' }} />
+				{canSeeSearch && <Tab value={0} label='Поисковые запросы' sx={{ textTransform: 'none' }} />}
+				{canSeeActivity && <Tab value={1} label='Заявки' sx={{ textTransform: 'none' }} />}
+				{canSeeLogins && <Tab value={2} label='Пользователи' sx={{ textTransform: 'none' }} />}
 			</Tabs>
 
-			<TabPanel value={tabValue} index={0}>
-				{isLoading && <BoxFallback />}
+			{canSeeSearch && (
+				<TabPanel value={tabValue} index={0}>
+					{isLoading && <BoxFallback />}
 
-				<SearchCards data={searchData?.data || []} total={searchData?.total || 0} />
+					<SearchCards data={searchData?.data || []} total={searchData?.total || 0} />
 
-				{searchData?.data && <SearchTable data={searchData.data} />}
-			</TabPanel>
+					{searchData?.data && <SearchTable data={searchData.data} />}
+				</TabPanel>
+			)}
 
-			<TabPanel value={tabValue} index={1}>
-				{isLoading && <BoxFallback />}
+			{canSeeActivity && (
+				<TabPanel value={tabValue} index={1}>
+					{isLoading && <BoxFallback />}
 
-				<OrderCards data={activityData?.data || []} total={activityData?.total || 0} />
+					<OrderCards data={activityData?.data || []} total={activityData?.total || 0} />
 
-				{activityData?.data && <ActivityTable data={activityData.data} />}
-			</TabPanel>
+					{activityData?.data && <ActivityTable data={activityData.data} />}
+				</TabPanel>
+			)}
 
-			<TabPanel value={tabValue} index={2}>
-				{isLoading && <BoxFallback />}
+			{canSeeLogins && (
+				<TabPanel value={tabValue} index={2}>
+					{isLoading && <BoxFallback />}
 
-				{searchData?.data && activityData?.data && userLoginsData?.data && (
-					<LoginsTable
-						searchData={searchData.data}
-						activityData={activityData.data}
-						userLogins={userLoginsData.data}
-					/>
-				)}
-			</TabPanel>
+					{searchData?.data && activityData?.data && userLoginsData?.data && (
+						<LoginsTable
+							searchData={searchData.data}
+							activityData={activityData.data}
+							userLogins={userLoginsData.data}
+						/>
+					)}
+				</TabPanel>
+			)}
 		</Box>
 	)
 }

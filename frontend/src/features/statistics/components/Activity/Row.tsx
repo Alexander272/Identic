@@ -1,12 +1,12 @@
 import { TableRow, TableCell, IconButton, Box, Typography, Tooltip, Button } from '@mui/material'
 import { ExpandMore, ExpandLess, Add, Edit, Delete } from '@mui/icons-material'
+import { Link } from 'react-router'
 
 import type { ActivityLog } from '../../types/activity'
 import { ActionType } from '../../types/activity'
 import { getActionLabel, getActionColor, getActionTextColor, getEntityTypeLabel, getInitials } from '../utils'
 import { getSmartDate } from '@/utils/date'
 import { stringToHSLA } from '@/utils/colors'
-import { Link } from 'react-router'
 import { PopupLinkIcon } from '@/components/Icons/PopupLinkIcon'
 
 interface ActivityTableRowProps {

@@ -36,6 +36,7 @@ import { SyncIcon } from '@/components/Icons/SyncIcon'
 import { ModifyIcon } from '@/components/Icons/ModifyIcon'
 import { StatusBadge } from '../StatusBadge'
 import { UpdateModal } from '../../../user/components/Update'
+import { LoginsModal } from './LoginsModal'
 
 export const Users = () => {
 	const { palette } = useTheme()
@@ -192,6 +193,7 @@ export const Users = () => {
 			</Box>
 
 			<UpdateModal user={modalType == 'edit' ? user : null} onClose={() => setUser(null)} />
+			<LoginsModal user={modalType == 'logins' ? user : null} onClose={() => setUser(null)} />
 
 			{/* Table Container */}
 			<TableContainer component={Paper} elevation={0} sx={{ border: '1px solid #eee', borderRadius: 2 }}>

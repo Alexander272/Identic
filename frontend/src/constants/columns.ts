@@ -9,19 +9,19 @@ export const Columns = Object.freeze([
 		filter: 'date' as const,
 		label: 'Дата',
 	},
-	// {
-	// 	field: 'bill',
-	// 	filter: 'string',
-	// 	label: 'No счета',
-	// },
 	{
 		field: 'manager',
 		filter: 'list' as const,
 		label: 'Менеджер / помощник',
 	},
-	// {
-	// 	field: 'notes',
-	// 	filter: 'string',
-	// 	label: 'Примечание',
-	// },
+	{
+		field: 'isBargaining',
+		filter: 'bool' as const,
+		label: 'Тендер',
+	},
+	{
+		field: 'isBudget',
+		filter: 'bool' as const,
+		label: 'Бюджет',
+	},
 ])

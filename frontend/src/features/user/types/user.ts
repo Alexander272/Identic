@@ -38,3 +38,26 @@ export interface IUserDataDTO {
 	email: string
 	isActive: boolean
 }
+
+export interface IUserLogin {
+	id: string
+	userId: string
+	loginAt: string
+	ipAddress: string | null
+	userAgent: string | null
+	metadata?: IUserMetadata
+	lastActivityAt: string
+}
+export interface IUserMetadata {
+	browser: string
+	browserVersion: string
+	device: 'desktop' | 'mobile' | 'tablet'
+	event: string
+	isBot: boolean
+	isDesktop: boolean
+	isMobile: boolean
+	isTablet: boolean
+	os: string
+	osVersion: string
+	success: boolean
+}

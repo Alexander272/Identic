@@ -1,5 +1,16 @@
 import { useEffect, useState } from 'react'
-import { Box, Button, Divider, Stack, TextField, Tooltip, Typography, type Theme } from '@mui/material'
+import {
+	Box,
+	Button,
+	Divider,
+	FormControlLabel,
+	Stack,
+	TextField,
+	Tooltip,
+	Typography,
+	Checkbox,
+	type Theme,
+} from '@mui/material'
 import { Controller, FormProvider, useForm, useFormContext, useWatch } from 'react-hook-form'
 import { DataSheetGrid, floatColumn, keyColumn, textColumn, type Column } from 'react-datasheet-grid'
 import { toast } from 'react-toastify'
@@ -21,11 +32,14 @@ import { SaveIcon } from '@/components/Icons/SaveIcon'
 import { RefreshIcon } from '@/components/Icons/RefreshIcon'
 import { HyperlinkIcon } from '@/components/Icons/HyperlinkIcon'
 import { ModifyIcon } from '@/components/Icons/ModifyIcon'
+// import { Checkbox } from '@/components/Checkbox/Checkbox'
 
 const defaultValues: IOrderCreate = {
 	customer: '',
 	consumer: '',
 	manager: '',
+	isBargaining: false,
+	isBudget: false,
 	bill: '',
 	date: dayjs().startOf('d').toISOString(),
 	notes: '',
@@ -74,6 +88,7 @@ const buttonStyles = (theme: Theme) => ({
 export const CreateOrderForm = () => {
 	const methods = useForm<IOrderCreate>({ defaultValues })
 	const { control } = methods
+	const consumer = useWatch({ control, name: 'consumer' })
 
 	useEffect(() => {
 		// true — использование фазы захвата (capture)
@@ -96,6 +111,43 @@ export const CreateOrderForm = () => {
 						<Typography fontSize={'1.1rem'}>Контрагенты</Typography>
 						<AutocompleteInput field={{ name: 'consumer', label: 'Конечник', type: 'list' }} />
 						<AutocompleteInput field={{ name: 'customer', label: 'Заказчик / Перекуп', type: 'list' }} />
+
+						<Stack direction={'row'} spacing={1}>
+							<Controller
+								control={control}
+								name='isBargaining'
+								disabled={!consumer}
+								render={({ field }) => (
+									<FormControlLabel
+										control={<Checkbox {...field} />}
+										label='Тендер'
+										sx={{
+											pr: 2,
+											borderRadius: '8px',
+											transition: 'all 0.3s ease-in-out',
+											':hover': { bgcolor: 'action.hover' },
+										}}
+									/>
+								)}
+							/>
+							<Controller
+								control={control}
+								name='isBudget'
+								disabled={!consumer}
+								render={({ field }) => (
+									<FormControlLabel
+										control={<Checkbox {...field} />}
+										label='Бюджет'
+										sx={{
+											pr: 2,
+											borderRadius: '8px',
+											transition: 'all 0.3s ease-in-out',
+											':hover': { bgcolor: 'action.hover' },
+										}}
+									/>
+								)}
+							/>
+						</Stack>
 					</Stack>
 
 					<Stack spacing={2} width={'50%'}>

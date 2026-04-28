@@ -1,4 +1,4 @@
-import { Fragment } from 'react'
+import { Fragment, useState } from 'react'
 import {
 	Box,
 	Button,
@@ -20,23 +20,34 @@ import { PlusIcon } from '@/components/Icons/PlusIcon'
 import { ModifyIcon } from '@/components/Icons/ModifyIcon'
 import { StatusBadge } from '../StatusBadge'
 import { useGetRolesWithStatsQuery } from '@/features/user/roleApiSlice'
+import { RoleDialog } from '@/features/user/components/RoleDialog/RoleDialog'
+import type { IRoleWithStats } from '@/features/user/types/role'
 
 export const Role = () => {
 	const { palette } = useTheme()
+	const [role, setRole] = useState<string | null>(null)
 
 	const { data, isFetching } = useGetRolesWithStatsQuery(null)
 
 	const createHandler = () => {
-		//TODO openRoleModal
+		setRole('')
 	}
 
 	const editHandler = (id: string) => (e: React.MouseEvent) => {
 		e.stopPropagation()
 		e.preventDefault()
 
-		console.log('edit role', id)
-		// TODO openRoleModal
+		setRole(id)
 	}
+
+	const clearRole = () => {
+		setRole(null)
+	}
+
+	const roleMap = new Map<string, IRoleWithStats>()
+	data?.data.forEach(role => {
+		roleMap.set(role.slug, role)
+	})
 
 	return (
 		<Box sx={{ p: 3 }}>
@@ -59,6 +70,9 @@ export const Role = () => {
 					Добавить
 				</Button>
 			</Box>
+
+			{/* {data?.data.length && <UpdateRole roleId={data?.data[1].id} />} */}
+			<RoleDialog roleId={role} onClose={clearRole} />
 
 			<TableContainer
 				component={Paper}
@@ -91,12 +105,19 @@ export const Role = () => {
 						{data?.data.map(role => (
 							<TableRow key={role.id} hover sx={{ cursor: 'pointer', '&:hover': { bgcolor: '#fafafa' } }}>
 								{/* Роль */}
-								<TableCell sx={{ py: 3, px: 4 }}>
+								<TableCell sx={{ py: 2, px: 4 }}>
 									<Box>
-										<Typography sx={{ fontWeight: 600, color: '#111827' }}>{role.name}</Typography>
-										<Typography sx={{ fontSize: '0.75rem', color: '#9ca3af' }}>
-											{role.slug}
+										<Typography sx={{ fontWeight: 600, color: '#111827' }}>
+											{role.name}
+
+											<Typography
+												component={'span'}
+												sx={{ fontSize: '0.9rem', color: '#9ca3af', ml: 1 }}
+											>
+												({role.slug})
+											</Typography>
 										</Typography>
+
 										<Typography sx={{ fontSize: '0.875rem', color: '#6b7280', mt: 0.5 }}>
 											{role.description}
 										</Typography>
@@ -113,9 +134,9 @@ export const Role = () => {
 
 								{/* Наследование */}
 								<TableCell sx={{ px: 3 }}>
-									{role.inherited && role.inherited.length > 0 ? (
+									{role.children && role.children.length > 0 ? (
 										<Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 0.5 }}>
-											{role.inherited.map((name, index) => (
+											{role.children.map((name, index) => (
 												<Fragment key={name}>
 													<Typography
 														variant='caption'
@@ -127,10 +148,10 @@ export const Role = () => {
 															color: '#6b7280',
 														}}
 													>
-														{name}
+														{roleMap.get(name)?.name || name}
 													</Typography>
 													{/* Если это не последний родитель, можно поставить какой-то разделитель, но обычно в множественном наследовании они равноправны */}
-													{index < role.inherited.length - 1 && (
+													{index < role.children.length - 1 && (
 														<Typography variant='caption' sx={{ color: '#d1d5db' }}>
 															+
 														</Typography>
@@ -169,16 +190,16 @@ export const Role = () => {
 									<Typography sx={{ fontSize: '0.875rem', fontWeight: 500 }}>
 										Всего:{' '}
 										<Box component='span' sx={{ color: 'primary.main' }}>
-											{role.perms.total}
+											{role.perms.total?.count}
 										</Box>
 									</Typography>
 									<Box sx={{ gap: 1, fontSize: '0.75rem', mt: 0.2 }}>
 										<Typography variant='inherit' sx={{ color: '#059669' }}>
-											Собственные: {role.perms.own}
+											Собственные: {role.perms.own?.count}
 										</Typography>
-										{role.perms.inherited > 0 && (
+										{role.perms.inherited?.count > 0 && (
 											<Typography variant='inherit' sx={{ color: '#2563eb' }}>
-												Наследованные: {role.perms.inherited}
+												Наследованные: {role.perms.inherited?.count}
 											</Typography>
 										)}
 									</Box>
@@ -191,19 +212,21 @@ export const Role = () => {
 
 								{/* Действия */}
 								<TableCell align='center' sx={{ p: 0, pr: 1 }}>
-									<Tooltip title='Редактировать роль'>
-										<Button
-											onClick={editHandler(role.id)}
-											sx={{
-												minWidth: 60,
-												minHeight: 60,
-												borderRadius: '6px',
-												':hover': { svg: { fill: palette.secondary.main } },
-											}}
-										>
-											<ModifyIcon sx={{ fontSize: 18 }} />
-										</Button>
-									</Tooltip>
+									{role.isEditable && (
+										<Tooltip title='Редактировать роль'>
+											<Button
+												onClick={editHandler(role.id)}
+												sx={{
+													minWidth: 60,
+													minHeight: 60,
+													borderRadius: '6px',
+													':hover': { svg: { fill: palette.secondary.main } },
+												}}
+											>
+												<ModifyIcon sx={{ fontSize: 18 }} />
+											</Button>
+										</Tooltip>
+									)}
 								</TableCell>
 							</TableRow>
 						))}

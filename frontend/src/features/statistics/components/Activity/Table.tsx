@@ -49,11 +49,19 @@ export const ActivityTable = ({ data }: ActivityTableProps) => {
 					<TableHead>
 						<TableRow sx={{ background: 'action.hover' }}>
 							<TableCell width={50} />
-							<TableCell sx={headerCellStyle}>Время</TableCell>
-							<TableCell sx={headerCellStyle}>Пользователь</TableCell>
-							<TableCell sx={headerCellStyle}>Действие</TableCell>
-							<TableCell sx={headerCellStyle}>Тип объекта</TableCell>
-							<TableCell sx={headerCellStyle}>Объект</TableCell>
+							<TableCell width={170} sx={headerCellStyle}>
+								Время
+							</TableCell>
+							<TableCell width={290} sx={headerCellStyle}>
+								Пользователь
+							</TableCell>
+							<TableCell width={180} sx={headerCellStyle}>
+								Действие
+							</TableCell>
+							<TableCell width={180} sx={headerCellStyle}>
+								Тип объекта
+							</TableCell>
+							<TableCell sx={{ ...headerCellStyle, maxWidth: 920 }}>Объект</TableCell>
 							<TableCell width={50} sx={{ p: 0, px: 1 }} />
 						</TableRow>
 					</TableHead>
@@ -74,7 +82,7 @@ export const ActivityTable = ({ data }: ActivityTableProps) => {
 									isExpanded={expandedId === log.id}
 									onToggle={() => toggleExpand(log.id)}
 								/>
-								{expandedId === log.id && <ActivityTableExpanded log={log} />}
+								<ActivityTableExpanded log={log} open={expandedId === log.id} />
 							</Fragment>
 						))}
 					</TableBody>

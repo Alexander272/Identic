@@ -101,7 +101,7 @@ export const getDateRange = (period: string): { startDate: string; endDate: stri
 			start = end.subtract(7, 'day')
 			break
 		case 'month':
-			start = end.subtract(30, 'day')
+			start = end.subtract(1, 'month')
 			break
 		case 'quarter':
 			start = end.subtract(3, 'month')

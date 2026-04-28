@@ -4,8 +4,10 @@ import Logo from '@/assets/logo.webp'
 
 import { AppRoutes } from '@/pages/router/routes'
 import { PermRules } from '@/features/access/constants/permissions'
-import { useSignOutMutation } from '@/features/auth/authApiSlice'
 import { useCheckPermission } from '@/features/user/hooks/check'
+import { useAppSelector } from '@/hooks/redux'
+import { useSignOutMutation } from '@/features/auth/authApiSlice'
+import { getToken } from '@/features/user/userSlice'
 import { AddFileIcon } from '../Icons/AddFileIcon'
 import { SearchIcon } from '../Icons/SearchIcon'
 import { LogoutIcon } from '../Icons/LogoutIcon'
@@ -15,6 +17,8 @@ import { ReportsIcon } from '../Icons/ReportsIcon'
 export const LayoutHeader = () => {
 	const { palette } = useTheme()
 
+	const token = useAppSelector(getToken)
+
 	const [signOut] = useSignOutMutation()
 
 	const logoutHandler = () => {
@@ -22,7 +26,11 @@ export const LayoutHeader = () => {
 	}
 
 	const canEditSettings = useCheckPermission(PermRules.Users.Write)
-	const canSeeStats = useCheckPermission([PermRules.SearchLog.Read, PermRules.ActivityLog.Read])
+	const canSeeStats = useCheckPermission([
+		PermRules.SearchLog.Read,
+		PermRules.ActivityLog.Read,
+		PermRules.Logins.Read,
+	])
 
 	return (
 		<AppBar position='relative' sx={{ borderRadius: 0, alignItems: 'center' }}>
@@ -40,47 +48,49 @@ export const LayoutHeader = () => {
 					</Stack>
 				</Link>
 
-				<Stack ml={'auto'} direction={'row'} spacing={0.5}>
-					{canEditSettings ? (
-						<Link to={AppRoutes.Accesses}>
-							<Tooltip title='Настройка доступа' disableInteractive>
-								<NavBox sx={{ ':hover': { svg: { stroke: palette.primary.main } } }}>
-									<ShieldIcon sx={{ fontSize: 26, transition: '0.3s all ease-in-out' }} />
+				{token ? (
+					<Stack ml={'auto'} direction={'row'} spacing={0.5}>
+						{canEditSettings ? (
+							<Link to={AppRoutes.Accesses}>
+								<Tooltip title='Настройка доступа' disableInteractive>
+									<NavBox sx={{ ':hover': { svg: { stroke: palette.primary.main } } }}>
+										<ShieldIcon sx={{ fontSize: 26, transition: '0.3s all ease-in-out' }} />
+									</NavBox>
+								</Tooltip>
+							</Link>
+						) : null}
+
+						{canSeeStats ? (
+							<Link to={AppRoutes.Statistics}>
+								<Tooltip title='Статистика' disableInteractive>
+									<NavBox sx={{ ':hover': { svg: { stroke: palette.primary.main } } }}>
+										<ReportsIcon sx={{ fontSize: 26, transition: '0.3s all ease-in-out' }} />
+									</NavBox>
+								</Tooltip>
+							</Link>
+						) : null}
+
+						<Link to={AppRoutes.CreateOrder}>
+							<Tooltip title='Добавить заказ' disableInteractive>
+								<NavBox sx={{ ':hover': { svg: { fill: palette.primary.main } } }}>
+									<AddFileIcon fill={'#000'} fontSize={26} transition={'0.3s all ease-in-out'} />
 								</NavBox>
 							</Tooltip>
 						</Link>
-					) : null}
 
-					{canSeeStats ? (
-						<Link to={AppRoutes.Statistics}>
-							<Tooltip title='Статистика' disableInteractive>
-								<NavBox sx={{ ':hover': { svg: { stroke: palette.primary.main } } }}>
-									<ReportsIcon sx={{ fontSize: 26, transition: '0.3s all ease-in-out' }} />
+						<Link to={AppRoutes.Search}>
+							<Tooltip title='Поиск' disableInteractive>
+								<NavBox sx={{ ':hover': { svg: { fill: palette.primary.main } } }}>
+									<SearchIcon fill={'#000'} fontSize={24} transition={'0.3s all ease-in-out'} />
 								</NavBox>
 							</Tooltip>
 						</Link>
-					) : null}
 
-					<Link to={AppRoutes.CreateOrder}>
-						<Tooltip title='Добавить заказ' disableInteractive>
-							<NavBox sx={{ ':hover': { svg: { fill: palette.primary.main } } }}>
-								<AddFileIcon fill={'#000'} fontSize={26} transition={'0.3s all ease-in-out'} />
-							</NavBox>
-						</Tooltip>
-					</Link>
-
-					<Link to={AppRoutes.Search}>
-						<Tooltip title='Поиск' disableInteractive>
-							<NavBox sx={{ ':hover': { svg: { fill: palette.primary.main } } }}>
-								<SearchIcon fill={'#000'} fontSize={24} transition={'0.3s all ease-in-out'} />
-							</NavBox>
-						</Tooltip>
-					</Link>
-
-					<NavBox onClick={logoutHandler} sx={{ ':hover': { svg: { fill: palette.primary.main } } }}>
-						<LogoutIcon fill={'#000'} fontSize={24} transition={'0.3s all ease-in-out'} />
-					</NavBox>
-				</Stack>
+						<NavBox onClick={logoutHandler} sx={{ ':hover': { svg: { fill: palette.primary.main } } }}>
+							<LogoutIcon fill={'#000'} fontSize={24} transition={'0.3s all ease-in-out'} />
+						</NavBox>
+					</Stack>
+				) : null}
 			</Toolbar>
 		</AppBar>
 	)

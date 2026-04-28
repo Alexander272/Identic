@@ -42,12 +42,24 @@ export const SearchTable = ({ data }: SearchTableProps) => {
 					<TableHead>
 						<TableRow sx={{ background: 'action.hover' }}>
 							<TableCell width={50} />
-							<TableCell sx={headerCellStyle}>Время</TableCell>
-							<TableCell sx={headerCellStyle}>Пользователь</TableCell>
-							<TableCell sx={headerCellStyle}>Тип поиска</TableCell>
-							<TableCell sx={{ ...headerCellStyle, textAlign: 'center' }}>Позиций</TableCell>
-							<TableCell sx={{ ...headerCellStyle, textAlign: 'center' }}>Результаты</TableCell>
-							<TableCell sx={{ ...headerCellStyle, textAlign: 'center' }}>Время</TableCell>
+							<TableCell width={250} sx={headerCellStyle}>
+								Время
+							</TableCell>
+							<TableCell width={450} sx={headerCellStyle}>
+								Пользователь
+							</TableCell>
+							<TableCell width={210} sx={headerCellStyle}>
+								Тип поиска
+							</TableCell>
+							<TableCell width={180} sx={{ ...headerCellStyle, textAlign: 'center' }}>
+								Позиций
+							</TableCell>
+							<TableCell width={200} sx={{ ...headerCellStyle, textAlign: 'center' }}>
+								Результаты
+							</TableCell>
+							<TableCell width={150} sx={{ ...headerCellStyle, textAlign: 'center' }}>
+								Время
+							</TableCell>
 							<TableCell sx={headerCellStyle}>Статус</TableCell>
 						</TableRow>
 					</TableHead>
@@ -68,7 +80,7 @@ export const SearchTable = ({ data }: SearchTableProps) => {
 									isExpanded={expandedId === log.id}
 									onToggle={() => toggleExpand(log.id)}
 								/>
-								{expandedId === log.id && <SearchTableExpanded log={log} />}
+								<SearchTableExpanded log={log} open={expandedId === log.id} />
 							</Fragment>
 						))}
 					</TableBody>

@@ -9,6 +9,7 @@ export const PermRules = Object.freeze({
 	},
 	SearchLog: { Read: 'search_log:read' },
 	ActivityLog: { Read: 'activity_log:read' },
+	Logins: { Read: 'logins:read' },
 	Permissions: {
 		Read: 'permissions:read',
 		Write: 'permissions:write',

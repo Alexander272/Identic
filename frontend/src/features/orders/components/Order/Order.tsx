@@ -1,5 +1,6 @@
 import { useMemo, useState, type FC } from 'react'
 import {
+	Box,
 	Button,
 	Stack,
 	Table,
@@ -23,6 +24,7 @@ import { BoxFallback } from '@/components/Fallback/BoxFallback'
 import { ModifyIcon } from '@/components/Icons/ModifyIcon'
 import { Filter } from './FlatFilters'
 import { Header } from './Header'
+import { OrderChip } from '../Orders/OrderChip'
 
 type Props = {
 	id: string
@@ -76,7 +78,19 @@ export const Order: FC<Props> = ({ id, searchId }) => {
 		<Stack position={'relative'} sx={{ mr: -2 }}>
 			{isFetching ? <BoxFallback /> : null}
 
-			<Stack direction={'row'} spacing={0.5} width={'100%'} justifyContent={'center'} alignContent={'center'}>
+			<Stack direction={'row'} width={'100%'} justifyContent={'center'} alignContent={'center'}>
+				<Box
+					display={'flex'}
+					gap={0.5}
+					alignItems={'center'}
+					justifyContent={'center'}
+					flexWrap={'wrap'}
+					mr={1}
+				>
+					{data?.data.isBargaining ? <OrderChip type='bargaining' /> : null}
+					{data?.data.isBudget ? <OrderChip type='budget' /> : null}
+				</Box>
+
 				<Typography component='h2' variant='h6' align='center'>
 					Заказ от{' '}
 					<Typography component='span' fontWeight={'bold'} variant='h6'>
@@ -95,6 +109,7 @@ export const Order: FC<Props> = ({ id, searchId }) => {
 							// border: '1px solid #707070',
 							borderRadius: '12px',
 							padding: '4px 10px',
+							ml: 1,
 							':hover': { svg: { fill: palette.primary.main }, color: palette.primary.main },
 						}}
 					>

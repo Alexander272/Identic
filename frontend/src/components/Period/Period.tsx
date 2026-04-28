@@ -12,10 +12,10 @@ import type { DateRange, Period, Preset } from './types'
 
 const PRESETS: Preset[] = [
 	{ label: 'Сегодня', value: 'today' },
-	{ label: 'Последние 7 дней', value: 'week', days: 7 },
-	{ label: 'Последние 30 дней', value: 'month', days: 30 },
-	{ label: 'Квартал', value: 'quarter', days: 90 },
-	{ label: 'Год', value: 'year', days: 365 },
+	{ label: 'Последние 7 дней', value: 'week', type: 'day', count: 7 },
+	{ label: 'Последний месяц', value: 'month', type: 'month', count: 1 },
+	{ label: 'Квартал', value: 'quarter', type: 'month', count: 3 },
+	{ label: 'Год', value: 'year', type: 'year', count: 1 },
 ]
 
 type Props = {
@@ -42,8 +42,8 @@ export const PeriodPicker: FC<Props> = ({ value, onChange }) => {
 			setDraftPeriod(detectPeriod(value))
 		} else {
 			const preset = PRESETS.find(p => p.value === period)
-			if (preset?.days) {
-				const dates = getPresetDates(preset.value, preset.days)
+			if (preset?.type && preset.count) {
+				const dates = getPresetDates(preset.value, preset.type, preset.count)
 				setDraftStart(dayjs(dates.startDate))
 				setDraftEnd(dayjs(dates.endDate))
 			} else {
@@ -56,8 +56,8 @@ export const PeriodPicker: FC<Props> = ({ value, onChange }) => {
 
 	const handleClose = () => setAnchorEl(null)
 
-	const applyPreset = (preset: Period, days?: number) => {
-		const range = getPresetDates(preset, days)
+	const applyPreset = (preset: Period, type: 'day' | 'month' | 'year', count: number) => {
+		const range = getPresetDates(preset, type, count)
 		onChange(range)
 		handleClose()
 	}
@@ -142,7 +142,7 @@ export const PeriodPicker: FC<Props> = ({ value, onChange }) => {
 								key={p.value}
 								preset={p}
 								isActive={draftPeriod === p.value}
-								onClick={() => applyPreset(p.value, p.days)}
+								onClick={() => applyPreset(p.value, p.type || 'day', p.count || 7)}
 							/>
 						))}
 					</Stack>

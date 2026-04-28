@@ -21,6 +21,7 @@ import type { IOrderMatchResult, ISearchItem } from '../types/search'
 import { PopupLinkIcon } from '@/components/Icons/PopupLinkIcon'
 import { IndexingPageIcon } from '@/components/Icons/IndexingPageIcon'
 import { Info } from './Info'
+import { OrderChip } from '@/features/orders/components/Orders/OrderChip'
 
 type Props = {
 	data: IOrderMatchResult[]
@@ -54,6 +55,7 @@ export const ResultsTable: FC<Props> = ({ data, search, searchId }) => {
 					<TableCell rowSpan={2} align='center' sx={{ borderTopLeftRadius: 8 }}>
 						Дата
 					</TableCell>
+					<TableCell rowSpan={2} width={30} sx={{ p: 0 }} />
 					<TableCell rowSpan={2}>Контрагент</TableCell>
 					<TableCell rowSpan={2} align='center'>
 						% совпадения
@@ -117,6 +119,12 @@ const ResultRow: FC<{ order: IOrderMatchResult; search: ISearchItem[]; searchId:
 				<Typography fontWeight={'bold'} fontSize={'0.9rem'}>
 					{order.year}
 				</Typography>
+			</TableCell>
+			<TableCell sx={{ p: 0 }}>
+				<Box display={'flex'} gap={0.5} alignItems={'center'} justifyContent={'center'} flexWrap={'wrap'}>
+					{order.isBargaining ? <OrderChip type='bargaining' /> : null}
+					{order.isBudget ? <OrderChip type='budget' /> : null}
+				</Box>
 			</TableCell>
 			<TableCell>
 				<Typography>Конечник: {order.consumer || '-'}</Typography>

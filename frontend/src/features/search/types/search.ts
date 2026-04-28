@@ -14,6 +14,8 @@ export interface IOrderMatchResult {
 	orderId: string
 	customer: string
 	consumer: string
+	isBargaining: boolean
+	isBudget: boolean
 	year: number
 	date: string
 	link: string

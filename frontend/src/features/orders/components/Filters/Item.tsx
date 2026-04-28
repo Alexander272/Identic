@@ -11,7 +11,7 @@ import { NumberFilter } from './Number'
 import { DateFilter } from './Date'
 import { AutocompleteFilter } from './Autocomplete'
 import { ListFilter } from './List'
-// import { ListFilter } from './List'
+import { SwitchFilter } from './SwitchFilter'
 
 interface FilterConfig {
 	compareType: CompareTypes
@@ -40,6 +40,10 @@ const FILTER_SETTINGS: Record<ColumnTypes, FilterConfig> = {
 		compareType: 'in',
 		defaultValue: '',
 	},
+	bool: {
+		compareType: 'eq',
+		defaultValue: 'false',
+	},
 }
 
 const FILTER_COMPONENTS: Record<string, FC<{ index: number }>> = {
@@ -48,6 +52,7 @@ const FILTER_COMPONENTS: Record<string, FC<{ index: number }>> = {
 	date: DateFilter,
 	autocomplete: AutocompleteFilter,
 	list: ListFilter,
+	bool: SwitchFilter,
 }
 
 interface Props {
@@ -111,8 +116,8 @@ export const FilterItem: FC<Props> = ({ index, onRemove, canRemove }) => {
 			{SpecificFilter ? <SpecificFilter index={index} /> : null}
 
 			{canRemove && (
-				<IconButton onClick={() => onRemove(index)} size='small' color='error'>
-					<TimesIcon fontSize={18} />
+				<IconButton onClick={() => onRemove(index)} size='large' color='error'>
+					<TimesIcon fontSize={14} />
 				</IconButton>
 			)}
 		</Stack>

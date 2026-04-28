@@ -9,6 +9,8 @@ export interface IOrder {
 	customer: string
 	consumer: string
 	manager: string
+	isBargaining: boolean
+	isBudget: boolean
 	bill: string
 	date: string
 	notes: string
@@ -23,6 +25,8 @@ export interface IOrderCreate {
 	customer: string
 	consumer: string
 	manager: string
+	isBargaining: boolean
+	isBudget: boolean
 	bill: string
 	date: string
 	notes: string
@@ -33,6 +37,8 @@ export interface IOrderUpdate {
 	customer: string
 	consumer: string
 	manager: string
+	isBargaining: boolean
+	isBudget: boolean
 	bill: string
 	date: string
 	notes: string
@@ -44,6 +50,8 @@ export interface IFlatOrder {
 	customer: string
 	consumer: string
 	manager: string
+	isBargaining: boolean
+	isBudget: boolean
 	bill: string
 	date: string
 	notes: string

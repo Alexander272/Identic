@@ -1,5 +1,6 @@
 import { forwardRef, type FC } from 'react'
 import {
+	Box,
 	Button,
 	Paper,
 	Stack,
@@ -22,6 +23,7 @@ import type { IOrder } from '../../types/order'
 import { AppRoutes } from '@/pages/router/routes'
 import { ModifyIcon } from '@/components/Icons/ModifyIcon'
 import { renderManagers } from './RenderManagers'
+import { OrderChip } from './OrderChip'
 
 type Props = {
 	orders: IOrder[]
@@ -75,12 +77,13 @@ export const OrdersTable: FC<Props> = ({ orders }) => {
 					components={TableComponents}
 					fixedHeaderContent={() => (
 						<TableRow>
-							<TableCell width={60} sx={{ fontWeight: 'bold' }}>
+							<TableCell width={30} sx={{ fontWeight: 'bold' }}>
 								№
 							</TableCell>
-							<TableCell width={130} align='center' sx={{ fontWeight: 'bold' }}>
+							<TableCell width={110} align='center' sx={{ fontWeight: 'bold' }}>
 								Дата
 							</TableCell>
+							<TableCell width={30}></TableCell>
 							<TableCell width={400} sx={{ fontWeight: 'bold' }}>
 								Конечник
 							</TableCell>
@@ -106,6 +109,18 @@ export const OrdersTable: FC<Props> = ({ orders }) => {
 						<>
 							<TableCell sx={{ borderTopLeftRadius: 8, borderBottomLeftRadius: 8 }}>{idx + 1}</TableCell>
 							<TableCell align='center'>{dayjs(d.date).format('DD.MM.YYYY')}</TableCell>
+							<TableCell>
+								<Box
+									display={'flex'}
+									gap={0.5}
+									alignItems={'center'}
+									justifyContent={'center'}
+									flexWrap={'wrap'}
+								>
+									{d.isBargaining ? <OrderChip type='bargaining' /> : null}
+									{d.isBudget ? <OrderChip type='budget' /> : null}
+								</Box>
+							</TableCell>
 							<TableCell>{d.consumer || '—'}</TableCell>
 							<TableCell>{d.customer || '—'}</TableCell>
 							<TableCell align='center'>{d.positionCount}</TableCell>

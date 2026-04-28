@@ -4,7 +4,12 @@ import { Box, Paper, Table, TableBody, TableCell, TableContainer, TableHead, Tab
 import { Action } from '../types/resource'
 import { useGetResourcesQuery } from '../permApiSlice'
 
-const actions = ['Чтение', 'Создание/Обновление', 'Удаление', 'Все']
+const actions = [
+	'Чтение',
+	'Создание/Обновление',
+	'Удаление',
+	// 'Все',
+]
 
 export const Permissions = () => {
 	const { data, isFetching } = useGetResourcesQuery(null)
@@ -29,14 +34,14 @@ export const Permissions = () => {
 				<Table>
 					<TableHead>
 						<TableRow sx={{ borderBottom: '1px solid #f3f4f6' }}>
-							<TableCell sx={{ py: 2.5, px: 4, color: 'text.secondary', fontSize: '0.875rem' }}>
+							<TableCell sx={{ py: 2.5, px: 2, color: 'text.secondary', fontSize: '0.875rem' }}>
 								Ресурс / Действие
 							</TableCell>
 							{actions.map(head => (
 								<TableCell
 									key={head}
 									align='center'
-									sx={{ py: 2.5, px: 4, color: 'text.secondary', fontSize: '0.875rem', width: 290 }}
+									sx={{ py: 2.5, px: 2, color: 'text.secondary', fontSize: '0.875rem', width: 290 }}
 								>
 									{head}
 								</TableCell>
@@ -46,7 +51,7 @@ export const Permissions = () => {
 					<TableBody>
 						{permissions.map(row => (
 							<TableRow key={row.slug} sx={{ '&:hover': { bgcolor: '#fafafa' } }}>
-								<TableCell sx={{ py: '18px' }}>
+								<TableCell sx={{ pl: 2, pr: '18px' }}>
 									<Typography sx={{ fontWeight: 600, fontSize: '14px', color: '#2c3e50' }}>
 										{row.name}
 									</Typography>
@@ -63,9 +68,9 @@ export const Permissions = () => {
 								<TableCell align='center'>
 									<PermissionBadge allowed={row.actions[Action.Delete] || false} />
 								</TableCell>
-								<TableCell align='center'>
+								{/* <TableCell align='center'>
 									<PermissionBadge allowed={row.actions[Action.All] || false} />
-								</TableCell>
+								</TableCell> */}
 							</TableRow>
 						))}
 						{!permissions.length && !isFetching ? (

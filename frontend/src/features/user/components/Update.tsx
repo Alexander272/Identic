@@ -121,11 +121,13 @@ export const UpdateModal: FC<Props> = ({ user, onClose }) => {
 							name='roleId'
 							render={({ field }) => (
 								<Select {...field} fullWidth>
-									{roles?.data.map(role => (
-										<MenuItem key={role.id} value={role.id} disabled={!role.isEditable}>
-											{role.name}
-										</MenuItem>
-									))}
+									{roles?.data.map(role =>
+										role.isEditable ? (
+											<MenuItem key={role.id} value={role.id}>
+												{role.name}
+											</MenuItem>
+										) : null,
+									)}
 								</Select>
 							)}
 						/>

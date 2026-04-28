@@ -1,5 +1,16 @@
 import { useEffect, type FC } from 'react'
-import { Box, Button, Divider, Stack, TextField, Tooltip, Typography, useTheme } from '@mui/material'
+import {
+	Box,
+	Button,
+	Checkbox,
+	Divider,
+	FormControlLabel,
+	Stack,
+	TextField,
+	Tooltip,
+	Typography,
+	useTheme,
+} from '@mui/material'
 import { Controller, FormProvider, useFieldArray, useForm, useFormContext, useWatch } from 'react-hook-form'
 import { DataSheetGrid, floatColumn, keyColumn, textColumn, type Column } from 'react-datasheet-grid'
 import type { Operation } from 'react-datasheet-grid/dist/types'
@@ -27,6 +38,8 @@ const defaultValues: IOrderUpdate = {
 	customer: '',
 	consumer: '',
 	manager: '',
+	isBargaining: false,
+	isBudget: false,
 	bill: '',
 	date: dayjs().startOf('d').toISOString(),
 	notes: '',
@@ -75,6 +88,7 @@ type Props = {
 export const EditOrderForm: FC<Props> = ({ orderId }) => {
 	const methods = useForm<IOrderUpdate>({ defaultValues })
 	const { control, reset } = methods
+	const consumer = useWatch({ control, name: 'consumer' })
 
 	const { data: order, isFetching } = useGetOrderByIdQuery({ id: orderId }, { skip: !orderId })
 
@@ -106,6 +120,43 @@ export const EditOrderForm: FC<Props> = ({ orderId }) => {
 
 						<AutocompleteInput field={{ name: 'consumer', label: 'Конечник', type: 'list' }} />
 						<AutocompleteInput field={{ name: 'customer', label: 'Заказчик / Перекуп', type: 'list' }} />
+
+						<Stack direction={'row'} spacing={1}>
+							<Controller
+								control={control}
+								name='isBargaining'
+								disabled={!consumer}
+								render={({ field }) => (
+									<FormControlLabel
+										control={<Checkbox {...field} checked={field.value} />}
+										label='Тендер'
+										sx={{
+											pr: 2,
+											borderRadius: '8px',
+											transition: 'all 0.3s ease-in-out',
+											':hover': { bgcolor: 'action.hover' },
+										}}
+									/>
+								)}
+							/>
+							<Controller
+								control={control}
+								name='isBudget'
+								disabled={!consumer}
+								render={({ field }) => (
+									<FormControlLabel
+										control={<Checkbox {...field} checked={field.value} />}
+										label='Бюджет'
+										sx={{
+											pr: 2,
+											borderRadius: '8px',
+											transition: 'all 0.3s ease-in-out',
+											':hover': { bgcolor: 'action.hover' },
+										}}
+									/>
+								)}
+							/>
+						</Stack>
 					</Stack>
 
 					<Stack spacing={2} width={'50%'}>
@@ -247,7 +298,6 @@ const Grid: FC<{ orderId: string; data?: IOrder }> = ({ orderId, data }) => {
 		setValue('positions', updatedValue, { shouldDirty: true })
 	}
 
-	// TODO сделать выделение позиций которые редактировали
 	return (
 		<Stack position={'relative'} mb={1}>
 			<DataSheetGrid

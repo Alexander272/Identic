@@ -1,96 +1,57 @@
 import styled from '@emotion/styled'
-import { keyframes } from '@emotion/react'
 
-export const Field = styled.div`
-	position: relative;
+export const Wrapper = styled.label<{ disabled?: boolean }>`
+	display: inline-flex;
+	align-items: center;
+	gap: 10px;
+	cursor: ${({ disabled }) => (disabled ? 'not-allowed' : 'pointer')};
+	opacity: ${({ disabled }) => (disabled ? 0.5 : 1)};
+	user-select: none;
+	font-family: system-ui, sans-serif;
+`
+
+export const HiddenInput = styled.input`
+	display: none;
+
+	&:focus-visible + div {
+		box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.35);
+	}
+`
+
+export const Box = styled.div<{ checked: boolean }>`
+	width: 22px;
+	height: 22px;
+	border-radius: 6px;
+	border: 2px solid #d1d5db;
 	display: flex;
 	align-items: center;
-`
-
-export const Svg = styled.svg`
-	position: absolute;
-	pointer-events: none;
-	user-select: none;
-`
-
-export const Label = styled.label`
-	user-select: none;
-	cursor: pointer;
-	padding: 6px 8px;
-	border-radius: 6px;
-	overflow: hidden;
-	transition: all 0.2s ease;
+	justify-content: center;
+	transition: all 0.25s ease;
+	background: ${({ checked }) => (checked ? 'linear-gradient(135deg, #6366f1, #8b5cf6)' : '#fff')};
+	border-color: ${({ checked }) => (checked ? 'transparent' : '#d1d5db')};
+	box-shadow: ${({ checked }) => (checked ? '0 4px 12px rgba(99, 102, 241, 0.35)' : 'none')};
 
 	&:hover {
-		background: rgba(0, 119, 255, 0.06);
-
-		span:first-of-type {
-			border-color: #05287f;
-		}
-	}
-
-	span {
-		vertical-align: middle;
-		transform: translate3d(0, 0, 0);
-
-		&:first-of-type {
-			position: relative;
-			width: 18px;
-			height: 18px;
-			border-radius: 4px;
-			transform: scale(1);
-			border: 1px solid #cccfdb;
-			transition: all 0.2s ease;
-			box-shadow: 0 1px 1px rgba(0, 16, 75, 0.05);
-			display: inline-block;
-
-			${Svg} {
-				position: absolute;
-				top: 3px;
-				left: 2px;
-				fill: none;
-				stroke: #fff;
-				stroke-width: 2;
-				stroke-linecap: round;
-				stroke-linejoin: round;
-				stroke-dasharray: 16px;
-				stroke-dashoffset: 16px;
-				transition: all 0.3s ease;
-				transition-delay: 0.1s;
-				transform: translate3d(0, 0, 0);
-			}
-		}
-
-		&:last-child {
-			padding-left: 8px;
-			line-height: 18px;
-		}
+		border-color: #6366f1;
 	}
 `
 
-const wave = keyframes`
-    50% {
-        transform: scale(0.9);
-    }
+export const CheckIcon = styled.svg`
+	width: 14px;
+	height: 14px;
+	stroke: white;
+	fill: none;
+	stroke-width: 3;
+	stroke-dasharray: 24;
+	stroke-dashoffset: 24;
+	transition: stroke-dashoffset 0.3s ease;
+
+	${Box}[checked="true"] & {
+		stroke-dashoffset: 0;
+	}
 `
 
-export const Input = styled.input`
-	position: absolute;
-	visibility: hidden;
-
-	&:checked + ${Label} span:first-of-type {
-		background: #05287f;
-		border-color: #05287f;
-		animation: ${wave} 0.4s ease;
-
-		${Svg} {
-			stroke-dashoffset: 0;
-		}
-	}
-
-	&:disabled {
-		& + ${Label} {
-			opacity: 0.6;
-		}
-	}
+export const Label = styled.span`
+	font-size: 14px;
+	color: #111827;
 `

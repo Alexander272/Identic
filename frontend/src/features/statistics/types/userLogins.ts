@@ -1,14 +1,4 @@
-import type { IUserShort } from '@/features/user/types/user'
-
-export interface IUserLogin {
-	id: string
-	userId: string
-	loginAt: string
-	ipAddress: string | null
-	userAgent: string | null
-	metadata: JSON
-	lastActivityAt: string
-}
+import type { IUserLogin, IUserShort } from '@/features/user/types/user'
 
 export interface IUserLoginWithUser extends IUserLogin {
 	user: IUserShort

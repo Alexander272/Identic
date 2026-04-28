@@ -65,7 +65,7 @@ export const LoginsTable = ({ searchData, activityData, userLogins }: LoginsTabl
 		})
 
 		searchData.forEach(log => {
-			const userId = log.actor.id
+			const userId = log.actorId
 			const stats = statsMap.get(userId)
 
 			if (stats) {
@@ -122,6 +122,7 @@ export const LoginsTable = ({ searchData, activityData, userLogins }: LoginsTabl
 							<TableCell sx={{ ...headerCellStyle, textAlign: 'center' }}>Заказов изменено</TableCell>
 							<TableCell sx={{ ...headerCellStyle, textAlign: 'center' }}>Позиций изменено</TableCell>
 							<TableCell sx={headerCellStyle}>Последний вход</TableCell>
+							<TableCell sx={headerCellStyle}>Последняя активность</TableCell>
 						</TableRow>
 					</TableHead>
 					<TableBody>
@@ -213,6 +214,15 @@ export const LoginsTable = ({ searchData, activityData, userLogins }: LoginsTabl
 										{user.lastLoginAt ? (
 											<Typography sx={{ color: 'text.secondary' }}>
 												{getSmartDate(user.lastLoginAt)}
+											</Typography>
+										) : (
+											<Typography sx={{ color: 'text.disabled' }}>-</Typography>
+										)}
+									</TableCell>
+									<TableCell>
+										{user.lastActivityAt ? (
+											<Typography sx={{ color: 'text.secondary' }}>
+												{getSmartDate(user.lastActivityAt)}
 											</Typography>
 										) : (
 											<Typography sx={{ color: 'text.disabled' }}>-</Typography>
