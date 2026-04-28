@@ -24,4 +24,9 @@ export const Columns = Object.freeze([
 		filter: 'bool' as const,
 		label: 'Бюджет',
 	},
+	{
+		field: 'notes',
+		filter: 'text' as const,
+		label: 'Примечание',
+	},
 ])

@@ -16,7 +16,7 @@ export function parseQuantity(text: string | null | undefined): number | null {
 	const match = text.match(/(\d[\d\s.,]*)/)
 	if (!match) return null
 
-	const cleaned = match[1].replace(/[.,\s]/g, '.')
+	const cleaned = match[1].replace(/\s+/g, '').replace(/[.,\s]/g, '.')
 	const value = parseFloat(cleaned)
 	return isNaN(value) || value <= 0 ? null : value
 }
@@ -57,13 +57,14 @@ export function extractFromGrid<T extends HTMLElement>(
 
 	for (let i = startIndex + 1; i < rows.length; i++) {
 		const cells = Array.from(rows[i].children)
-		const getCellText = (idx: number) => cells[idx]?.textContent?.replace(/\u00A0/g, ' ').trim() || null
+		const getCellText = (idx: number) => normalizeText(cells[idx]?.textContent) || null
 
 		const nameRaw = getCellText(nameIndex)
 		const qtyRaw = getCellText(qtyIndex)
 
 		const name = nameRaw?.replace(/\s+/g, ' ')
 		const quantity = parseQuantity(qtyRaw)
+		console.log(nameRaw, name, '|', qtyRaw, quantity)
 
 		if (name && name.length >= 2 && quantity) {
 			result.push({ name, quantity })
