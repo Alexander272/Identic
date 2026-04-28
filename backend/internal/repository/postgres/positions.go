@@ -98,7 +98,6 @@ func (r *PositionRepo) Create(ctx context.Context, tx Tx, dto []*models.Position
 		if v.Id == "" {
 			v.Id = uuid.NewString()
 		}
-		logger.Debug("positions", logger.AnyAttr("item", v))
 
 		rows[i] = []interface{}{
 			v.Id,

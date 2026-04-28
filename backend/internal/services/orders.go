@@ -148,6 +148,7 @@ func (s *OrdersService) IsExist(ctx context.Context, tx postgres.Tx, dto *models
 
 func (s *OrdersService) Create(ctx context.Context, dto *models.OrderDTO) error {
 	dto.Hash = CalculateHash(dto.Positions)
+	logger.Debug("create", logger.StringAttr("hash", dto.Hash), logger.IntAttr("len", len(dto.Positions)))
 
 	err := s.txManager.WithinTransaction(ctx, func(tx postgres.Tx) error {
 		isExist, err := s.repo.IsExistByPos(ctx, tx, dto)
@@ -234,10 +235,9 @@ func (s *OrdersService) Update(ctx context.Context, dto *models.OrderDTO) error 
 	oldOrder := &models.Order{}
 
 	logger.Debug("update",
-		logger.AnyAttr("created", created),
-		logger.AnyAttr("updated", updated),
-		logger.AnyAttr("deleted", deleted),
-		logger.AnyAttr("notChanged", notChanged))
+		logger.StringAttr("hash", dto.Hash),
+		logger.IntAttr("len", len(slices.Concat(created, updated, notChanged))),
+	)
 
 	err := s.txManager.WithinTransaction(ctx, func(tx postgres.Tx) error {
 		// Получаем старое состояние заказа для логирования

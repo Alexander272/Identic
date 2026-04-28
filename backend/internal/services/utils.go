@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"unicode"
 
@@ -66,10 +67,10 @@ func CalculateHash(positions []*models.PositionDTO) string {
 	}
 
 	// 1. Агрегируем (на случай дублей в строках)
-	totals := make(map[string]float32)
+	totals := make(map[string]float64)
 	for _, p := range positions {
 		name := strings.ToLower(strings.TrimSpace(p.Name))
-		totals[name] += p.Quantity
+		totals[name] += float64(p.Quantity)
 	}
 
 	// 2. Выгружаем в слайс для сортировки (важно для консистентности хеша)
@@ -82,8 +83,10 @@ func CalculateHash(positions []*models.PositionDTO) string {
 	// 3. Собираем строку: "товар1:10.000;товар2:5.500"
 	var sb strings.Builder
 	for _, k := range keys {
-		// Используем %.3f, чтобы избежать проблем с точностью float
-		sb.WriteString(fmt.Sprintf("%s:%.3f;", k, totals[k]))
+		sb.WriteString(k)
+		sb.WriteByte(':')
+		sb.WriteString(strconv.FormatFloat(totals[k], 'f', 3, 64))
+		sb.WriteByte(';')
 	}
 
 	// 4. Считаем SHA256

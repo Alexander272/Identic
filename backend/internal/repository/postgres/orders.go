@@ -124,14 +124,14 @@ func (r *OrderRepo) Get(ctx context.Context, req *models.OrderFilterDTO) ([]*mod
 }
 
 func (r *OrderRepo) GetById(ctx context.Context, tx Tx, req *models.GetOrderByIdDTO) (*models.Order, error) {
-	query := fmt.Sprintf(`SELECT id, customer, consumer, manager, is_bargaining, is_budget, bill, date, notes FROM %s WHERE id = $1`,
+	query := fmt.Sprintf(`SELECT id, customer, consumer, manager, is_bargaining, is_budget, bill, date, notes, created_at FROM %s WHERE id = $1`,
 		Tables.Orders,
 	)
 	order := &models.Order{}
 
 	err := r.getExec(tx).QueryRow(ctx, query, req.Id).Scan(
-		&order.Id, &order.Consumer, &order.Consumer, &order.Manager, &order.IsBargaining, &order.IsBudget,
-		&order.Bill, &order.Date, &order.Notes,
+		&order.Id, &order.Customer, &order.Consumer, &order.Manager, &order.IsBargaining, &order.IsBudget,
+		&order.Bill, &order.Date, &order.Notes, &order.CreatedAt,
 	)
 	if err != nil {
 		if err == pgx.ErrNoRows {
