@@ -22,13 +22,21 @@ func NewPermissionRepo(db *pgxpool.Pool, tr Transaction) *PermissionRepo {
 	}
 }
 
+func (r *PermissionRepo) GetDB() *pgxpool.Pool {
+	return r.db
+}
+
 type Permissions interface {
 	LoadPolicy(ctx context.Context, req *models.GetPoliciesDTO) ([]*models.Permission, error)
 	Sync(ctx context.Context, tx Tx, dto []*models.PermissionDTO) error
 	GetById(ctx context.Context, id uuid.UUID) (*models.Permission, error)
+	GetAll(ctx context.Context) ([]*models.Permission, error)
 	GetByRole(ctx context.Context, req *models.GetPermsByRoleDTO) ([]*models.Permission, error)
-	Count(ctx context.Context, req *models.GetPermsCountDTO) (*models.PermsCount, error)
-	CountForAll(ctx context.Context, roleToDescendants map[string][]string) (map[string]models.PermsCount, error)
+	GetInheritedByRole(ctx context.Context, roleID uuid.UUID) (map[uuid.UUID]struct{}, error)
+	GetRolePermissionsMap(ctx context.Context, roleID uuid.UUID) (map[uuid.UUID]bool, error)
+	ReplacePermissions(ctx context.Context, tx Tx, roleID uuid.UUID, permissionIDs []uuid.UUID) error
+	Count(ctx context.Context, req *models.GetPermsCountDTO) (*models.PermsWithCount, error)
+	CountForAll(ctx context.Context, roleToDescendants map[string][]string) (map[string]models.PermsWithCount, error)
 	Create(ctx context.Context, tx Tx, dto *models.PermissionDTO) error
 	Delete(ctx context.Context, tx Tx, dto *models.DeletePermissionDTO) error
 	DeleteByKeys(ctx context.Context, tx Tx, dto []*models.PermissionDTO) error
@@ -132,49 +140,56 @@ func (r *PermissionRepo) GetByRole(ctx context.Context, req *models.GetPermsByRo
 	return data, nil
 }
 
-func (r *PermissionRepo) Count(ctx context.Context, req *models.GetPermsCountDTO) (*models.PermsCount, error) {
+func (r *PermissionRepo) Count(ctx context.Context, req *models.GetPermsCountDTO) (*models.PermsWithCount, error) {
 	query := fmt.Sprintf(`SELECT 
-			COUNT(*) FILTER (WHERE role_id = $1) AS own_permissions_count,
-			COUNT(DISTINCT permission_id) FILTER (WHERE role_id = ANY($2)) AS inherited_permissions_count
+			array_agg(*) FILTER (WHERE role_id = $1) AS own_permissions,
+			array_agg(DISTINCT permission_id) FILTER (WHERE role_id = ANY($2)) AS inherited_permissions
 		FROM %s
 		WHERE role_id = $1 OR role_id = ANY($2)`,
 		Tables.RolePermissions,
 	)
 
-	data := &models.PermsCount{}
-	err := r.db.QueryRow(ctx, query, req.Role, req.Inherited).Scan(&data.Own, &data.Inherited)
+	data := &models.PermsWithCount{}
+	err := r.db.QueryRow(ctx, query, req.Role, req.Inherited).Scan(&data.Own.Items, &data.Inherited.Items)
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute query: %w", err)
 	}
 
-	data.Total = data.Own + data.Inherited
+	data.Own.Count = len(data.Own.Items)
+	data.Inherited.Count = len(data.Inherited.Items)
+
+	data.Total = models.Perm{
+		Items: append(data.Own.Items, data.Inherited.Items...),
+		Count: len(data.Total.Items),
+	}
 
 	return data, nil
 }
-func (r *PermissionRepo) CountForAll(ctx context.Context, roleToDescendants map[string][]string) (map[string]models.PermsCount, error) {
+func (r *PermissionRepo) CountForAll(ctx context.Context, roleToDescendants map[string][]string) (map[string]models.PermsWithCount, error) {
 	if len(roleToDescendants) == 0 {
-		return make(map[string]models.PermsCount), nil
+		return make(map[string]models.PermsWithCount), nil
 	}
 
-	res := make(map[string]models.PermsCount)
+	res := make(map[string]models.PermsWithCount)
 
 	// Для каждой роли считаем её собственные permissions
 	for roleSlug := range roleToDescendants {
-		c := models.PermsCount{}
+		c := models.PermsWithCount{}
 
 		// Считаем собственные permissions роли
 		ownQuery := fmt.Sprintf(`
-			SELECT COUNT(rp.permission_id)
+			SELECT array_agg(rp.permission_id)
 			FROM %s rp
 			JOIN %s r ON rp.role_id = r.id
 			WHERE r.slug = $1`,
 			Tables.RolePermissions, Tables.Roles,
 		)
 
-		err := r.db.QueryRow(ctx, ownQuery, roleSlug).Scan(&c.Own)
+		err := r.db.QueryRow(ctx, ownQuery, roleSlug).Scan(&c.Own.Items)
 		if err != nil {
 			return nil, fmt.Errorf("failed to count own perms for role %s: %w", roleSlug, err)
 		}
+		c.Own.Count = len(c.Own.Items)
 
 		c.Total = c.Own
 		res[roleSlug] = c
@@ -193,10 +208,10 @@ func (r *PermissionRepo) CountForAll(ctx context.Context, roleToDescendants map[
 	}
 
 	// Считаем permissions для каждого descendant
-	descendantPerms := make(map[string]int)
+	descendantPerms := make(map[string]models.Perm)
 	if len(allDescendants) > 0 {
 		descQuery := fmt.Sprintf(`
-			SELECT r.slug, COUNT(rp.permission_id)
+			SELECT r.slug, array_agg(rp.permission_id)
 			FROM %s rp
 			JOIN %s r ON rp.role_id = r.id
 			WHERE r.slug = ANY($1)
@@ -212,11 +227,11 @@ func (r *PermissionRepo) CountForAll(ctx context.Context, roleToDescendants map[
 
 		for rows.Next() {
 			var slug string
-			var count int
-			if err := rows.Scan(&slug, &count); err != nil {
+			var perms []string
+			if err := rows.Scan(&slug, &perms); err != nil {
 				return nil, err
 			}
-			descendantPerms[slug] = count
+			descendantPerms[slug] = models.Perm{Items: perms, Count: len(perms)}
 		}
 	}
 
@@ -224,13 +239,107 @@ func (r *PermissionRepo) CountForAll(ctx context.Context, roleToDescendants map[
 	for roleSlug, descendants := range roleToDescendants {
 		c := res[roleSlug]
 		for _, d := range descendants {
-			c.Inherited += descendantPerms[d]
+			c.Inherited.Items = append(c.Inherited.Items, descendantPerms[d].Items...)
+			c.Inherited.Count += descendantPerms[d].Count
 		}
-		c.Total = c.Own + c.Inherited
+		c.Total = models.Perm{
+			Items: append(c.Own.Items, c.Inherited.Items...),
+			Count: c.Own.Count + c.Inherited.Count,
+		}
 		res[roleSlug] = c
 	}
 
 	return res, nil
+}
+
+func (r *PermissionRepo) GetAll(ctx context.Context) ([]*models.Permission, error) {
+	//TODO можно еще добавить уровни для сортировки
+	query := fmt.Sprintf(`SELECT id, object, action, description FROM %s ORDER BY object, action`, Tables.Permissions)
+
+	data := make([]*models.Permission, 0, 50)
+	rows, err := r.db.Query(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute query: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		item := &models.Permission{}
+		if err := rows.Scan(&item.ID, &item.Object, &item.Action, &item.Description); err != nil {
+			return nil, fmt.Errorf("scan row error: %w", err)
+		}
+		data = append(data, item)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("rows iteration error: %w", err)
+	}
+
+	return data, nil
+}
+
+func (r *PermissionRepo) GetRolePermissionsMap(ctx context.Context, roleID uuid.UUID) (map[uuid.UUID]bool, error) {
+	query := fmt.Sprintf(`SELECT permission_id FROM %s WHERE role_id = $1`, Tables.RolePermissions)
+
+	rows, err := r.db.Query(ctx, query, roleID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get role permissions: %w", err)
+	}
+	defer rows.Close()
+
+	result := make(map[uuid.UUID]bool)
+	for rows.Next() {
+		var permID uuid.UUID
+		if err := rows.Scan(&permID); err != nil {
+			return nil, fmt.Errorf("scan row error: %w", err)
+		}
+		result[permID] = true
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("rows iteration error: %w", err)
+	}
+
+	return result, nil
+}
+
+func (r *PermissionRepo) GetInheritedByRole(ctx context.Context, roleID uuid.UUID) (map[uuid.UUID]struct{}, error) {
+	query := fmt.Sprintf(`WITH RECURSIVE sub_roles AS (
+			-- Базовый случай: берем только ПРЯМЫХ детей роли $1
+			SELECT role_id 
+			FROM %s 
+			WHERE parent_role_id = $1
+			
+			UNION ALL
+			
+			-- Рекурсия: спускаемся дальше ко всем внукам, правнукам и т.д.
+			SELECT rh.role_id 
+			FROM %s rh
+			JOIN sub_roles sr ON rh.parent_role_id = sr.role_id
+		)
+		SELECT DISTINCT rp.permission_id 
+		FROM %s rp 
+		WHERE rp.role_id IN (SELECT role_id FROM sub_roles)`,
+		Tables.RoleHierarchy, Tables.RoleHierarchy, Tables.RolePermissions,
+	)
+
+	rows, err := r.db.Query(ctx, query, roleID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute query: %w", err)
+	}
+	defer rows.Close()
+
+	result := make(map[uuid.UUID]struct{})
+	for rows.Next() {
+		var permID uuid.UUID
+		if err := rows.Scan(&permID); err != nil {
+			return nil, fmt.Errorf("scan row error: %w", err)
+		}
+		result[permID] = struct{}{}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("rows iteration error: %w", err)
+	}
+
+	return result, nil
 }
 
 func (r *PermissionRepo) Create(ctx context.Context, tx Tx, dto *models.PermissionDTO) error {
@@ -281,5 +390,35 @@ func (r *PermissionRepo) DeleteByKeys(ctx context.Context, tx Tx, dto []*models.
 	if err != nil {
 		return fmt.Errorf("failed to execute query: %w", err)
 	}
+	return nil
+}
+
+func (r *PermissionRepo) ReplacePermissions(ctx context.Context, tx Tx, roleID uuid.UUID, permissionIDs []uuid.UUID) error {
+	exec := r.getExec(tx)
+
+	query := fmt.Sprintf(`DELETE FROM %s WHERE role_id = $1`, Tables.RolePermissions)
+	_, err := exec.Exec(ctx, query, roleID)
+	if err != nil {
+		return fmt.Errorf("failed to delete old permissions: %w", err)
+	}
+
+	if len(permissionIDs) == 0 {
+		return nil
+	}
+
+	values := make([]string, 0, len(permissionIDs))
+	args := make([]interface{}, 0, len(permissionIDs)*2)
+	for i, id := range permissionIDs {
+		values = append(values, fmt.Sprintf("($%d, $%d)", i*2+1, i*2+2))
+		args = append(args, roleID, id)
+	}
+
+	query = fmt.Sprintf(`INSERT INTO %s (role_id, permission_id) VALUES %s`, Tables.RolePermissions, strings.Join(values, ", "))
+
+	_, err = exec.Exec(ctx, query, args...)
+	if err != nil {
+		return fmt.Errorf("failed to insert permissions: %w", err)
+	}
+
 	return nil
 }

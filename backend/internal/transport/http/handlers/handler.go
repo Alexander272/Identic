@@ -53,9 +53,8 @@ func (h *Handler) Init(group *gin.RouterGroup) {
 
 	permissions.Register(secure, h.services.Permissions, h.middleware)
 	roles.Register(secure, h.services.Roles, h.middleware)
-	users.Register(secure, h.services.Users, h.middleware)
+	users.Register(secure, h.services, h.middleware)
 
 	audit.Register(secure, h.services.AuditLogs, h.middleware)
-
 	stats.Register(secure, h.services.Statistic, h.middleware)
 }

@@ -31,6 +31,8 @@ type Order struct {
 	Customer      string      `json:"customer" db:"customer"`
 	Consumer      string      `json:"consumer" db:"consumer"`
 	Manager       string      `json:"manager" db:"manager"`
+	IsBargaining  bool        `json:"isBargaining" db:"is_bargaining"`
+	IsBudget      bool        `json:"isBudget" db:"is_budget"`
 	Bill          string      `json:"bill" db:"bill"`
 	Date          time.Time   `json:"date" db:"date"`
 	Notes         string      `json:"notes" db:"notes"`
@@ -46,17 +48,19 @@ type OrderFilterDTO struct {
 }
 
 type OrderDTO struct {
-	Id        string `json:"id" db:"id"`
-	Actor     Actor
-	Customer  string         `json:"customer" db:"customer"`
-	Consumer  string         `json:"consumer" db:"consumer"`
-	Manager   string         `json:"manager" db:"manager"`
-	Bill      string         `json:"bill" db:"bill"`
-	Date      time.Time      `json:"date" db:"date"`
-	Year      int            `json:"year" db:"year"`
-	Notes     string         `json:"notes" db:"notes"`
-	Hash      string         `json:"hash" db:"hash"`
-	Positions []*PositionDTO `json:"positions"`
+	Id           string `json:"id" db:"id"`
+	Actor        Actor
+	Customer     string         `json:"customer" db:"customer"`
+	Consumer     string         `json:"consumer" db:"consumer"`
+	Manager      string         `json:"manager" db:"manager"`
+	IsBargaining bool           `json:"isBargaining" db:"is_bargaining"`
+	IsBudget     bool           `json:"isBudget" db:"is_budget"`
+	Bill         string         `json:"bill" db:"bill"`
+	Date         time.Time      `json:"date" db:"date"`
+	Year         int            `json:"year" db:"year"`
+	Notes        string         `json:"notes" db:"notes"`
+	Hash         string         `json:"hash" db:"hash"`
+	Positions    []*PositionDTO `json:"positions"`
 }
 
 type DeleteOrderDTO struct {
@@ -74,6 +78,8 @@ type FlatOrder struct {
 	Customer      string    `json:"customer" db:"customer"`
 	Consumer      string    `json:"consumer" db:"consumer"`
 	Manager       string    `json:"manager" db:"manager"`
+	IsBargaining  bool      `json:"isBargaining" db:"is_bargaining"`
+	IsBudget      bool      `json:"isBudget" db:"is_budget"`
 	Bill          string    `json:"bill" db:"bill"`
 	Date          time.Time `json:"date" db:"date"`
 	Notes         string    `json:"notes" db:"notes"`

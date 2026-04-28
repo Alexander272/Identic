@@ -25,7 +25,7 @@ type UserLoginDTO struct {
 }
 
 type GetUserLoginsDTO struct {
-	UserID    string     `json:"userId"`
+	UserID    *uuid.UUID `json:"userId"`
 	StartDate *time.Time `json:"startDate"`
 	EndDate   *time.Time `json:"endDate"`
 	Limit     int        `json:"limit"`

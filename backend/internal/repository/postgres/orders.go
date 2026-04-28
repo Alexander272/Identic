@@ -30,13 +30,15 @@ func NewOrderRepo(db *pgxpool.Pool, tr Transaction) *OrderRepo {
 
 var reCamelCase = regexp.MustCompile("([a-z0-9])([0-9A-Z])")
 var allowedFields = map[string]struct{}{
-	"customer": {},
-	"consumer": {},
-	"client":   {},
-	"manager":  {},
-	"year":     {},
-	"date":     {},
-	"notes":    {},
+	"customer":      {},
+	"consumer":      {},
+	"client":        {},
+	"manager":       {},
+	"year":          {},
+	"date":          {},
+	"notes":         {},
+	"is_bargaining": {},
+	"is_budget":     {},
 }
 
 type Orders interface {
@@ -55,12 +57,15 @@ type Orders interface {
 
 func (r *OrderRepo) Get(ctx context.Context, req *models.OrderFilterDTO) ([]*models.Order, error) {
 	var allowedFields = map[string][]string{
-		"client":  {"customer", "consumer"},
-		"manager": {"manager"},
-		"date":    {"date"},
+		"client":       {"customer", "consumer"},
+		"manager":      {"manager"},
+		"date":         {"date"},
+		"isBargaining": {"is_bargaining"},
+		"isBudget":     {"is_budget"},
 	}
 
-	baseQuery := fmt.Sprintf(`SELECT o.id, o.customer, o.consumer, o.manager, o.bill, o.date, o.notes, COUNT(p.id) AS position_count
+	baseQuery := fmt.Sprintf(`SELECT o.id, o.customer, o.consumer, o.manager, o.is_bargaining, o.is_budget, 
+		o.bill, o.date, o.notes, COUNT(p.id) AS position_count
         FROM %s AS o
         LEFT JOIN %s AS p ON p.order_id = o.id`,
 		Tables.Orders, Tables.Positions,
@@ -75,7 +80,7 @@ func (r *OrderRepo) Get(ctx context.Context, req *models.OrderFilterDTO) ([]*mod
 				types := slices.Repeat([]string{val.CompareType}, len(cols))
 				values := slices.Repeat([]string{val.Value}, len(cols))
 				qb.AddCompositeFilter(cols, types, values)
-			} else {
+			} else if len(cols) == 1 {
 				qb.AddFilter(cols[0], val.CompareType, val.Value)
 			}
 		}
@@ -104,7 +109,10 @@ func (r *OrderRepo) Get(ctx context.Context, req *models.OrderFilterDTO) ([]*mod
 
 	for rows.Next() {
 		tmp := &models.Order{}
-		if err := rows.Scan(&tmp.Id, &tmp.Customer, &tmp.Consumer, &tmp.Manager, &tmp.Bill, &tmp.Date, &tmp.Notes, &tmp.PositionCount); err != nil {
+		if err := rows.Scan(
+			&tmp.Id, &tmp.Customer, &tmp.Consumer, &tmp.Manager, &tmp.IsBargaining, &tmp.IsBudget,
+			&tmp.Bill, &tmp.Date, &tmp.Notes, &tmp.PositionCount,
+		); err != nil {
 			return nil, fmt.Errorf("failed to scan row. error: %w", err)
 		}
 		data = append(data, tmp)
@@ -116,13 +124,14 @@ func (r *OrderRepo) Get(ctx context.Context, req *models.OrderFilterDTO) ([]*mod
 }
 
 func (r *OrderRepo) GetById(ctx context.Context, tx Tx, req *models.GetOrderByIdDTO) (*models.Order, error) {
-	query := fmt.Sprintf(`SELECT id, customer, consumer, manager, bill, date, notes FROM %s WHERE id = $1`,
+	query := fmt.Sprintf(`SELECT id, customer, consumer, manager, is_bargaining, is_budget, bill, date, notes FROM %s WHERE id = $1`,
 		Tables.Orders,
 	)
 	order := &models.Order{}
 
 	err := r.getExec(tx).QueryRow(ctx, query, req.Id).Scan(
-		&order.Id, &order.Customer, &order.Consumer, &order.Manager, &order.Bill, &order.Date, &order.Notes,
+		&order.Id, &order.Consumer, &order.Consumer, &order.Manager, &order.IsBargaining, &order.IsBudget,
+		&order.Bill, &order.Date, &order.Notes,
 	)
 	if err != nil {
 		if err == pgx.ErrNoRows {
@@ -134,7 +143,8 @@ func (r *OrderRepo) GetById(ctx context.Context, tx Tx, req *models.GetOrderById
 }
 
 func (r *OrderRepo) GetByYear(ctx context.Context, req *models.GetOrderByYearDTO) ([]*models.Order, error) {
-	query := fmt.Sprintf(`SELECT o.id, o.customer, o.consumer, o.manager, o.bill, o.date, o.notes, COUNT(p.id) AS position_count
+	query := fmt.Sprintf(`SELECT o.id, o.customer, o.consumer, o.manager, o.is_bargaining, o.is_budget, 
+		o.bill, o.date, o.notes, COUNT(p.id) AS position_count
         FROM %s AS o
         LEFT JOIN %s AS p ON p.order_id = o.id
         WHERE o.year = $1
@@ -151,7 +161,10 @@ func (r *OrderRepo) GetByYear(ctx context.Context, req *models.GetOrderByYearDTO
 
 	for rows.Next() {
 		tmp := &models.Order{}
-		if err := rows.Scan(&tmp.Id, &tmp.Customer, &tmp.Consumer, &tmp.Manager, &tmp.Bill, &tmp.Date, &tmp.Notes, &tmp.PositionCount); err != nil {
+		if err := rows.Scan(
+			&tmp.Id, &tmp.Customer, &tmp.Consumer, &tmp.Manager, &tmp.IsBargaining, &tmp.IsBudget,
+			&tmp.Bill, &tmp.Date, &tmp.Notes, &tmp.PositionCount,
+		); err != nil {
 			return nil, fmt.Errorf("failed to scan row. error: %w", err)
 		}
 		data = append(data, tmp)
@@ -212,7 +225,7 @@ func (r *OrderRepo) GetUniqueData(ctx context.Context, req *models.GetUniqueDTO)
 }
 
 func (r *OrderRepo) GetFlatData(ctx context.Context, req *models.GetFlatOrderDTO) (*models.FlatOrderRes, error) {
-	baseQuery := fmt.Sprintf(`SELECT p.id, customer, consumer, manager, bill, date, o.notes, 
+	baseQuery := fmt.Sprintf(`SELECT p.id, customer, consumer, manager, is_bargaining, is_budget, bill, date, o.notes, 
 		row_number, name, quantity, p.notes AS pos_notes
 		FROM %s AS o
 		JOIN %s AS p ON p.order_id = o.id`,
@@ -317,7 +330,7 @@ func (r *OrderRepo) GetFlatData(ctx context.Context, req *models.GetFlatOrderDTO
 	for rows.Next() {
 		tmp := &models.FlatOrder{}
 		if err := rows.Scan(
-			&tmp.Id, &tmp.Customer, &tmp.Consumer, &tmp.Manager, &tmp.Bill, &tmp.Date, &tmp.Notes,
+			&tmp.Id, &tmp.Customer, &tmp.Consumer, &tmp.Manager, &tmp.IsBargaining, &tmp.IsBudget, &tmp.Bill, &tmp.Date, &tmp.Notes,
 			&tmp.RowNumber, &tmp.Name, &tmp.Quantity, &tmp.PositionNotes,
 		); err != nil {
 			return nil, fmt.Errorf("failed to scan row. error: %w", err)
@@ -415,8 +428,8 @@ func (r *OrderRepo) IsExistByPos(ctx context.Context, tx Tx, dto *models.OrderDT
 }
 
 func (r *OrderRepo) Create(ctx context.Context, tx Tx, dto *models.OrderDTO) error {
-	query := fmt.Sprintf(`INSERT INTO %s (id, customer, consumer, manager, bill, date, year, notes, content_hash)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+	query := fmt.Sprintf(`INSERT INTO %s (id, customer, consumer, manager, is_bargaining, is_budget, bill, date, year, notes, content_hash)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
 		Tables.Orders,
 	)
 	if dto.Id == "" {
@@ -425,7 +438,7 @@ func (r *OrderRepo) Create(ctx context.Context, tx Tx, dto *models.OrderDTO) err
 	dto.Year = dto.Date.Year()
 
 	_, err := r.getExec(tx).Exec(ctx, query,
-		dto.Id, dto.Customer, dto.Consumer, dto.Manager, dto.Bill, dto.Date, dto.Year, dto.Notes, dto.Hash,
+		dto.Id, dto.Customer, dto.Consumer, dto.Manager, dto.IsBargaining, dto.IsBudget, dto.Bill, dto.Date, dto.Year, dto.Notes, dto.Hash,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to execute query. error: %w", err)
@@ -438,6 +451,8 @@ func (r *OrderRepo) Create(ctx context.Context, tx Tx, dto *models.OrderDTO) err
 			Customer:      dto.Customer,
 			Consumer:      dto.Consumer,
 			Manager:       dto.Manager,
+			IsBargaining:  dto.IsBargaining,
+			IsBudget:      dto.IsBudget,
 			Bill:          dto.Bill,
 			Date:          dto.Date,
 			Year:          dto.Year,
@@ -467,6 +482,8 @@ func (r *OrderRepo) CreateSeveral(ctx context.Context, tx Tx, dto []*models.Orde
 			v.Customer,
 			v.Consumer,
 			v.Manager,
+			v.IsBargaining,
+			v.IsBudget,
 			v.Bill,
 			v.Date,
 			v.Date.Year(),
@@ -479,7 +496,7 @@ func (r *OrderRepo) CreateSeveral(ctx context.Context, tx Tx, dto []*models.Orde
 		affectedYears = append(affectedYears, y)
 	}
 
-	columns := []string{"id", "customer", "consumer", "manager", "bill", "date", "year", "notes"}
+	columns := []string{"id", "customer", "consumer", "manager", "is_bargaining", "is_budget", "bill", "date", "year", "notes"}
 	_, err := r.getExec(tx).CopyFrom(
 		ctx,
 		pgx.Identifier{Tables.Orders},
@@ -514,14 +531,15 @@ func quoteLiteral(s string) string {
 }
 
 func (r *OrderRepo) Update(ctx context.Context, tx Tx, dto *models.OrderDTO) error {
-	query := fmt.Sprintf(`UPDATE %s SET customer = $2, consumer = $3, manager = $4, bill = $5, date = $6, year = $7, notes = $8, content_hash=$9
+	query := fmt.Sprintf(`UPDATE %s SET customer = $2, consumer = $3, manager = $4, is_bargaining = $5, is_budget = $6, 
+		bill = $7, date = $8, year = $9, notes = $10, content_hash=$11
 		WHERE id = $1`,
 		Tables.Orders,
 	)
 	dto.Year = dto.Date.Year()
 
 	_, err := r.getExec(tx).Exec(ctx, query,
-		dto.Id, dto.Customer, dto.Consumer, dto.Manager, dto.Bill, dto.Date, dto.Year, dto.Notes, dto.Hash,
+		dto.Id, dto.Customer, dto.Consumer, dto.Manager, dto.IsBargaining, dto.IsBudget, dto.Bill, dto.Date, dto.Year, dto.Notes, dto.Hash,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to execute query. error: %w", err)
@@ -534,6 +552,8 @@ func (r *OrderRepo) Update(ctx context.Context, tx Tx, dto *models.OrderDTO) err
 			Customer:      dto.Customer,
 			Consumer:      dto.Consumer,
 			Manager:       dto.Manager,
+			IsBargaining:  dto.IsBargaining,
+			IsBudget:      dto.IsBudget,
 			Bill:          dto.Bill,
 			Date:          dto.Date,
 			Year:          dto.Year,

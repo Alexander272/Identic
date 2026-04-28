@@ -22,4 +22,5 @@ var (
 	ErrCircularInheritance   = errors.New("circular inheritance detected")
 	ErrCannotInheritFromSelf = errors.New("role cannot inherit from itself")
 	ErrParentRoleNotFound    = errors.New("parent role not found or inactive")
+	ErrRoleNotEditable    = errors.New("role is not editable")
 )

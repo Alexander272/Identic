@@ -21,9 +21,9 @@ type Role struct {
 
 type RoleWithStats struct {
 	Role
-	Inherited  []string   `json:"inherited"`
-	PermsCount PermsCount `json:"perms"`
-	UserCount  int        `json:"userCount"`
+	Children   []string       `json:"children"`
+	PermsCount PermsWithCount `json:"perms"`
+	UserCount  int            `json:"userCount"`
 }
 
 type RoleShort struct {
@@ -42,10 +42,11 @@ type RoleDTO struct {
 	Actor       Actor
 	Slug        string    `json:"slug" db:"slug"`
 	Name        string    `json:"name" db:"name"`
+	Description string    `json:"description" db:"description"`
 	Level       int       `json:"level" db:"level"`
 	IsSystem    bool      `json:"isSystem" db:"is_system"`
 	Permissions []string  `json:"permissions" db:"permissions"`
-	Children    []string  `json:"children" db:"children"`
+	Inherits    []string  `json:"inherits" db:"inherits"`
 	CreatedAt   time.Time `json:"createdAt" db:"created_at"`
 }
 
@@ -69,4 +70,10 @@ type RolePermissionDTO struct {
 	ActorID      uuid.UUID `json:"actorId" db:"actor_id"`
 	RoleID       uuid.UUID `json:"roleId" db:"role_id"`
 	PermissionID uuid.UUID `json:"permissionId" db:"permission_id"`
+}
+
+type RoleWithPerms struct {
+	Role
+	Inherits []string                  `json:"inherits"`
+	Perms    []*RolePermissionsGrouped `json:"perms"`
 }

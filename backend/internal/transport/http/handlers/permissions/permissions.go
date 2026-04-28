@@ -7,6 +7,7 @@ import (
 	"github.com/Alexander272/Identic/backend/internal/models/response"
 	"github.com/Alexander272/Identic/backend/internal/services"
 	"github.com/Alexander272/Identic/backend/internal/transport/middleware"
+	"github.com/Alexander272/Identic/backend/pkg/error_bot"
 	"github.com/gin-gonic/gin"
 )
 
@@ -25,8 +26,19 @@ func Register(api *gin.RouterGroup, service services.Permissions, middleware *mi
 
 	permissions := api.Group("/permissions", middleware.CheckPermissions(access.Reg.R(access.ResourcePerm).Read()))
 	{
+		permissions.GET("", handler.getAll)
 		permissions.GET("resources", handler.getResources)
 	}
+}
+
+func (h *Handler) getAll(c *gin.Context) {
+	data, err := h.service.GetGrouped(c)
+	if err != nil {
+		response.NewErrorResponse(c, http.StatusInternalServerError, err.Error(), "Произошла ошибка: "+err.Error())
+		error_bot.Send(c, err.Error(), nil)
+		return
+	}
+	c.JSON(http.StatusOK, response.DataResponse{Data: data})
 }
 
 func (h *Handler) getResources(c *gin.Context) {

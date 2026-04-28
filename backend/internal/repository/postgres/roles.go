@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/Alexander272/Identic/backend/internal/models"
 	"github.com/google/uuid"
@@ -27,11 +28,13 @@ type Roles interface {
 	GetUserCount(ctx context.Context, req []string) (map[string]int, error)
 	IsExists(ctx context.Context, roleName string) (bool, error)
 	IsExistsById(ctx context.Context, id uuid.UUID) (bool, error)
+	GetIDsBySlugs(ctx context.Context, slugs []string) (map[string]uuid.UUID, error)
 	Create(ctx context.Context, tx Tx, dto *models.RoleDTO) error
 	Update(ctx context.Context, tx Tx, dto *models.RoleDTO) error
 	Delete(ctx context.Context, tx Tx, dto *models.DeleteRoleDTO) error
 
 	AssignPermission(ctx context.Context, tx Tx, dto *models.RolePermissionDTO) error
+	AssignPermissions(ctx context.Context, tx Tx, roleID uuid.UUID, permissionIDs []uuid.UUID) error
 	DeletePermission(ctx context.Context, tx Tx, dto *models.RolePermissionDTO) error
 }
 
@@ -50,7 +53,7 @@ func (r *RoleRepo) GetOne(ctx context.Context, req *models.GetRoleDTO) (*models.
 		return nil, models.ErrInvalidInput
 	}
 
-	query := fmt.Sprintf(`SELECT id, slug, name, level, is_system, created_at, updated_at FROM %s %s`,
+	query := fmt.Sprintf(`SELECT id, slug, name, description, level, is_active, is_system, is_editable, created_at, updated_at FROM %s %s`,
 		Tables.Roles, condition,
 	)
 	data := &models.Role{}
@@ -59,8 +62,11 @@ func (r *RoleRepo) GetOne(ctx context.Context, req *models.GetRoleDTO) (*models.
 		&data.ID,
 		&data.Slug,
 		&data.Name,
+		&data.Description,
 		&data.Level,
+		&data.IsActive,
 		&data.IsSystem,
+		&data.IsEditable,
 		&data.CreatedAt,
 		&data.UpdatedAt,
 	)
@@ -68,6 +74,40 @@ func (r *RoleRepo) GetOne(ctx context.Context, req *models.GetRoleDTO) (*models.
 		return nil, fmt.Errorf("failed to execute query: %w", err)
 	}
 	return data, nil
+}
+
+func (r *RoleRepo) GetIDsBySlugs(ctx context.Context, slugs []string) (map[string]uuid.UUID, error) {
+	if len(slugs) == 0 {
+		return make(map[string]uuid.UUID), nil
+	}
+
+	placeholders := make([]string, 0, len(slugs))
+	args := make([]interface{}, 0, len(slugs))
+	for i, slug := range slugs {
+		placeholders = append(placeholders, fmt.Sprintf("$%d", i+1))
+		args = append(args, slug)
+	}
+
+	query := fmt.Sprintf(`SELECT slug, id FROM %s WHERE slug IN (%s)`,
+		Tables.Roles, strings.Join(placeholders, ", "))
+
+	rows, err := r.db.Query(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute query: %w", err)
+	}
+	defer rows.Close()
+
+	result := make(map[string]uuid.UUID)
+	for rows.Next() {
+		var slug string
+		var id uuid.UUID
+		if err := rows.Scan(&slug, &id); err != nil {
+			return nil, fmt.Errorf("failed to scan row: %w", err)
+		}
+		result[slug] = id
+	}
+
+	return result, nil
 }
 
 func (r *RoleRepo) GetAll(ctx context.Context) ([]*models.Role, error) {
@@ -158,13 +198,13 @@ func (r *RoleRepo) Create(ctx context.Context, tx Tx, dto *models.RoleDTO) error
 		return models.ErrReservedRole
 	}
 
-	query := fmt.Sprintf(`INSERT INTO %s (slug, name, level, is_system)
-		VALUES ($1, $2, $3, $4) RETURNING id, created_at`,
+	query := fmt.Sprintf(`INSERT INTO %s (slug, name, level, description, is_system)
+		VALUES ($1, $2, $3, $4, $5) RETURNING id, created_at`,
 		Tables.Roles,
 	)
 
 	err := r.getExec(tx).QueryRow(
-		ctx, query, dto.Slug, dto.Name, dto.Level, dto.IsSystem,
+		ctx, query, dto.Slug, dto.Name, dto.Level, dto.Description, dto.IsSystem,
 	).Scan(&dto.ID, &dto.CreatedAt)
 	if err != nil {
 		return fmt.Errorf("failed to execute query: %w", err)
@@ -177,11 +217,11 @@ func (r *RoleRepo) Update(ctx context.Context, tx Tx, dto *models.RoleDTO) error
 		return models.ErrReservedRole
 	}
 
-	query := fmt.Sprintf(`UPDATE %s SET name=$1, level=$2, slug=$3, is_system=$4, updated_at=NOW() WHERE id=$5`,
+	query := fmt.Sprintf(`UPDATE %s SET name=$1, level=$2, slug=$3, description=$4, updated_at=NOW() WHERE id=$5`,
 		Tables.Roles,
 	)
 
-	_, err := r.getExec(tx).Exec(ctx, query, dto.Name, dto.Level, dto.Slug, dto.IsSystem, dto.ID)
+	_, err := r.getExec(tx).Exec(ctx, query, dto.Name, dto.Level, dto.Slug, dto.Description, dto.ID)
 	if err != nil {
 		return fmt.Errorf("failed to execute query: %w", err)
 	}
@@ -202,6 +242,27 @@ func (r *RoleRepo) AssignPermission(ctx context.Context, tx Tx, dto *models.Role
 	query := fmt.Sprintf(`INSERT INTO %s (role_id, permission_id) VALUES ($1, $2)`, Tables.RolePermissions)
 
 	_, err := r.getExec(tx).Exec(ctx, query, dto.RoleID, dto.PermissionID)
+	if err != nil {
+		return fmt.Errorf("failed to execute query: %w", err)
+	}
+	return nil
+}
+
+func (r *RoleRepo) AssignPermissions(ctx context.Context, tx Tx, roleID uuid.UUID, permissionIDs []uuid.UUID) error {
+	if len(permissionIDs) == 0 {
+		return nil
+	}
+
+	values := make([]string, 0, len(permissionIDs))
+	args := make([]interface{}, 0, len(permissionIDs)*2)
+	for i, permID := range permissionIDs {
+		values = append(values, fmt.Sprintf("($%d, $%d)", i*2+1, i*2+2))
+		args = append(args, roleID, permID)
+	}
+
+	query := fmt.Sprintf(`INSERT INTO %s (role_id, permission_id) VALUES %s`, Tables.RolePermissions, strings.Join(values, ", "))
+
+	_, err := r.getExec(tx).Exec(ctx, query, args...)
 	if err != nil {
 		return fmt.Errorf("failed to execute query: %w", err)
 	}

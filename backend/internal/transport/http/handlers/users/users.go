@@ -8,6 +8,7 @@ import (
 	"github.com/Alexander272/Identic/backend/internal/models"
 	"github.com/Alexander272/Identic/backend/internal/models/response"
 	"github.com/Alexander272/Identic/backend/internal/services"
+	"github.com/Alexander272/Identic/backend/internal/transport/http/handlers/users/logins"
 	"github.com/Alexander272/Identic/backend/internal/transport/middleware"
 	"github.com/Alexander272/Identic/backend/pkg/error_bot"
 	"github.com/gin-gonic/gin"
@@ -24,8 +25,8 @@ func NewHandler(service services.Users) *Handler {
 	}
 }
 
-func Register(api *gin.RouterGroup, service services.Users, middleware *middleware.Middleware) {
-	handler := NewHandler(service)
+func Register(api *gin.RouterGroup, service *services.Services, middleware *middleware.Middleware) {
+	handler := NewHandler(service.Users)
 
 	users := api.Group("/users", middleware.CheckPermissions(access.Reg.R(access.ResourceUser).Read()))
 	{
@@ -43,6 +44,8 @@ func Register(api *gin.RouterGroup, service services.Users, middleware *middlewa
 			write.PUT("/:id", handler.update)
 		}
 	}
+
+	logins.Register(users, service.UserLogins, middleware)
 }
 
 func (h *Handler) getAll(c *gin.Context) {

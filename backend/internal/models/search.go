@@ -39,6 +39,8 @@ type OrderMatchResult struct {
 	Customer     string    `json:"customer"`
 	Consumer     string    `json:"consumer"`
 	Date         time.Time `json:"date"`
+	IsBargaining bool      `json:"isBargaining"`
+	IsBudget     bool      `json:"isBudget"`
 	Year         int       `json:"year"`
 	Link         string    `json:"link"`
 	Score        float64   `json:"score"`        // Общий процент совпадения (0-100)
@@ -77,18 +79,20 @@ type OrderInfo struct {
 }
 
 type RawMatch struct {
-	OrderId    string // UUID из базы
-	YearInt    int
-	Customer   string
-	Consumer   string
-	Date       time.Time
-	ReqId      string   // ID позиции из запроса (номер по порядку)
-	PosId      string   // UUID позиции в базе
-	PSearch    string   // Название товара в базе
-	ReqTokens  []string // Токены (только для Fuzzy)
-	ReqQty     float64  // Сколько просил пользователь
-	DbQty      float64  // Сколько реально в базе
-	Similarity float64  // 1.0 для точного поиска, 0.3-1.0 для Fuzzy
+	OrderId      string // UUID из базы
+	YearInt      int
+	Customer     string
+	Consumer     string
+	Date         time.Time
+	IsBargaining bool
+	IsBudget     bool
+	ReqId        string   // ID позиции из запроса (номер по порядку)
+	PosId        string   // UUID позиции в базе
+	PSearch      string   // Название товара в базе
+	ReqTokens    []string // Токены (только для Fuzzy)
+	ReqQty       float64  // Сколько просил пользователь
+	DbQty        float64  // Сколько реально в базе
+	Similarity   float64  // 1.0 для точного поиска, 0.3-1.0 для Fuzzy
 }
 
 type SearchResultPart struct {

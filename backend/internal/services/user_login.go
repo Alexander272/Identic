@@ -24,7 +24,7 @@ func NewUserLoginService(repo repository.UserLogins, tm TransactionManager) *use
 
 type UserLogins interface {
 	RecordLogin(ctx context.Context, dto *models.UserLoginDTO) error
-	GetByUser(ctx context.Context, req *models.GetUserLoginsDTO) ([]*models.UserLogin, int64, error)
+	GetByUser(ctx context.Context, req *models.GetUserLoginsDTO) ([]*models.UserLogin, error)
 	GetLastByUser(ctx context.Context, userID string) (*models.UserLogin, error)
 	GetLastByUsers(ctx context.Context, req *models.GetUserLoginsDTO) ([]*models.UserLoginWithUser, error)
 	UpdateLastActivity(ctx context.Context, tx postgres.Tx, userID string) (bool, error)
@@ -42,7 +42,7 @@ func (s *userLoginService) RecordLogin(ctx context.Context, dto *models.UserLogi
 	return nil
 }
 
-func (s *userLoginService) GetByUser(ctx context.Context, req *models.GetUserLoginsDTO) ([]*models.UserLogin, int64, error) {
+func (s *userLoginService) GetByUser(ctx context.Context, req *models.GetUserLoginsDTO) ([]*models.UserLogin, error) {
 	if req.Limit == 0 {
 		req.Limit = 50
 	}
@@ -52,15 +52,10 @@ func (s *userLoginService) GetByUser(ctx context.Context, req *models.GetUserLog
 
 	data, err := s.repo.GetByUser(ctx, req)
 	if err != nil {
-		return nil, 0, fmt.Errorf("failed to get user logins: %w", err)
+		return nil, fmt.Errorf("failed to get user logins: %w", err)
 	}
 
-	count, err := s.repo.GetByUserCount(ctx, req.UserID)
-	if err != nil {
-		return nil, 0, fmt.Errorf("failed to count user logins: %w", err)
-	}
-
-	return data, count, nil
+	return data, nil
 }
 
 func (s *userLoginService) GetLastByUser(ctx context.Context, userID string) (*models.UserLogin, error) {

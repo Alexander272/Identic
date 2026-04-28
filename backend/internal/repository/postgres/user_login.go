@@ -35,12 +35,13 @@ type UserLogins interface {
 }
 
 func (r *userLoginRepo) GetByUser(ctx context.Context, req *models.GetUserLoginsDTO) ([]*models.UserLogin, error) {
-	baseQuery := fmt.Sprintf(`SELECT id, user_id, login_at, ip_address::text, user_agent, metadata 
-		FROM %s WHERE user_id = $1`,
+	baseQuery := fmt.Sprintf(`SELECT id, user_id, login_at, ip_address::text, user_agent, metadata, last_activity_at
+		FROM %s`,
 		Tables.UserLogins,
 	)
 
 	qb := NewQueryBuilder(baseQuery)
+	qb.AddUUIDFilter("user_id", req.UserID)
 	qb.AddDateRangeFilter("login_at", req.StartDate, req.EndDate)
 	qb.SetSort("login_at", true)
 
@@ -62,7 +63,9 @@ func (r *userLoginRepo) GetByUser(ctx context.Context, req *models.GetUserLogins
 
 	for rows.Next() {
 		tmp := &models.UserLogin{}
-		if err := rows.Scan(&tmp.ID, &tmp.UserID, &tmp.LoginAt, &tmp.IPAddress, &tmp.UserAgent, &tmp.Metadata); err != nil {
+		if err := rows.Scan(
+			&tmp.ID, &tmp.UserID, &tmp.LoginAt, &tmp.IPAddress, &tmp.UserAgent, &tmp.Metadata, &tmp.LastActivityAt,
+		); err != nil {
 			return nil, fmt.Errorf("failed to scan row: %w", err)
 		}
 		data = append(data, tmp)

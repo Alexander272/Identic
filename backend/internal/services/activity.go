@@ -60,6 +60,16 @@ func (s *ActivityService) GetByEntity(ctx context.Context, req *models.GetActivi
 }
 
 func (s *ActivityService) LogOrderCreate(ctx context.Context, tx postgres.Tx, order *models.OrderDTO) error {
+	values := make(map[string]interface{})
+	values["customer"] = order.Customer
+	values["consumer"] = order.Consumer
+	values["date"] = order.Date
+	values["manager"] = order.Manager
+	values["bill"] = order.Bill
+	values["notes"] = order.Notes
+	values["isBargaining"] = order.IsBargaining
+	values["isBudget"] = order.IsBudget
+
 	dto := &models.CreateActivityLogDTO{
 		Action:        models.ActionInsert,
 		ChangedBy:     order.Actor.ID,
@@ -67,7 +77,7 @@ func (s *ActivityService) LogOrderCreate(ctx context.Context, tx postgres.Tx, or
 		EntityType:    models.EntityOrder,
 		EntityID:      order.Id,
 		Entity:        formatOrderEntity(order),
-		NewValues:     order,
+		NewValues:     values,
 	}
 	return s.repo.Create(ctx, nil, dto)
 }
@@ -92,6 +102,16 @@ func (s *ActivityService) LogOrderUpdate(ctx context.Context, actor models.Actor
 }
 
 func (s *ActivityService) LogOrderDelete(ctx context.Context, actor models.Actor, order *models.Order) error {
+	values := make(map[string]interface{})
+	values["customer"] = order.Customer
+	values["consumer"] = order.Consumer
+	values["date"] = order.Date
+	values["manager"] = order.Manager
+	values["bill"] = order.Bill
+	values["notes"] = order.Notes
+	values["isBargaining"] = order.IsBargaining
+	values["isBudget"] = order.IsBudget
+
 	dto := &models.CreateActivityLogDTO{
 		Action:        models.ActionDelete,
 		ChangedBy:     actor.ID,
@@ -99,7 +119,7 @@ func (s *ActivityService) LogOrderDelete(ctx context.Context, actor models.Actor
 		EntityType:    models.EntityOrder,
 		EntityID:      order.Id,
 		Entity:        formatOrderEntityByParts(order.Customer, order.Consumer),
-		OldValues:     order,
+		OldValues:     values,
 	}
 	return s.repo.Create(ctx, nil, dto)
 }
@@ -208,6 +228,12 @@ func orderFieldsDiffer(oldOrder *models.Order, newOrder *models.OrderDTO) *model
 	}
 	if oldOrder.Notes != newOrder.Notes {
 		addDiff("notes", oldOrder.Notes, newOrder.Notes)
+	}
+	if oldOrder.IsBargaining != newOrder.IsBargaining {
+		addDiff("isBargaining", oldOrder.IsBargaining, newOrder.IsBargaining)
+	}
+	if oldOrder.IsBudget != newOrder.IsBudget {
+		addDiff("isBudget", oldOrder.IsBudget, newOrder.IsBudget)
 	}
 
 	return diff

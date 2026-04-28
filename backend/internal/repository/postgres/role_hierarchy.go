@@ -3,8 +3,10 @@ package postgres
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/Alexander272/Identic/backend/internal/models"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -23,10 +25,13 @@ func NewRoleHierarchyRepo(db *pgxpool.Pool, tr Transaction) *RoleHierarchyRepo {
 type RoleHierarchy interface {
 	GetInheritedRoles(ctx context.Context, req *models.GetRolesInheritance) (map[string][]string, error)
 	GetRoleDescendants(ctx context.Context, req *models.GetRolesInheritance) (map[string][]string, error)
+	GetDirectChildren(ctx context.Context, req *models.GetRolesInheritance) (map[string][]string, error)
 	SyncRoleInheritance(ctx context.Context, req *models.GetRoleInheritance) ([]*models.SyncRoleInheritance, error)
 	LoadPolicy(ctx context.Context, req *models.GetPoliciesDTO) ([]*models.SyncRoleInheritance, error)
 	AddInheritance(ctx context.Context, tx Tx, dto *models.RoleHierarchyDTO) error
+	AddInheritances(ctx context.Context, tx Tx, roleID uuid.UUID, parentRoleIDs []uuid.UUID) error
 	RemoveInheritance(ctx context.Context, tx Tx, dto *models.RoleHierarchyDTO) error
+	RemoveInheritances(ctx context.Context, tx Tx, roleID uuid.UUID, parentRoleIDs []uuid.UUID) error
 }
 
 // GetInheritedRoles — получить все родительские роли (прямые + цепочки)
@@ -136,6 +141,38 @@ func (r *RoleHierarchyRepo) GetRoleDescendants(ctx context.Context, req *models.
 	return result, nil
 }
 
+// GetDirectChildren — получить только прямых потомков (без рекурсии)
+func (r *RoleHierarchyRepo) GetDirectChildren(ctx context.Context, req *models.GetRolesInheritance) (map[string][]string, error) {
+	query := fmt.Sprintf(`SELECT r1.slug, r2.slug
+		FROM %s ri
+		JOIN %s r1 ON ri.parent_role_id = r1.id
+		JOIN %s r2 ON ri.role_id = r2.id
+		WHERE r1.slug = ANY($1) AND r2.is_active = true`,
+		Tables.RoleHierarchy, Tables.Roles, Tables.Roles,
+	)
+
+	rows, err := r.db.Query(ctx, query, req.Roles)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute query: %w", err)
+	}
+	defer rows.Close()
+
+	result := make(map[string][]string)
+	for _, slug := range req.Roles {
+		result[slug] = []string{}
+	}
+
+	for rows.Next() {
+		var parent, child string
+		if err := rows.Scan(&parent, &child); err != nil {
+			return nil, err
+		}
+		result[parent] = append(result[parent], child)
+	}
+
+	return result, nil
+}
+
 // SyncRoleInheritance — используется для синхронизации наследования ролей с Casbin
 func (r *RoleHierarchyRepo) SyncRoleInheritance(ctx context.Context, req *models.GetRoleInheritance) ([]*models.SyncRoleInheritance, error) {
 	query := fmt.Sprintf(`SELECT r2.slug 
@@ -197,12 +234,33 @@ func (r *RoleHierarchyRepo) LoadPolicy(ctx context.Context, req *models.GetPolic
 
 func (r *RoleHierarchyRepo) AddInheritance(ctx context.Context, tx Tx, dto *models.RoleHierarchyDTO) error {
 	query := fmt.Sprintf(`INSERT INTO %s (role_id, parent_role_id) 
-		VALUES ($1, $2,) ON CONFLICT DO NOTHING`,
+		VALUES ($1, $2) ON CONFLICT DO NOTHING`,
 		Tables.RoleHierarchy,
 	)
 
-	// Вставка (уникальность обеспечена БД с помощью trigger)
 	_, err := r.getExec(tx).Exec(ctx, query, dto.RoleID, dto.ParentRoleID)
+	if err != nil {
+		return fmt.Errorf("failed to execute query: %w", err)
+	}
+	return nil
+}
+
+func (r *RoleHierarchyRepo) AddInheritances(ctx context.Context, tx Tx, roleID uuid.UUID, childRoleIDs []uuid.UUID) error {
+	if len(childRoleIDs) == 0 {
+		return nil
+	}
+
+	values := make([]string, 0, len(childRoleIDs))
+	args := make([]interface{}, 0, len(childRoleIDs)*2)
+	for i, childID := range childRoleIDs {
+		values = append(values, fmt.Sprintf("($%d, $%d)", i*2+1, i*2+2))
+		args = append(args, roleID, childID)
+	}
+
+	query := fmt.Sprintf(`INSERT INTO %s (parent_role_id, role_id) VALUES %s ON CONFLICT DO NOTHING`,
+		Tables.RoleHierarchy, strings.Join(values, ", "))
+
+	_, err := r.getExec(tx).Exec(ctx, query, args...)
 	if err != nil {
 		return fmt.Errorf("failed to execute query: %w", err)
 	}
@@ -215,6 +273,28 @@ func (r *RoleHierarchyRepo) RemoveInheritance(ctx context.Context, tx Tx, dto *m
 	)
 
 	_, err := r.getExec(tx).Exec(ctx, query, dto.RoleID, dto.ParentRoleID)
+	if err != nil {
+		return fmt.Errorf("failed to execute query: %w", err)
+	}
+	return nil
+}
+
+func (r *RoleHierarchyRepo) RemoveInheritances(ctx context.Context, tx Tx, roleID uuid.UUID, parentRoleIDs []uuid.UUID) error {
+	if len(parentRoleIDs) == 0 {
+		return nil
+	}
+
+	placeholders := make([]string, 0, len(parentRoleIDs))
+	args := []interface{}{roleID}
+	for _, parentID := range parentRoleIDs {
+		placeholders = append(placeholders, fmt.Sprintf("$%d", len(args)+1))
+		args = append(args, parentID)
+	}
+
+	query := fmt.Sprintf(`DELETE FROM %s WHERE role_id = $1 AND parent_role_id IN (%s)`,
+		Tables.RoleHierarchy, strings.Join(placeholders, ", "))
+
+	_, err := r.getExec(tx).Exec(ctx, query, args...)
 	if err != nil {
 		return fmt.Errorf("failed to execute query: %w", err)
 	}

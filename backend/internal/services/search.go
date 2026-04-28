@@ -65,11 +65,13 @@ func (s *SearchService) Search(ctx context.Context, req *models.SearchRequest) (
 
 		if _, ok := orderMap[m.OrderId]; !ok {
 			orderMap[m.OrderId] = &models.OrderMatchResult{
-				OrderId:  m.OrderId,
-				Year:     m.YearInt,
-				Customer: m.Customer,
-				Consumer: m.Consumer,
-				Date:     m.Date,
+				OrderId:      m.OrderId,
+				Year:         m.YearInt,
+				Customer:     m.Customer,
+				Consumer:     m.Consumer,
+				Date:         m.Date,
+				IsBargaining: m.IsBargaining,
+				IsBudget:     m.IsBudget,
 			}
 			bestMatches[m.OrderId] = make(map[string]*models.MatchInfo)
 		}

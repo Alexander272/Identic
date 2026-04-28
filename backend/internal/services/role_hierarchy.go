@@ -7,6 +7,7 @@ import (
 	"github.com/Alexander272/Identic/backend/internal/models"
 	"github.com/Alexander272/Identic/backend/internal/repository"
 	"github.com/Alexander272/Identic/backend/internal/repository/postgres"
+	"github.com/google/uuid"
 )
 
 type RoleHierarchyService struct {
@@ -22,9 +23,20 @@ func NewRoleHierarchyService(repo repository.RoleHierarchy) *RoleHierarchyServic
 type RoleHierarchy interface {
 	GetInheritedRoles(ctx context.Context, req *models.GetRolesInheritance) (map[string][]string, error)
 	GetRoleDescendants(ctx context.Context, req *models.GetRolesInheritance) (map[string][]string, error)
+	GetDirectChildren(ctx context.Context, req *models.GetRolesInheritance) (map[string][]string, error)
 	LoadPolicy(ctx context.Context, req *models.GetPoliciesDTO) ([]*models.SyncRoleInheritance, error)
 	AddInheritance(ctx context.Context, tx postgres.Tx, dto *models.RoleHierarchyDTO) error
+	AddInheritances(ctx context.Context, tx postgres.Tx, roleID uuid.UUID, parentRoleIDs []uuid.UUID) error
 	RemoveInheritance(ctx context.Context, tx postgres.Tx, dto *models.RoleHierarchyDTO) error
+	RemoveInheritances(ctx context.Context, tx postgres.Tx, roleID uuid.UUID, parentRoleIDs []uuid.UUID) error
+}
+
+func (s *RoleHierarchyService) GetDirectChildren(ctx context.Context, req *models.GetRolesInheritance) (map[string][]string, error) {
+	data, err := s.repo.GetDirectChildren(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get direct children: %w", err)
+	}
+	return data, nil
 }
 
 func (s *RoleHierarchyService) GetInheritedRoles(ctx context.Context, req *models.GetRolesInheritance) (map[string][]string, error) {
@@ -48,9 +60,6 @@ func (s *RoleHierarchyService) SyncRoleInheritance(ctx context.Context, req *mod
 	if err != nil {
 		return nil, fmt.Errorf("failed to sync role inheritance: %w", err)
 	}
-
-	//TODO надо результат передавать в casbin
-
 	return data, nil
 }
 
@@ -71,9 +80,6 @@ func (s *RoleHierarchyService) AddInheritance(ctx context.Context, tx postgres.T
 	if err := s.repo.AddInheritance(ctx, tx, dto); err != nil {
 		return fmt.Errorf("failed to add inheritance. error: %w", err)
 	}
-
-	//TODO вызов SyncRoleInheritance
-
 	return nil
 }
 
@@ -81,8 +87,25 @@ func (s *RoleHierarchyService) RemoveInheritance(ctx context.Context, tx postgre
 	if err := s.repo.RemoveInheritance(ctx, tx, dto); err != nil {
 		return fmt.Errorf("failed to remove inheritance. error: %w", err)
 	}
+	return nil
+}
 
-	//TODO В Casbin удаляем g-политику
+func (s *RoleHierarchyService) AddInheritances(ctx context.Context, tx postgres.Tx, roleID uuid.UUID, parentRoleIDs []uuid.UUID) error {
+	for _, parentID := range parentRoleIDs {
+		if roleID == parentID {
+			return models.ErrCannotInheritFromSelf
+		}
+	}
 
+	if err := s.repo.AddInheritances(ctx, tx, roleID, parentRoleIDs); err != nil {
+		return fmt.Errorf("failed to add inheritances. error: %w", err)
+	}
+	return nil
+}
+
+func (s *RoleHierarchyService) RemoveInheritances(ctx context.Context, tx postgres.Tx, roleID uuid.UUID, parentRoleIDs []uuid.UUID) error {
+	if err := s.repo.RemoveInheritances(ctx, tx, roleID, parentRoleIDs); err != nil {
+		return fmt.Errorf("failed to remove inheritances. error: %w", err)
+	}
 	return nil
 }

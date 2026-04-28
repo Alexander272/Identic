@@ -63,6 +63,7 @@ func NewServices(deps *Deps) *Services {
 		Hierarchy:   roleHierarchy,
 		Permissions: permissions,
 		EventBus:    updatePolicyEvent,
+		TM:          transaction,
 	})
 	user := NewUserService(&UsersDeps{
 		Repo:      deps.Repo.Users,

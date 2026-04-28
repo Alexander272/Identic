@@ -6,10 +6,22 @@ const (
 	ResourceUser  ResourceSlug = "user"
 	ResourceOrder ResourceSlug = "order"
 
+	ResourceLogins   ResourceSlug = "logins"
 	ResourceAudit    ResourceSlug = "audit_log"
 	ResourceActivity ResourceSlug = "activity_log"
 	ResourceSearch   ResourceSlug = "search_log"
 )
+
+var OrderOfResources = map[ResourceSlug]int{
+	ResourceOrder:    1,
+	ResourceSearch:   2,
+	ResourceLogins:   3,
+	ResourceActivity: 4,
+	ResourceAudit:    5,
+	ResourceUser:     6,
+	ResourceRole:     7,
+	ResourcePerm:     8,
+}
 
 // TODO возможно стоит сделать какую-нибудь сортировку
 var Reg = NewRegistry(
@@ -40,6 +52,13 @@ var Reg = NewRegistry(
 		Name:           "Журнал поисков",
 		Group:          "Логи",
 		Description:    "История поисков пользователей",
+		AllowedActions: actions(Read),
+	},
+	Resource{
+		Slug:           ResourceLogins,
+		Name:           "Логи входа",
+		Group:          "Логи",
+		Description:    "История входов пользователей",
 		AllowedActions: actions(Read),
 	},
 

@@ -48,7 +48,7 @@ func (r *SearchRepo) FetchExact(ctx context.Context, req *models.SearchRequest) 
             FROM UNNEST($1::text[], $2::numeric[], $3::int[]) AS t(name, qty, id)
         )
         SELECT 
-            o.id::text, o.year, o.customer, o.consumer, o.date,
+            o.id::text, o.year, o.customer, o.consumer, o.date, o.is_bargaining, o.is_budget,
             r.req_item_id, p.id::text as matched_item_id, 
 			CASE WHEN p.search=r.req_name THEN p.search ELSE p.normalized_notes END as p_search,
             r.req_qty, p.quantity as db_qty,
@@ -69,7 +69,7 @@ func (r *SearchRepo) FetchExact(ctx context.Context, req *models.SearchRequest) 
 	for rows.Next() {
 		var m models.RawMatch
 		err := rows.Scan(
-			&m.OrderId, &m.YearInt, &m.Customer, &m.Consumer, &m.Date,
+			&m.OrderId, &m.YearInt, &m.Customer, &m.Consumer, &m.Date, &m.IsBargaining, &m.IsBudget,
 			&m.ReqId, &m.PosId, &m.PSearch, &m.ReqQty, &m.DbQty, &m.Similarity,
 		)
 		if err != nil {
@@ -109,7 +109,7 @@ func (r *SearchRepo) FetchFuzzy(ctx context.Context, req *models.SearchRequest) 
             FROM UNNEST($1::text[], $2::numeric[], $3::int[]) AS t(name, qty, id)
         )
         SELECT 
-            o.id::text, o.year, o.customer, o.consumer, o.date,
+            o.id::text, o.year, o.customer, o.consumer, o.date, o.is_bargaining, o.is_budget,
             r.req_id::text,
             p.id::text as pos_id,
             p.search,
@@ -139,6 +139,8 @@ func (r *SearchRepo) FetchFuzzy(ctx context.Context, req *models.SearchRequest) 
 			&m.Customer,
 			&m.Consumer,
 			&m.Date,
+			&m.IsBargaining,
+			&m.IsBudget,
 			&m.ReqId,
 			&m.PosId,
 			&m.PSearch,

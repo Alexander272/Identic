@@ -34,7 +34,7 @@ func Register(api *gin.RouterGroup, service services.Roles, middleware *middlewa
 
 		write := roles.Group("", middleware.CheckPermissions(access.Reg.R(access.ResourceRole).Write()))
 		{
-			write.GET("/:name", handlers.get)
+			write.GET("/item/:name", handlers.get)
 
 			write.POST("", handlers.create)
 			write.PUT("/:id", handlers.update)
@@ -43,6 +43,11 @@ func Register(api *gin.RouterGroup, service services.Roles, middleware *middlewa
 		delete := roles.Group("", middleware.CheckPermissions(access.Reg.R(access.ResourceRole).Delete()))
 		{
 			delete.DELETE("/:id", handlers.delete)
+		}
+
+		permissions := roles.Group("", middleware.CheckPermissions(access.Reg.R(access.ResourcePerm).Read()))
+		{
+			permissions.GET("/:id/permissions", handlers.getWithPermissions)
 		}
 	}
 }
@@ -81,6 +86,23 @@ func (h *Handler) getWithStats(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, response.DataResponse{Data: roles})
+}
+
+func (h *Handler) getWithPermissions(c *gin.Context) {
+	strId := c.Param("id")
+	id, err := uuid.Parse(strId)
+	if err != nil {
+		response.NewErrorResponse(c, http.StatusBadRequest, "empty param", "Id роли не задан")
+		return
+	}
+
+	role, err := h.service.GetOneWithPermissions(c, &models.GetRoleDTO{ID: id})
+	if err != nil {
+		response.NewErrorResponse(c, http.StatusInternalServerError, err.Error(), "Произошла ошибка: "+err.Error())
+		error_bot.Send(c, err.Error(), id)
+		return
+	}
+	c.JSON(http.StatusOK, response.DataResponse{Data: role})
 }
 
 func (h *Handler) create(c *gin.Context) {
