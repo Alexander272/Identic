@@ -3,6 +3,7 @@ export interface IFetchError {
 		message: string
 		code: string
 	}
+	status: number
 }
 
 export interface IBaseFetchError {

@@ -15,7 +15,7 @@ export const getSearchTypeLabel = (type: string) => {
 		case SearchType.Exact:
 			return 'Точный'
 		case SearchType.Fuzzy:
-			return 'Нечеткий'
+			return 'Неточный'
 		default:
 			return type
 	}

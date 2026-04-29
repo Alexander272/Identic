@@ -32,7 +32,7 @@ import { SaveIcon } from '@/components/Icons/SaveIcon'
 import { RefreshIcon } from '@/components/Icons/RefreshIcon'
 import { HyperlinkIcon } from '@/components/Icons/HyperlinkIcon'
 import { ModifyIcon } from '@/components/Icons/ModifyIcon'
-// import { Checkbox } from '@/components/Checkbox/Checkbox'
+import { OrderErrorToast } from './ErrorToast'
 
 const defaultValues: IOrderCreate = {
 	customer: '',
@@ -227,7 +227,16 @@ const Grid = () => {
 			toast.success('Заказ успешно создан')
 		} catch (error) {
 			const fetchError = error as IFetchError
-			toast.error(fetchError.data.message, { autoClose: false })
+			if (fetchError.status === 409) {
+				const payload = fetchError.data as unknown as { id: string; message: string }
+				const url = new URL(`/orders/${payload.id}`, window.location.origin)
+				toast.warn(
+					<OrderErrorToast errMessage={payload.message} message='Перейти к нему' orderUrl={url.toString()} />,
+					{ autoClose: false },
+				)
+			} else {
+				toast.error(fetchError.data.message, { autoClose: false })
+			}
 		}
 	})
 
