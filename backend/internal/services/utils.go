@@ -61,6 +61,16 @@ func NormalizeString(name string) string {
 	return name
 }
 
+func ClearString(name string) string {
+	name = strings.Map(func(r rune) rune {
+		if unicode.IsGraphic(r) {
+			return r
+		}
+		return -1
+	}, name)
+	return name
+}
+
 func CalculateHash(positions []*models.PositionDTO) string {
 	if len(positions) == 0 {
 		return ""
@@ -69,7 +79,7 @@ func CalculateHash(positions []*models.PositionDTO) string {
 	// 1. Агрегируем (на случай дублей в строках)
 	totals := make(map[string]float64)
 	for _, p := range positions {
-		name := strings.ToLower(strings.TrimSpace(p.Name))
+		name := NormalizeString(p.Name)
 		totals[name] += float64(p.Quantity)
 	}
 

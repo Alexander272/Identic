@@ -3,7 +3,6 @@ package services
 import (
 	"context"
 	"fmt"
-	"slices"
 
 	"github.com/Alexander272/Identic/backend/internal/models"
 	"github.com/Alexander272/Identic/backend/internal/repository"
@@ -37,7 +36,7 @@ type Orders interface {
 	GetByYear(ctx context.Context, req *models.GetOrderByYearDTO) ([]*models.Order, error)
 	GetUniqueData(ctx context.Context, req *models.GetUniqueDTO) ([]string, error)
 	GetFlatData(ctx context.Context, req *models.GetFlatOrderDTO) (*models.FlatOrderRes, error)
-	Create(ctx context.Context, dto *models.OrderDTO) error
+	Create(ctx context.Context, dto *models.OrderDTO) (string, error)
 	CreateSeveral(ctx context.Context, tx postgres.Tx, dto []*models.OrderDTO) error
 	Update(ctx context.Context, dto *models.OrderDTO) error
 }
@@ -146,18 +145,28 @@ func (s *OrdersService) IsExist(ctx context.Context, tx postgres.Tx, dto *models
 	return exist, nil
 }
 
-func (s *OrdersService) Create(ctx context.Context, dto *models.OrderDTO) error {
+func (s *OrdersService) Create(ctx context.Context, dto *models.OrderDTO) (string, error) {
+	for i := range dto.Positions {
+		dto.Positions[i].Name = ClearString(dto.Positions[i].Name)
+	}
+
 	dto.Hash = CalculateHash(dto.Positions)
 	logger.Debug("create", logger.StringAttr("hash", dto.Hash), logger.IntAttr("len", len(dto.Positions)))
 
 	err := s.txManager.WithinTransaction(ctx, func(tx postgres.Tx) error {
-		isExist, err := s.repo.IsExistByPos(ctx, tx, dto)
+		existingId, err := s.repo.IsExistByPos(ctx, tx, dto)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to check if order exists. error: %w", err)
 		}
 
-		if isExist {
+		if existingId != "" {
+			// Заказ уже существует - возвращаем его ID
+			dto.Id = existingId
 			return models.ErrOrderAlreadyExists
+		}
+
+		if dto.Id == "" {
+			dto.Id = uuid.NewString()
 		}
 
 		if err := s.repo.Create(ctx, tx, dto); err != nil {
@@ -173,15 +182,15 @@ func (s *OrdersService) Create(ctx context.Context, dto *models.OrderDTO) error 
 		return nil
 	})
 	if err != nil {
-		return err
+		return dto.Id, err
 	}
 
 	go s.activity.AsyncLog(context.Background(), func() error {
-		return s.txManager.WithinTransaction(ctx, func(tx postgres.Tx) error {
-			if err := s.activity.LogOrderCreate(ctx, tx, dto); err != nil {
+		return s.txManager.WithinTransaction(context.Background(), func(tx postgres.Tx) error {
+			if err := s.activity.LogOrderCreate(context.Background(), tx, dto); err != nil {
 				return fmt.Errorf("failed to log order create: %w", err)
 			}
-			return s.activity.BatchLogPositions(ctx, tx, &models.BatchLogPositionsDTO{
+			return s.activity.BatchLogPositions(context.Background(), tx, &models.BatchLogPositionsDTO{
 				OrderID: dto.Id,
 				Actor:   dto.Actor,
 				Created: dto.Positions,
@@ -193,7 +202,7 @@ func (s *OrdersService) Create(ctx context.Context, dto *models.OrderDTO) error 
 		"actor":    dto.Actor,
 	})
 
-	return nil
+	return dto.Id, nil
 }
 
 func (s *OrdersService) CreateSeveral(ctx context.Context, tx postgres.Tx, dto []*models.OrderDTO) error {
@@ -230,13 +239,17 @@ func (s *OrdersService) executeCreate(ctx context.Context, tx postgres.Tx, dto [
 }
 
 func (s *OrdersService) Update(ctx context.Context, dto *models.OrderDTO) error {
-	created, updated, deleted, notChanged := splitPositions(dto.Id, dto.Positions)
-	dto.Hash = CalculateHash(slices.Concat(created, updated, notChanged))
+	for i := range dto.Positions {
+		dto.Positions[i].Name = ClearString(dto.Positions[i].Name)
+	}
+
+	created, updated, deleted, _ := splitPositions(dto.Id, dto.Positions)
+	dto.Hash = CalculateHash(dto.Positions)
 	oldOrder := &models.Order{}
 
 	logger.Debug("update",
 		logger.StringAttr("hash", dto.Hash),
-		logger.IntAttr("len", len(slices.Concat(created, updated, notChanged))),
+		logger.IntAttr("len", len(dto.Positions)),
 	)
 
 	err := s.txManager.WithinTransaction(ctx, func(tx postgres.Tx) error {
@@ -269,10 +282,10 @@ func (s *OrdersService) Update(ctx context.Context, dto *models.OrderDTO) error 
 
 	go s.activity.AsyncLog(context.Background(), func() error {
 		return s.txManager.WithinTransaction(context.Background(), func(tx postgres.Tx) error {
-			if err := s.activity.LogOrderUpdate(ctx, dto.Actor, oldOrder, dto); err != nil {
+			if err := s.activity.LogOrderUpdate(context.Background(), dto.Actor, oldOrder, dto); err != nil {
 				return fmt.Errorf("failed to log order update: %w", err)
 			}
-			return s.activity.BatchLogPositions(ctx, tx, &models.BatchLogPositionsDTO{
+			return s.activity.BatchLogPositions(context.Background(), tx, &models.BatchLogPositionsDTO{
 				OrderID: dto.Id,
 				Actor:   dto.Actor,
 				Created: created,

@@ -249,9 +249,11 @@ func (h *Handler) create(c *gin.Context) {
 		Name: user.Name,
 	}
 
-	if err := h.service.Create(c, dto); err != nil {
+	id, err := h.service.Create(c, dto)
+	if err != nil {
 		if errors.Is(err, models.ErrOrderAlreadyExists) {
-			response.NewErrorResponse(c, http.StatusBadRequest, err.Error(), "Заказ уже существует")
+			// response.NewErrorResponse(c, http.StatusBadRequest, err.Error(), "Заказ уже существует")
+			c.JSON(http.StatusConflict, &response.IdResponse{Id: id, Message: "Заказ уже существует"})
 			return
 		}
 
@@ -259,6 +261,12 @@ func (h *Handler) create(c *gin.Context) {
 		error_bot.Send(c, err.Error(), dto)
 		return
 	}
+
+	// if id != "" {
+	// 	c.JSON(http.StatusConflict, &response.IdResponse{Id: id, Message: "Заказ уже существует"})
+	// 	return
+	// }
+
 	c.JSON(http.StatusOK, &response.IdResponse{Id: dto.Id, Message: "Заказ успешно создан"})
 }
 
