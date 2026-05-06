@@ -100,6 +100,11 @@ func (h *Handler) getById(c *gin.Context) {
 
 	order, err := h.service.GetById(c, nil, req)
 	if err != nil {
+		if errors.Is(err, models.ErrNoData) {
+			response.NewErrorResponse(c, http.StatusNotFound, err.Error(),
+				"Срок действия результатов поиска истек. Повторите поиск, чтобы получить актуальные данные.")
+			return
+		}
 		response.NewErrorResponse(c, http.StatusInternalServerError, err.Error(), "Произошла ошибка: "+err.Error())
 		error_bot.Send(c, err.Error(), req)
 		return
@@ -127,7 +132,8 @@ func (h *Handler) getInfo(c *gin.Context) {
 	order, err := h.service.GetInfoById(c, req)
 	if err != nil {
 		if errors.Is(err, models.ErrNoData) {
-			response.NewErrorResponse(c, http.StatusNotFound, err.Error(), "")
+			response.NewErrorResponse(c, http.StatusNotFound, err.Error(),
+				"Срок действия результатов поиска истек. Повторите поиск, чтобы получить актуальные данные.")
 			return
 		}
 		response.NewErrorResponse(c, http.StatusInternalServerError, err.Error(), "Произошла ошибка: "+err.Error())
