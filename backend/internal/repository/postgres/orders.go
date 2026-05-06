@@ -62,6 +62,7 @@ func (r *OrderRepo) Get(ctx context.Context, req *models.OrderFilterDTO) ([]*mod
 		"date":         {"date"},
 		"isBargaining": {"is_bargaining"},
 		"isBudget":     {"is_budget"},
+		"notes":        {"o.notes"},
 	}
 
 	baseQuery := fmt.Sprintf(`SELECT o.id, o.customer, o.consumer, o.manager, o.is_bargaining, o.is_budget, 

@@ -41,9 +41,16 @@ func (s *SearchLogService) Get(ctx context.Context, dto *models.GetSearchLogsDTO
 }
 
 func (s *SearchLogService) LogAsync(req *models.SearchRequest, originalItems []models.SearchItem, duration time.Duration, resultsCount int) {
-	searchType := models.SearchTypeExact
-	if req.IsFuzzy {
+	var searchType models.SearchType
+	switch {
+	case req.SearchByQuantityOnly && req.IsFuzzy:
+		searchType = models.SearchTypeQuantityFuzzy
+	case req.SearchByQuantityOnly:
+		searchType = models.SearchTypeQuantityExact
+	case req.IsFuzzy:
 		searchType = models.SearchTypeFuzzy
+	default:
+		searchType = models.SearchTypeExact
 	}
 
 	dto := &models.CreateSearchLogDTO{

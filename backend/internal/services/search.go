@@ -30,7 +30,6 @@ func NewSearchService(repo repository.Search, orderUrl string, cacheTTL time.Dur
 
 type Search interface {
 	Search(ctx context.Context, req *models.SearchRequest) ([]*models.OrderMatchResult, error)
-	SearchAndGroup(ctx context.Context, req *models.SearchRequest) ([]*models.OrderMatchResult, error)
 	GetCache(ctx context.Context, req *models.GetCacheDTO) ([]string, error)
 }
 
@@ -43,10 +42,18 @@ func (s *SearchService) Search(ctx context.Context, req *models.SearchRequest) (
 	}
 
 	// 1. Получаем данные из репозитория
-	if req.IsFuzzy {
-		rawMatches, err = s.repo.FetchFuzzy(ctx, req)
+	if req.SearchByQuantityOnly {
+		if req.IsFuzzy {
+			rawMatches, err = s.repo.FetchFuzzyByQuantity(ctx, req)
+		} else {
+			rawMatches, err = s.repo.FetchExactByQuantity(ctx, req)
+		}
 	} else {
-		rawMatches, err = s.repo.FetchExact(ctx, req)
+		if req.IsFuzzy {
+			rawMatches, err = s.repo.FetchFuzzy(ctx, req)
+		} else {
+			rawMatches, err = s.repo.FetchExact(ctx, req)
+		}
 	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to find orders. error: %w", err)
@@ -88,60 +95,25 @@ func (s *SearchService) Search(ctx context.Context, req *models.SearchRequest) (
 		}
 	}
 
-	return s.finalize(orderMap, bestMatches, len(req.Items), req.SearchId), nil
-}
-
-func (s *SearchService) SearchAndGroup(ctx context.Context, req *models.SearchRequest) ([]*models.OrderMatchResult, error) {
-	if len(req.Items) == 0 {
-		return nil, models.ErrNoData
-	}
-
-	for i := range req.Items {
-		req.Items[i].Name = NormalizeString(req.Items[i].Name)
-	}
-
-	// 1. Получаем плоский список из БД
-	rawResults := make([]*models.OrderMatchResult, 0)
-	var err error
-	if req.IsFuzzy {
-		rawResults, err = s.repo.FindSimilar(ctx, req)
-	} else {
-		rawResults, err = s.repo.Find(ctx, req)
-	}
-	if err != nil {
-		return nil, fmt.Errorf("failed to find orders. error: %w", err)
-	}
-
-	// генерируем ссылку на заказ
-	for _, m := range rawResults {
-		if err := s.genLink(m, req.SearchId); err != nil {
-			return nil, err
+	if req.SearchByQuantityOnly {
+		for orderId := range orderMap {
+			matchRatio := float64(len(bestMatches[orderId])) / float64(len(req.Items))
+			if matchRatio <= 0.7 {
+				delete(orderMap, orderId)
+				delete(bestMatches, orderId)
+			}
 		}
 	}
 
-	// 2. Группируем по годам в Go
-	// Используем map для сбора, потом конвертируем в слайс
-	// yearMap := make(map[int][]*models.OrderMatchResult)
-	// for _, res := range rawResults {
-	// 	yearMap[res.Year] = append(yearMap[res.Year], res)
-	// }
+	results := s.finalize(orderMap, bestMatches, len(req.Items), req.SearchId)
 
-	// // 3. Формируем ответ
-	// var groups []*models.Results
-	// for year, apps := range yearMap {
-	// 	groups = append(groups, &models.Results{
-	// 		Year:   year,
-	// 		Orders: apps,
-	// 		Count:  len(apps),
-	// 	})
-	// }
+	if req.SearchByQuantityOnly {
+		for i := range results {
+			results[i].MatchedPos = 0
+		}
+	}
 
-	// // 4. Сортируем группы по году (например, от новых к старым)
-	// sort.Slice(groups, func(i, j int) bool {
-	// 	return groups[i].Year > groups[j].Year
-	// })
-
-	return rawResults, nil
+	return results, nil
 }
 
 func (s *SearchService) GetCache(ctx context.Context, req *models.GetCacheDTO) ([]string, error) {

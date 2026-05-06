@@ -34,10 +34,10 @@ func (s searchProvider) FetchFuzzy(ctx context.Context, req *models.SearchReques
 	return s.postgresRepo.FetchFuzzy(ctx, req)
 }
 
-func (s searchProvider) Find(ctx context.Context, req *models.SearchRequest) ([]*models.OrderMatchResult, error) {
-	return s.postgresRepo.Find(ctx, req)
+func (s searchProvider) FetchExactByQuantity(ctx context.Context, req *models.SearchRequest) ([]*models.RawMatch, error) {
+	return s.postgresRepo.FetchExactByQuantity(ctx, req)
 }
 
-func (s searchProvider) FindSimilar(ctx context.Context, req *models.SearchRequest) ([]*models.OrderMatchResult, error) {
-	return s.postgresRepo.FindSimilar(ctx, req)
+func (s searchProvider) FetchFuzzyByQuantity(ctx context.Context, req *models.SearchRequest) ([]*models.RawMatch, error) {
+	return s.postgresRepo.FetchFuzzyByQuantity(ctx, req)
 }

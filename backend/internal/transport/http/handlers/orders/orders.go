@@ -126,6 +126,10 @@ func (h *Handler) getInfo(c *gin.Context) {
 
 	order, err := h.service.GetInfoById(c, req)
 	if err != nil {
+		if errors.Is(err, models.ErrNoData) {
+			response.NewErrorResponse(c, http.StatusNotFound, err.Error(), "")
+			return
+		}
 		response.NewErrorResponse(c, http.StatusInternalServerError, err.Error(), "Произошла ошибка: "+err.Error())
 		error_bot.Send(c, err.Error(), req)
 		return

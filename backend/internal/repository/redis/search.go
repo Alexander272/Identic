@@ -32,6 +32,9 @@ func (r *SearchRepo) GetCache(ctx context.Context, req *models.GetCacheDTO) ([]s
 
 	str, err := cmd.Result()
 	if err != nil {
+		if err == redis.Nil {
+			return nil, models.ErrNoData
+		}
 		return nil, fmt.Errorf("failed to get result. error: %w", err)
 	}
 

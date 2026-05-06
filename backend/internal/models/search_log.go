@@ -10,8 +10,10 @@ import (
 type SearchType string
 
 const (
-	SearchTypeExact SearchType = "exact"
-	SearchTypeFuzzy SearchType = "fuzzy"
+	SearchTypeExact         SearchType = "exact"
+	SearchTypeFuzzy         SearchType = "fuzzy"
+	SearchTypeQuantityExact SearchType = "quantityExact"
+	SearchTypeQuantityFuzzy SearchType = "quantityFuzzy"
 )
 
 type SearchLog struct {
