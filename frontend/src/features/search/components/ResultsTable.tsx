@@ -3,9 +3,7 @@ import {
 	Stack,
 	Table,
 	Typography,
-	TableBody,
 	TableCell,
-	TableHead,
 	TableRow,
 	Box,
 	Button,
@@ -13,15 +11,17 @@ import {
 	circularProgressClasses,
 	Tooltip,
 	useTheme,
+	TableHead,
 } from '@mui/material'
 import { Link } from 'react-router'
 import dayjs from 'dayjs'
+import { TableVirtuoso } from 'react-virtuoso'
 
 import type { IOrderMatchResult, ISearchItem } from '../types/search'
+import { OrderChip } from '@/features/orders/components/Orders/OrderChip'
 import { PopupLinkIcon } from '@/components/Icons/PopupLinkIcon'
 import { IndexingPageIcon } from '@/components/Icons/IndexingPageIcon'
 import { Info } from './Info'
-import { OrderChip } from '@/features/orders/components/Orders/OrderChip'
 
 type Props = {
 	data: IOrderMatchResult[]
@@ -30,90 +30,106 @@ type Props = {
 }
 
 export const ResultsTable: FC<Props> = ({ data, search, searchId }) => {
+	const [openOrderId, setOpenOrderId] = useState<string | null>(null)
+
+	const closeHandler = (event: MouseEvent) => {
+		event.stopPropagation()
+		setOpenOrderId(null)
+	}
+
+	const handleRowClick = (orderId: string) => {
+		setOpenOrderId(orderId)
+	}
+
+	const openOrder = data.find(order => order.orderId === openOrderId)
+
 	return (
-		<Table size='small'>
-			<TableHead>
-				{/* <TableRow sx={{ bgcolor: '#f7f7f7', borderTopLeftRadius: 2, borderTopRightRadius: 2 }}>
-						<TableCell rowSpan={2} align='center' sx={{ borderTopLeftRadius: 8 }}>
-							Год
-						</TableCell>
-						<TableCell rowSpan={2}>Контрагент</TableCell>
-						{/* <TableCell>Заказчик</TableCell>
-						<TableCell>Конечник</TableCell>
-						<TableCell rowSpan={2} align='center'>
-							% совпадения
-						</TableCell>
-						<TableCell colSpan={2} align='center'>
-							Совпало
-						</TableCell>
-						{/* <TableCell>Ссылка</TableCell>
-						<TableCell rowSpan={2} sx={{ borderTopRightRadius: 8 }} />
-					</TableRow> */}
-
-				{/* Первый ряд шапки */}
-				<TableRow sx={{ bgcolor: '#f7f7f7', '& th': { fontWeight: 700 } }}>
-					<TableCell rowSpan={2} align='center' sx={{ borderTopLeftRadius: 8 }}>
-						Дата
-					</TableCell>
-					<TableCell rowSpan={2} width={30} sx={{ p: 0 }} />
-					<TableCell rowSpan={2}>Контрагент</TableCell>
-					<TableCell rowSpan={2} align='center'>
-						% совпадения
-					</TableCell>
-					<TableCell colSpan={2} align='center' sx={{ pb: 0 }}>
-						Совпало по
-					</TableCell>
-					<TableCell rowSpan={2} sx={{ borderTopRightRadius: 8 }} />
-				</TableRow>
-
-				{/* Второй ряд (под-шапка) */}
-				<TableRow
-					sx={{
-						bgcolor: '#f7f7f7',
-						'& th': { fontWeight: 600, color: 'text.secondary', fontSize: '0.75rem' },
-					}}
-				>
-					<TableCell align='center' sx={{ pt: 0.5 }}>
-						позициям
-					</TableCell>
-					<TableCell align='center' sx={{ pt: 0.5 }}>
-						кол-ву
-					</TableCell>
-				</TableRow>
-			</TableHead>
-			<TableBody>
-				{data.map(order => (
-					<ResultRow key={order.orderId} order={order} search={search} searchId={searchId} />
-				))}
-			</TableBody>
-		</Table>
+		<>
+			<TableVirtuoso
+				data={data}
+				components={{
+					Table: props => <Table {...props} size='small' />,
+					TableHead: props => <TableHead {...props} />,
+					TableRow: props => {
+						const index = (props as unknown as Record<string, unknown>)['data-index'] as number | undefined
+						return (
+							<TableRow
+								{...props}
+								hover
+								onClick={() => {
+									if (typeof index === 'number') {
+										handleRowClick(data[index]?.orderId)
+									}
+								}}
+								sx={{ cursor: 'pointer', transition: '0.2s all ease-in-out' }}
+							/>
+						)
+					},
+				}}
+				fixedHeaderContent={() => (
+					<>
+						<TableRow sx={{ bgcolor: '#f7f7f7', '& th': { fontWeight: 700 } }}>
+							<TableCell rowSpan={2} width={80} align='center' sx={{ borderTopLeftRadius: 8 }}>
+								Дата
+							</TableCell>
+							<TableCell rowSpan={2} width={30} sx={{ p: 0 }} />
+							<TableCell rowSpan={2} width={480}>
+								Контрагент
+							</TableCell>
+							<TableCell rowSpan={2} width={130} align='center'>
+								% совпадения
+							</TableCell>
+							<TableCell
+								colSpan={2}
+								width={160}
+								align='center'
+								sx={{ pb: 0, borderBottom: '1px solid #e0e0e0' }}
+							>
+								Совпало по
+							</TableCell>
+							<TableCell rowSpan={2} width={96} sx={{ borderTopRightRadius: 8 }} />
+						</TableRow>
+						<TableRow
+							sx={{
+								bgcolor: '#f7f7f7',
+								'& th': { fontWeight: 600, color: 'text.secondary', fontSize: '0.75rem' },
+							}}
+						>
+							<TableCell width={85} align='center' sx={{ pt: 0.5 }}>
+								позициям
+							</TableCell>
+							<TableCell width={75} align='center' sx={{ pt: 0.5 }}>
+								кол-ву
+							</TableCell>
+						</TableRow>
+					</>
+				)}
+				itemContent={(_, order) => <ResultRow order={order} onRowClick={() => handleRowClick(order.orderId)} />}
+			/>
+			{openOrder && (
+				<Info data={openOrder} search={search} searchId={searchId} open={true} onClose={closeHandler} />
+			)}
+		</>
 	)
 }
 
-const ResultRow: FC<{ order: IOrderMatchResult; search: ISearchItem[]; searchId: string }> = ({
-	order,
-	search,
-	searchId,
-}) => {
-	const { palette } = useTheme()
-	const [open, setOpen] = useState(false)
+const getScoreColor = (score: number) => {
+	if (score >= 100) return 'success.main'
+	if (score >= 70) return '#8bc34a'
+	if (score >= 50) return 'info.main'
+	if (score >= 25) return 'warning.main'
+	return 'error.main'
+}
 
-	const openHandler = (event: MouseEvent) => {
-		event.stopPropagation()
-		setOpen(true)
-	}
-	const closeHandler = (event: MouseEvent) => {
-		event.stopPropagation()
-		setOpen(false)
-	}
+const ResultRow: FC<{
+	order: IOrderMatchResult
+	onRowClick: () => void
+}> = ({ order, onRowClick }) => {
+	const { palette } = useTheme()
+	const scoreColor = getScoreColor(order.score)
 
 	return (
-		<TableRow
-			key={order.orderId}
-			onClick={openHandler}
-			hover
-			sx={{ cursor: 'pointer', transition: '0.2s all ease-in-out' }}
-		>
+		<>
 			<TableCell align='center'>
 				<Typography>{dayjs(order.date).format('DD.MM')}</Typography>
 				<Typography fontWeight={'bold'} fontSize={'0.9rem'}>
@@ -132,8 +148,6 @@ const ResultRow: FC<{ order: IOrderMatchResult; search: ISearchItem[]; searchId:
 					Заказчик / Перекуп: {order.customer || '-'}
 				</Typography>
 			</TableCell>
-			{/* <TableCell>{order.customer}</TableCell> */}
-			{/* <TableCell>{order.consumer}</TableCell> */}
 			<TableCell align='center'>
 				<Box
 					sx={{
@@ -143,7 +157,7 @@ const ResultRow: FC<{ order: IOrderMatchResult; search: ISearchItem[]; searchId:
 						gap: 1,
 					}}
 				>
-					<Typography fontWeight={'bold'}>{order.score}%</Typography>
+					<Typography fontWeight={'bold'}>{Math.round(order.score)}%</Typography>
 					<CircularProgress
 						variant='determinate'
 						value={order.score}
@@ -152,16 +166,9 @@ const ResultRow: FC<{ order: IOrderMatchResult; search: ISearchItem[]; searchId:
 						disableShrink
 						enableTrackSlot
 						sx={theme => ({
-							color: () => {
-								if (order.score >= 100) return theme.palette.success.main
-								if (order.score >= 70) return '#8bc34a' // Кастомный светло-зеленый
-								if (order.score >= 50) return theme.palette.info.main
-								if (order.score >= 25) return theme.palette.warning.main
-								return theme.palette.error.main
-							},
-							// Стилизация подложки (трека), если включен enableTrackSlot
+							color: scoreColor,
 							'& .MuiCircularProgress-circle': {
-								strokeLinecap: 'round', // Делает концы прогресса закругленными
+								strokeLinecap: 'round',
 							},
 							[`& .${circularProgressClasses.track}`]: {
 								opacity: 1,
@@ -181,7 +188,10 @@ const ResultRow: FC<{ order: IOrderMatchResult; search: ISearchItem[]; searchId:
 				<Stack direction={'row'} justifyContent={'flex-end'} sx={{ height: '100%' }}>
 					<Tooltip title='Подробнее'>
 						<Button
-							onClick={openHandler}
+							onClick={e => {
+								e.stopPropagation()
+								onRowClick()
+							}}
 							sx={{
 								minWidth: 48,
 								minHeight: 48,
@@ -193,7 +203,6 @@ const ResultRow: FC<{ order: IOrderMatchResult; search: ISearchItem[]; searchId:
 							<IndexingPageIcon fontSize={22} />
 						</Button>
 					</Tooltip>
-					<Info data={order} search={search} open={open} onClose={closeHandler} searchId={searchId} />
 
 					<Link
 						to={order.link}
@@ -201,9 +210,6 @@ const ResultRow: FC<{ order: IOrderMatchResult; search: ISearchItem[]; searchId:
 						rel='noopener noreferrer'
 						onClick={(e: MouseEvent) => e.stopPropagation()}
 					>
-						{/* <Button color='inherit' sx={{ textTransform: 'inherit', color: 'black' }}>
-										Подробнее <DoubleRightIcon fontSize={10} ml={1} />
-									</Button> */}
 						<Tooltip title='Перейти к заказу'>
 							<Button
 								sx={{
@@ -219,6 +225,6 @@ const ResultRow: FC<{ order: IOrderMatchResult; search: ISearchItem[]; searchId:
 					</Link>
 				</Stack>
 			</TableCell>
-		</TableRow>
+		</>
 	)
 }

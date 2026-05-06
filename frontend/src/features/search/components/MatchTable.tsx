@@ -105,6 +105,8 @@ export const MatchTable: FC<Props> = ({ request, result, foundPositions }) => {
 		const foundNotes = normalize(foundItem.notes)
 		const reqName = requestedItem?.name ? normalize(requestedItem.name) : ''
 
+		console.log('foundName', foundName, foundItem.name, foundName === reqName, reqName)
+
 		const isNameMatch = foundName === reqName
 		const isNotesMatch = foundNotes === reqName
 

@@ -3,6 +3,8 @@ import type { IUserShort } from '@/features/user/types/user'
 export const SearchType = {
 	Exact: 'exact',
 	Fuzzy: 'fuzzy',
+	QuantityExact: 'quantityExact',
+	QuantityFuzzy: 'quantityFuzzy',
 } as const
 
 export type SearchType = (typeof SearchType)[keyof typeof SearchType]

@@ -7,6 +7,7 @@ export interface ISearchItem {
 export interface ISearch {
 	items: ISearchItem[]
 	isFuzzy: boolean
+	searchByQuantityOnly: boolean
 	sessionId: string
 }
 

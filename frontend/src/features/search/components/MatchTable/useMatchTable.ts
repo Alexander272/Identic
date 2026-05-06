@@ -59,7 +59,7 @@ export const useMatchTable = (request: ISearchItem[], result: IOrderMatchResult,
 			const reqName = item.name ? normalize(item.name) : ''
 
 			const isNameMatch = foundName === reqName
-			const isNotesMatch = foundNotes === reqName
+			const isNotesMatch = foundNotes === reqName && reqName != ''
 
 			const matchedFrom: 'name' | 'notes' | null = isNameMatch ? 'name' : isNotesMatch ? 'notes' : null
 

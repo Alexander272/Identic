@@ -77,9 +77,14 @@ export const Search = () => {
 
 	const findHandler = useCallback(
 		(mode?: 'exact' | 'fuzzy') => async () => {
+			let searchByQuantityOnly = false
 			const items = data
-				.map((item, idx) => ({ ...item, id: idx }))
-				.filter(item => Boolean(item.name) && item.quantity !== null)
+				.map((item, idx) => {
+					if (!item.name) searchByQuantityOnly = true
+					if (item.name && item.quantity === null) item.quantity = 0
+					return { ...item, id: idx }
+				})
+				.filter(item => item.quantity !== null)
 
 			if (items.length === 0) {
 				toast.error('Заполните хотя бы одну строку')
@@ -91,7 +96,7 @@ export const Search = () => {
 				setUseFuzzy(mode === 'fuzzy')
 			}
 
-			findOrders({ items: items, isFuzzy, sessionId: Date.now().toString() }, false)
+			findOrders({ items: items, isFuzzy, searchByQuantityOnly, sessionId: Date.now().toString() }, false)
 			// 	const payload = await findOrders({ items: items, isFuzzy: useFuzzy }).unwrap()
 			// 	console.log('payload', payload)
 

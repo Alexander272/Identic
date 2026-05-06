@@ -4,7 +4,7 @@ import { ExpandMore, ExpandLess } from '@mui/icons-material'
 import type { SearchLog } from '../../types/search'
 import { stringToHSLA } from '@/utils/colors'
 import { getSmartDate } from '@/utils/date'
-import { getSearchTypeLabel, formatDuration, getInitials } from '../utils'
+import { getSearchTypeLabel, formatDuration, getInitials, getSearchTypeColor } from '../utils'
 
 interface SearchTableRowProps {
 	log: SearchLog
@@ -26,6 +26,7 @@ export const SearchTableRow = ({ log, isExpanded, onToggle }: SearchTableRowProp
 	const status = getStatus(log)
 	const username = `${log.actor.lastName} ${log.actor.firstName}`
 	const colors = stringToHSLA(username)
+	const searchColors = getSearchTypeColor(log.searchType)
 
 	return (
 		<>
@@ -83,9 +84,7 @@ export const SearchTableRow = ({ log, isExpanded, onToggle }: SearchTableRowProp
 							borderRadius: 10,
 							fontSize: 12,
 							fontWeight: 600,
-							background:
-								log.searchType === 'exact' ? 'rgba(108, 92, 231, 0.15)' : 'rgba(0, 184, 148, 0.1)',
-							color: log.searchType === 'exact' ? '#6c5ce7' : '#00b894',
+							...searchColors,
 						}}
 					>
 						{getSearchTypeLabel(log.searchType)}

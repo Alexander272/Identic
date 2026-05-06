@@ -16,6 +16,10 @@ export const getSearchTypeLabel = (type: string) => {
 			return 'Точный'
 		case SearchType.Fuzzy:
 			return 'Неточный'
+		case SearchType.QuantityExact:
+			return 'Точный (по количеству)'
+		case SearchType.QuantityFuzzy:
+			return 'Неточный (по количеству)'
 		default:
 			return type
 	}
@@ -24,11 +28,15 @@ export const getSearchTypeLabel = (type: string) => {
 export const getSearchTypeColor = (type: string) => {
 	switch (type) {
 		case SearchType.Exact:
-			return 'primary' as const
+			return { background: 'rgba(108, 92, 231, 0.15)', color: '#6c5ce7' }
 		case SearchType.Fuzzy:
-			return 'secondary' as const
+			return { background: 'rgba(0, 184, 148, 0.1)', color: '#00b894' }
+		case SearchType.QuantityExact:
+			return { background: 'rgb(225 222 255 / 41%)', color: '#606cff' }
+		case SearchType.QuantityFuzzy:
+			return { background: 'rgb(159 255 202 / 33%)', color: '#34c186' }
 		default:
-			return 'default' as const
+			return { background: 'rgba(0, 0, 0, 0.08)', color: 'inherit' }
 	}
 }
 
