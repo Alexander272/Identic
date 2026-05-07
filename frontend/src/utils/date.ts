@@ -23,10 +23,15 @@ export const getSmartDate = (date: string) => {
 	// 	return target.fromNow()
 	// }
 
+	const fullFormat = 'dddd, DD MMM YYYY HH:mm'
+
 	// Для сегодня, вчера и совсем старых дат — календарный формат
 	return target.calendar(null, {
 		sameDay: '[Сегодня в] HH:mm',
 		lastDay: '[Вчера в] HH:mm',
-		sameElse: 'dddd, DD MMM YYYY HH:mm',
+		nextDay: fullFormat,
+		nextWeek: fullFormat,
+		lastWeek: fullFormat,
+		sameElse: fullFormat,
 	})
 }
