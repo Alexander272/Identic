@@ -77,30 +77,39 @@ export const Search = () => {
 
 	const findHandler = useCallback(
 		(mode?: 'exact' | 'fuzzy') => async () => {
-			let searchByQuantityOnly = false
-			const items = data
-				.map((item, idx) => {
-					if (!item.name) searchByQuantityOnly = true
-					if (item.name && item.quantity === null) item.quantity = 0
-					return { ...item, id: idx }
-				})
-				.filter(item => item.quantity !== null)
+			const withName = data
+				.filter(item => item.name && item.name?.trim() !== '')
+				.map((item, idx) => ({ ...item, id: idx, quantity: item.quantity ?? 0 }))
 
-			if (items.length === 0) {
-				toast.error('Заполните хотя бы одну строку')
+			if (withName.length > 0) {
+				const isFuzzy = mode ? mode === 'fuzzy' : useFuzzy
+				if (mode && (mode === 'fuzzy') !== useFuzzy) {
+					setUseFuzzy(mode === 'fuzzy')
+				}
+				findOrders(
+					{ items: withName, isFuzzy, searchByQuantityOnly: false, sessionId: Date.now().toString() },
+					false,
+				)
 				return
 			}
 
-			const isFuzzy = mode ? mode === 'fuzzy' : useFuzzy
-			if (mode && (mode === 'fuzzy') !== useFuzzy) {
-				setUseFuzzy(mode === 'fuzzy')
+			const quantityOnly = data
+				.filter(item => item.quantity != null)
+				.map((item, idx) => ({ ...item, id: idx, name: '' }))
+
+			if (quantityOnly.length > 0) {
+				const isFuzzy = mode ? mode === 'fuzzy' : useFuzzy
+				if (mode && (mode === 'fuzzy') !== useFuzzy) {
+					setUseFuzzy(mode === 'fuzzy')
+				}
+				findOrders(
+					{ items: quantityOnly, isFuzzy, searchByQuantityOnly: true, sessionId: Date.now().toString() },
+					false,
+				)
+				return
 			}
 
-			findOrders({ items: items, isFuzzy, searchByQuantityOnly, sessionId: Date.now().toString() }, false)
-			// 	const payload = await findOrders({ items: items, isFuzzy: useFuzzy }).unwrap()
-			// 	console.log('payload', payload)
-
-			// 	setResults(payload)
+			toast.error('Заполните хотя бы одну строку')
 		},
 		[data, useFuzzy, findOrders],
 	)

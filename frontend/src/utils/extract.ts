@@ -1,6 +1,7 @@
 // const reWithUnit = /(\d+)\s*(?:шт|кг)|(?:шт|кг)\.?\s*(\d+)/i
 // const reWithUnit = /([\d,.]+)\s*(?:шт|кг)$|(?:шт|кг)\.?\s*([\d,.]+)$/i
-const reWithUnit = /(?:\s+|—\s*|[-]\s*)([\d,.]+)\s*(?:шт|кг)\.?$/i
+// const reWithUnit = /(?:\s+|—\s*|[-]\s*)([\d,.]+)\s*(?:шт|кг)\.?$/i
+const reWithUnit = /(?:\s+|—\s*|[-]\s*)([\d,.]+)\s*(?:шт|кг)\.?$|(?:^|\s+)(?:шт|кг)\.?\s*([\d,.]+)$/i
 // const reEndDigits = /\s+(\d+)$/
 // const reEndDigits = /(?:\s+|—\s*|[-]\s+)(\d+)$/
 const reEndDigits = /(?:\s+|—\s*|[-]\s+)(\d+(?:,\d+)?)$/

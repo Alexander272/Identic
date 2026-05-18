@@ -256,7 +256,7 @@ export const PermissionsCard: FC<Props> = ({ role }) => {
 								let allAllowed = true
 								actions.forEach(a => {
 									const item = selectedMap.get(row.group)?.get(a.slug)
-									allAllowed = (allAllowed && item?.isAssigned) ?? true
+									allAllowed = (allAllowed && (item?.isAssigned || item?.isInherited)) ?? true
 									changed = changed || (!!item?.status && item?.status !== 'original')
 								})
 
