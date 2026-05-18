@@ -128,11 +128,12 @@ func (s *SessionService) recordSuccessfulLogin(ctx context.Context, userID strin
 	ua := u.UserAgent
 
 	dto := &models.UserLoginDTO{
-		UserID:    userID,
+		UserID:    &userID,
 		IPAddress: &ip,
 		UserAgent: &ua,
 		Metadata:  data,
 	}
+
 	if err := s.userLogins.RecordLogin(ctx, dto); err != nil {
 		logger.Error("failed to record successful login", logger.ErrAttr(err))
 		error_bot.Send(nil, fmt.Sprintf("failed to record successful login. error: %v", err), dto)
@@ -140,6 +141,12 @@ func (s *SessionService) recordSuccessfulLogin(ctx context.Context, userID strin
 }
 
 func (s *SessionService) recordFailedLogin(ctx context.Context, u *models.SignIn, errMsg string) {
+	userData, userErr := s.user.GetByLogin(ctx, u.Username)
+	var userID *string
+	if userErr == nil && userData != nil {
+		userID = &userData.SSO_ID
+	}
+
 	metadata := ParseUserAgent(u.UserAgent)
 	metadata.Event = models.LoginEventFailed
 	metadata.Success = false
@@ -160,7 +167,7 @@ func (s *SessionService) recordFailedLogin(ctx context.Context, u *models.SignIn
 	ua := u.UserAgent
 
 	dto := &models.UserLoginDTO{
-		UserID:    "",
+		UserID:    userID,
 		IPAddress: &ip,
 		UserAgent: &ua,
 		Metadata:  data,
@@ -200,7 +207,7 @@ func (s *SessionService) checkAndRecordIdleSession(ctx context.Context, userID s
 	ua := req.UserAgent
 
 	if err := s.userLogins.RecordLogin(ctx, &models.UserLoginDTO{
-		UserID:    userID,
+		UserID:    &userID,
 		IPAddress: &ip,
 		UserAgent: &ua,
 		Metadata:  data,

@@ -279,19 +279,19 @@ func (r *RoleHierarchyRepo) RemoveInheritance(ctx context.Context, tx Tx, dto *m
 	return nil
 }
 
-func (r *RoleHierarchyRepo) RemoveInheritances(ctx context.Context, tx Tx, roleID uuid.UUID, parentRoleIDs []uuid.UUID) error {
-	if len(parentRoleIDs) == 0 {
+func (r *RoleHierarchyRepo) RemoveInheritances(ctx context.Context, tx Tx, roleID uuid.UUID, childRoleIDs []uuid.UUID) error {
+	if len(childRoleIDs) == 0 {
 		return nil
 	}
 
-	placeholders := make([]string, 0, len(parentRoleIDs))
+	placeholders := make([]string, 0, len(childRoleIDs))
 	args := []interface{}{roleID}
-	for _, parentID := range parentRoleIDs {
+	for _, childID := range childRoleIDs {
 		placeholders = append(placeholders, fmt.Sprintf("$%d", len(args)+1))
-		args = append(args, parentID)
+		args = append(args, childID)
 	}
 
-	query := fmt.Sprintf(`DELETE FROM %s WHERE role_id = $1 AND parent_role_id IN (%s)`,
+	query := fmt.Sprintf(`DELETE FROM %s WHERE parent_role_id = $1 AND role_id IN (%s)`,
 		Tables.RoleHierarchy, strings.Join(placeholders, ", "))
 
 	_, err := r.getExec(tx).Exec(ctx, query, args...)

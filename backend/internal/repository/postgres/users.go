@@ -25,6 +25,7 @@ func NewUserRepo(db *pgxpool.Pool, tr Transaction) *userRepo {
 type Users interface {
 	LoadPolicy(ctx context.Context, req *models.GetPoliciesDTO) ([]*models.UserRole, error)
 	GetByID(ctx context.Context, id uuid.UUID) (*models.UserData, error)
+	GetByLogin(ctx context.Context, login string) (*models.UserData, error)
 	GetAll(ctx context.Context) ([]*models.UserData, error)
 	CreateSeveral(ctx context.Context, tx Tx, dto []*models.UserDataDTO) error
 	Update(ctx context.Context, tx Tx, dto *models.UserDataDTO) error
@@ -72,6 +73,22 @@ func (r *userRepo) GetByID(ctx context.Context, id uuid.UUID) (*models.UserData,
 		&data.ID, &data.RoleID, &data.Username, &data.Email, &data.SSO_ID, &data.FirstName, &data.LastName, &data.IsActive,
 	); err != nil {
 		return nil, fmt.Errorf("failed to execute query. error: %w", err)
+	}
+	return data, nil
+}
+
+func (r *userRepo) GetByLogin(ctx context.Context, login string) (*models.UserData, error) {
+	query := fmt.Sprintf(`SELECT u.id, role_id, u.username, u.email, u.sso_id, u.first_name, u.last_name, u.is_active
+		FROM %s u
+		WHERE u.username = $1 OR u.email = $1
+		LIMIT 1`,
+		Tables.Users,
+	)
+	data := &models.UserData{}
+	if err := r.db.QueryRow(ctx, query, login).Scan(
+		&data.ID, &data.RoleID, &data.Username, &data.Email, &data.SSO_ID, &data.FirstName, &data.LastName, &data.IsActive,
+	); err != nil {
+		return nil, fmt.Errorf("failed to get user by login: %w", err)
 	}
 	return data, nil
 }

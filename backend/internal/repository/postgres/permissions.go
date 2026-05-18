@@ -22,10 +22,6 @@ func NewPermissionRepo(db *pgxpool.Pool, tr Transaction) *PermissionRepo {
 	}
 }
 
-func (r *PermissionRepo) GetDB() *pgxpool.Pool {
-	return r.db
-}
-
 type Permissions interface {
 	LoadPolicy(ctx context.Context, req *models.GetPoliciesDTO) ([]*models.Permission, error)
 	Sync(ctx context.Context, tx Tx, dto []*models.PermissionDTO) error

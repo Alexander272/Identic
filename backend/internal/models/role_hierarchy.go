@@ -16,7 +16,7 @@ type RoleWithHierarchy struct {
 type RoleHierarchyDTO struct {
 	ParentRoleID uuid.UUID `json:"parentRoleId" db:"parent_role_id"`
 	RoleID       uuid.UUID `json:"childRoleId" db:"child_role_id"`
-	ActorID      uuid.UUID `json:"actorId" db:"actor_id"`
+	Actor        *Actor
 }
 
 type GetRoleInheritance struct {

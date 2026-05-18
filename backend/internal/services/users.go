@@ -44,6 +44,7 @@ func NewUserService(deps *UsersDeps) *userService {
 type Users interface {
 	LoadPolicy(ctx context.Context, req *models.GetPoliciesDTO) ([]*models.UserRole, error)
 	GetByID(ctx context.Context, id uuid.UUID) (*models.UserData, error)
+	GetByLogin(ctx context.Context, login string) (*models.UserData, error)
 	GetAll(ctx context.Context) ([]*models.UserData, error)
 	Sync(ctx context.Context, actor *models.Actor) error
 	Update(ctx context.Context, dto *models.UserDataDTO) error
@@ -61,6 +62,14 @@ func (s *userService) GetByID(ctx context.Context, id uuid.UUID) (*models.UserDa
 	data, err := s.repo.GetByID(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user by id. error: %w", err)
+	}
+	return data, nil
+}
+
+func (s *userService) GetByLogin(ctx context.Context, login string) (*models.UserData, error) {
+	data, err := s.repo.GetByLogin(ctx, login)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user by login. error: %w", err)
 	}
 	return data, nil
 }

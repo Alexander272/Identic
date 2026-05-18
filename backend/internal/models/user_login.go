@@ -9,7 +9,7 @@ import (
 
 type UserLogin struct {
 	ID             uuid.UUID       `json:"id" db:"id"`
-	UserID         string          `json:"userId" db:"user_id"`
+	UserID         *string         `json:"userId" db:"user_id"`
 	LoginAt        time.Time       `json:"loginAt" db:"login_at"`
 	IPAddress      *string         `json:"ipAddress" db:"ip_address"`
 	UserAgent      *string         `json:"userAgent" db:"user_agent"`
@@ -18,7 +18,7 @@ type UserLogin struct {
 }
 
 type UserLoginDTO struct {
-	UserID    string          `json:"userId"`
+	UserID    *string         `json:"userId"`
 	IPAddress *string         `json:"ipAddress"`
 	UserAgent *string         `json:"userAgent"`
 	Metadata  json.RawMessage `json:"metadata"`
