@@ -93,7 +93,8 @@ func (s *PositionsService) Update(ctx context.Context, tx postgres.Tx, dto []*mo
 }
 func (s *PositionsService) executeUpdate(ctx context.Context, tx postgres.Tx, dto []*models.PositionDTO) error {
 	for i := range dto {
-		dto[i].Search = NormalizeString(dto[i].Search)
+		dto[i].Search = NormalizeString(dto[i].Name)
+		dto[i].NormalizedNotes = NormalizeString(dto[i].Notes)
 	}
 
 	if err := s.repo.Update(ctx, tx, dto); err != nil {
