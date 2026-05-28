@@ -1,14 +1,13 @@
 package logins
 
 import (
-	"net/http"
+	"fmt"
 
 	"github.com/Alexander272/Identic/backend/internal/access"
 	"github.com/Alexander272/Identic/backend/internal/models"
 	"github.com/Alexander272/Identic/backend/internal/models/response"
 	"github.com/Alexander272/Identic/backend/internal/services"
 	"github.com/Alexander272/Identic/backend/internal/transport/middleware"
-	"github.com/Alexander272/Identic/backend/pkg/error_bot"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
@@ -36,7 +35,7 @@ func (h *Handler) get(c *gin.Context) {
 	strId := c.Param("id")
 	id, err := uuid.Parse(strId)
 	if err != nil {
-		response.NewErrorResponse(c, http.StatusBadRequest, "empty param", "Id пользователя не задан")
+		response.SendError(c, fmt.Errorf("%w: %v", models.ErrInvalidInput, err))
 		return
 	}
 
@@ -47,9 +46,8 @@ func (h *Handler) get(c *gin.Context) {
 
 	data, err := h.service.GetByUser(c, req)
 	if err != nil {
-		response.NewErrorResponse(c, http.StatusInternalServerError, err.Error(), "Произошла ошибка: "+err.Error())
-		error_bot.Send(c, err.Error(), req)
+		response.SendError(c, err, req)
 		return
 	}
-	c.JSON(http.StatusOK, response.DataResponse{Data: data})
+	response.SendData(c, data, len(data))
 }

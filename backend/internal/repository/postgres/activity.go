@@ -49,7 +49,7 @@ func (r *ActivityRepo) Create(ctx context.Context, tx Tx, dto *models.CreateActi
 		dto.ParentID, oldJSON, newJSON,
 	)
 	if err != nil {
-		return fmt.Errorf("failed to create activity log: %w", err)
+		return MapError(fmt.Errorf("failed to create activity log: %w", err))
 	}
 	return nil
 }
@@ -94,7 +94,7 @@ func (r *ActivityRepo) Get(ctx context.Context, req *models.GetAllActivityLogsDT
 
 	rows, err := r.db.Query(ctx, query, args...)
 	if err != nil {
-		return nil, fmt.Errorf("failed to query activity logs: %w", err)
+		return nil, MapError(fmt.Errorf("failed to query activity logs: %w", err))
 	}
 	defer rows.Close()
 
@@ -122,7 +122,7 @@ func (r *ActivityRepo) GetByEntity(ctx context.Context, req *models.GetActivityL
 
 	rows, err := r.db.Query(ctx, query, args...)
 	if err != nil {
-		return nil, fmt.Errorf("failed to query activity logs: %w", err)
+		return nil, MapError(fmt.Errorf("failed to query activity logs: %w", err))
 	}
 	defer rows.Close()
 
@@ -135,7 +135,7 @@ func (r *ActivityRepo) GetByOrder(ctx context.Context, orderID uuid.UUID) ([]*mo
 
 	rows, err := r.db.Query(ctx, query, orderID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to query activity logs: %w", err)
+		return nil, MapError(fmt.Errorf("failed to query activity logs: %w", err))
 	}
 	defer rows.Close()
 
@@ -154,7 +154,7 @@ func (r *ActivityRepo) scanLogs(rows pgx.Rows) ([]*models.ActivityLog, error) {
 			&log.Order,
 		)
 		if err != nil {
-			return nil, fmt.Errorf("failed to scan activity log: %w", err)
+			return nil, MapError(fmt.Errorf("failed to scan activity log: %w", err))
 		}
 
 		if oldBytes != nil {

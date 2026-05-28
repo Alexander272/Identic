@@ -40,19 +40,19 @@ func (r *PositionRepo) GetByOrder(ctx context.Context, tx Tx, req *models.GetPos
 	var positions []*models.Position
 	rows, err := r.getExec(tx).Query(ctx, query, req.OrderId)
 	if err != nil {
-		return nil, fmt.Errorf("failed to execute query. error: %w", err)
+		return nil, MapError(fmt.Errorf("failed to execute query. error: %w", err))
 	}
 	defer rows.Close()
 
 	for rows.Next() {
 		tmp := &models.Position{}
 		if err := rows.Scan(&tmp.Id, &tmp.OrderId, &tmp.RowNumber, &tmp.Name, &tmp.Quantity, &tmp.Notes); err != nil {
-			return nil, fmt.Errorf("failed to scan row. error: %w", err)
+			return nil, MapError(fmt.Errorf("failed to scan row. error: %w", err))
 		}
 		positions = append(positions, tmp)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error during rows iteration: %w", err)
+		return nil, MapError(fmt.Errorf("error during rows iteration: %w", err))
 	}
 
 	// for i  := range positions {
@@ -70,19 +70,19 @@ func (r *PositionRepo) GetByIds(ctx context.Context, req *models.GetPositionsByI
 	positions := make([]*models.Position, 0, len(req.Ids))
 	rows, err := r.db.Query(ctx, query, req.Ids)
 	if err != nil {
-		return nil, fmt.Errorf("failed to execute query. error: %w", err)
+		return nil, MapError(fmt.Errorf("failed to execute query. error: %w", err))
 	}
 	defer rows.Close()
 
 	for rows.Next() {
 		tmp := &models.Position{}
 		if err := rows.Scan(&tmp.Id, &tmp.OrderId, &tmp.RowNumber, &tmp.Name, &tmp.Quantity, &tmp.Notes); err != nil {
-			return nil, fmt.Errorf("failed to scan row. error: %w", err)
+			return nil, MapError(fmt.Errorf("failed to scan row. error: %w", err))
 		}
 		positions = append(positions, tmp)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error during rows iteration: %w", err)
+		return nil, MapError(fmt.Errorf("error during rows iteration: %w", err))
 	}
 	return positions, nil
 }
@@ -120,7 +120,7 @@ func (r *PositionRepo) Create(ctx context.Context, tx Tx, dto []*models.Position
 	)
 
 	if err != nil {
-		return fmt.Errorf("failed to execute query. error: %w", err)
+		return MapError(fmt.Errorf("failed to execute query. error: %w", err))
 	}
 	return nil
 }
@@ -160,7 +160,7 @@ func (r *PositionRepo) Update(ctx context.Context, tx Tx, dto []*models.Position
 	)
 
 	if _, err := r.getExec(tx).Exec(ctx, query, ids, names, search, quantities, notes, normNotes); err != nil {
-		return fmt.Errorf("failed to execute query. error: %w", err)
+		return MapError(fmt.Errorf("failed to execute query. error: %w", err))
 	}
 	return nil
 }
@@ -179,7 +179,7 @@ func (r *PositionRepo) Delete(ctx context.Context, tx Tx, dto []*models.Position
 	query := fmt.Sprintf(`DELETE FROM %s WHERE id = ANY($1::uuid[])`, Tables.Positions)
 
 	if _, err := r.getExec(tx).Exec(ctx, query, ids); err != nil {
-		return fmt.Errorf("failed to execute query. error: %w", err)
+		return MapError(fmt.Errorf("failed to execute query. error: %w", err))
 	}
 	return nil
 }
@@ -188,7 +188,7 @@ func (r *PositionRepo) DeleteByOrder(ctx context.Context, tx Tx, dto *models.Del
 	query := fmt.Sprintf(`DELETE FROM %s WHERE order_id = $1`, Tables.Positions)
 
 	if _, err := r.getExec(tx).Exec(ctx, query, dto.OrderId); err != nil {
-		return fmt.Errorf("failed to execute query. error: %w", err)
+		return MapError(fmt.Errorf("failed to execute query. error: %w", err))
 	}
 	return nil
 }

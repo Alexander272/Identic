@@ -42,7 +42,7 @@ func (r *userRepo) LoadPolicy(ctx context.Context, req *models.GetPoliciesDTO) (
 
 	rows, err := r.db.Query(ctx, query)
 	if err != nil {
-		return nil, fmt.Errorf("failed to execute query: %w", err)
+		return nil, MapError(fmt.Errorf("failed to execute query: %w", err))
 	}
 	defer rows.Close()
 
@@ -50,12 +50,12 @@ func (r *userRepo) LoadPolicy(ctx context.Context, req *models.GetPoliciesDTO) (
 	for rows.Next() {
 		item := &models.UserRole{}
 		if err := rows.Scan(&item.UserID, &item.RoleName); err != nil {
-			return nil, fmt.Errorf("scan row error: %w", err)
+			return nil, MapError(fmt.Errorf("scan row error: %w", err))
 		}
 		data = append(data, item)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("rows iteration error: %w", err)
+		return nil, MapError(fmt.Errorf("rows iteration error: %w", err))
 	}
 
 	return data, nil
@@ -72,7 +72,7 @@ func (r *userRepo) GetByID(ctx context.Context, id uuid.UUID) (*models.UserData,
 	if err := r.db.QueryRow(ctx, query, id).Scan(
 		&data.ID, &data.RoleID, &data.Username, &data.Email, &data.SSO_ID, &data.FirstName, &data.LastName, &data.IsActive,
 	); err != nil {
-		return nil, fmt.Errorf("failed to execute query. error: %w", err)
+		return nil, MapError(fmt.Errorf("failed to execute query. error: %w", err))
 	}
 	return data, nil
 }
@@ -88,7 +88,7 @@ func (r *userRepo) GetByLogin(ctx context.Context, login string) (*models.UserDa
 	if err := r.db.QueryRow(ctx, query, login).Scan(
 		&data.ID, &data.RoleID, &data.Username, &data.Email, &data.SSO_ID, &data.FirstName, &data.LastName, &data.IsActive,
 	); err != nil {
-		return nil, fmt.Errorf("failed to get user by login: %w", err)
+		return nil, MapError(fmt.Errorf("failed to get user by login: %w", err))
 	}
 	return data, nil
 }
@@ -107,7 +107,7 @@ func (r *userRepo) GetAll(ctx context.Context) ([]*models.UserData, error) {
 
 	rows, err := r.db.Query(ctx, query)
 	if err != nil {
-		return nil, fmt.Errorf("failed to execute query. error: %w", err)
+		return nil, MapError(fmt.Errorf("failed to execute query. error: %w", err))
 	}
 	defer rows.Close()
 
@@ -117,12 +117,12 @@ func (r *userRepo) GetAll(ctx context.Context) ([]*models.UserData, error) {
 			&tmp.ID, &tmp.Username, &tmp.Email, &tmp.SSO_ID, &tmp.FirstName, &tmp.LastName,
 			&tmp.IsActive, &tmp.CreatedAt, &tmp.RoleID, &tmp.Role, &tmp.LastVisit,
 		); err != nil {
-			return nil, fmt.Errorf("failed to scan row. error: %w", err)
+			return nil, MapError(fmt.Errorf("failed to scan row. error: %w", err))
 		}
 		data = append(data, tmp)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error during rows iteration: %w", err)
+		return nil, MapError(fmt.Errorf("error during rows iteration: %w", err))
 	}
 	return data, nil
 }
@@ -159,7 +159,7 @@ func (r *userRepo) CreateSeveral(ctx context.Context, tx Tx, dto []*models.UserD
 	)
 
 	if err != nil {
-		return fmt.Errorf("failed to execute query. error: %w", err)
+		return MapError(fmt.Errorf("failed to execute query. error: %w", err))
 	}
 	return nil
 }
@@ -172,7 +172,7 @@ func (r *userRepo) Update(ctx context.Context, tx Tx, dto *models.UserDataDTO) e
 
 	_, err := r.getExec(tx).Exec(ctx, query, dto.RoleID, dto.IsActive, dto.ID)
 	if err != nil {
-		return fmt.Errorf("failed to execute query. error: %w", err)
+		return MapError(fmt.Errorf("failed to execute query. error: %w", err))
 	}
 	return nil
 }
@@ -223,7 +223,7 @@ func (r *userRepo) UpdateSeveral(ctx context.Context, tx Tx, dto []*models.UserD
 
 	_, err := r.getExec(tx).Exec(ctx, query, usernames, emails, roleIds, ssoIds, firstNames, lastNames)
 	if err != nil {
-		return fmt.Errorf("failed to execute bulk update: %w", err)
+		return MapError(fmt.Errorf("failed to execute bulk update: %w", err))
 	}
 	return nil
 }
@@ -235,7 +235,7 @@ func (r *userRepo) DeleteSeveral(ctx context.Context, tx Tx, ids []string) error
 	query := fmt.Sprintf(`DELETE FROM %s WHERE sso_id=ANY($1)`, Tables.Users)
 
 	if _, err := r.getExec(tx).Exec(ctx, query, ids); err != nil {
-		return fmt.Errorf("failed to execute query. error: %w", err)
+		return MapError(fmt.Errorf("failed to execute query. error: %w", err))
 	}
 	return nil
 }

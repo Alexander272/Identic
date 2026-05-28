@@ -57,7 +57,7 @@ func (r *SearchRepo) FetchExact(ctx context.Context, req *models.SearchRequest) 
 
 	rows, err := r.db.Query(ctx, query, names, qtys, ids)
 	if err != nil {
-		return nil, fmt.Errorf("query failed: %w", err)
+		return nil, MapError(fmt.Errorf("query failed: %w", err))
 	}
 	defer rows.Close()
 
@@ -69,7 +69,7 @@ func (r *SearchRepo) FetchExact(ctx context.Context, req *models.SearchRequest) 
 			&m.ReqId, &m.PosId, &m.PSearch, &m.ReqQty, &m.DbQty, &m.Similarity,
 		)
 		if err != nil {
-			return nil, err
+			return nil, MapError(fmt.Errorf("scan row error: %w", err))
 		}
 		results = append(results, &m)
 	}
@@ -89,7 +89,7 @@ func (r *SearchRepo) FetchFuzzy(ctx context.Context, req *models.SearchRequest) 
 
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
-		return nil, err
+		return nil, MapError(fmt.Errorf("failed to begin transaction: %w", err))
 	}
 	defer tx.Rollback(ctx)
 
@@ -121,7 +121,7 @@ func (r *SearchRepo) FetchFuzzy(ctx context.Context, req *models.SearchRequest) 
 
 	rows, err := tx.Query(ctx, query, names, qtys, ids)
 	if err != nil {
-		return nil, fmt.Errorf("query failed: %w", err)
+		return nil, MapError(fmt.Errorf("query failed: %w", err))
 	}
 	defer rows.Close()
 
@@ -146,7 +146,7 @@ func (r *SearchRepo) FetchFuzzy(ctx context.Context, req *models.SearchRequest) 
 			&m.Similarity,
 		)
 		if err != nil {
-			return nil, fmt.Errorf("scan failed: %w", err)
+			return nil, MapError(fmt.Errorf("scan failed: %w", err))
 		}
 		results = append(results, &m)
 	}
@@ -183,7 +183,7 @@ func (r *SearchRepo) FetchExactByQuantity(ctx context.Context, req *models.Searc
 
 	rows, err := r.db.Query(ctx, query, qtys, ids)
 	if err != nil {
-		return nil, fmt.Errorf("query failed: %w", err)
+		return nil, MapError(fmt.Errorf("query failed: %w", err))
 	}
 	defer rows.Close()
 
@@ -232,7 +232,7 @@ func (r *SearchRepo) FetchFuzzyByQuantity(ctx context.Context, req *models.Searc
 
 	rows, err := r.db.Query(ctx, query, qtys, ids)
 	if err != nil {
-		return nil, fmt.Errorf("query failed: %w", err)
+		return nil, MapError(fmt.Errorf("query failed: %w", err))
 	}
 	defer rows.Close()
 
@@ -244,7 +244,7 @@ func (r *SearchRepo) FetchFuzzyByQuantity(ctx context.Context, req *models.Searc
 			&m.ReqId, &m.PosId, &m.PSearch, &m.ReqQty, &m.DbQty, &m.Similarity,
 		)
 		if err != nil {
-			return nil, err
+			return nil, MapError(fmt.Errorf("scan failed: %w", err))
 		}
 		results = append(results, &m)
 	}

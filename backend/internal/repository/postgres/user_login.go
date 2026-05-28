@@ -2,11 +2,13 @@ package postgres
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/Alexander272/Identic/backend/internal/models"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -57,7 +59,7 @@ func (r *userLoginRepo) GetByUser(ctx context.Context, req *models.GetUserLogins
 	var data []*models.UserLogin
 	rows, err := r.db.Query(ctx, query, args...)
 	if err != nil {
-		return nil, fmt.Errorf("failed to execute query: %w", err)
+		return nil, MapError(fmt.Errorf("failed to execute query: %w", err))
 	}
 	defer rows.Close()
 
@@ -66,12 +68,12 @@ func (r *userLoginRepo) GetByUser(ctx context.Context, req *models.GetUserLogins
 		if err := rows.Scan(
 			&tmp.ID, &tmp.UserID, &tmp.LoginAt, &tmp.IPAddress, &tmp.UserAgent, &tmp.Metadata, &tmp.LastActivityAt,
 		); err != nil {
-			return nil, fmt.Errorf("failed to scan row: %w", err)
+			return nil, MapError(fmt.Errorf("failed to scan row: %w", err))
 		}
 		data = append(data, tmp)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error during rows iteration: %w", err)
+		return nil, MapError(fmt.Errorf("error during rows iteration: %w", err))
 	}
 	return data, nil
 }
@@ -82,7 +84,7 @@ func (r *userLoginRepo) GetByUserCount(ctx context.Context, userID string) (int6
 	var count int64
 	err := r.db.QueryRow(ctx, query, userID).Scan(&count)
 	if err != nil {
-		return 0, fmt.Errorf("failed to count user logins: %w", err)
+		return 0, MapError(fmt.Errorf("failed to count user logins: %w", err))
 	}
 	return count, nil
 }
@@ -96,10 +98,10 @@ func (r *userLoginRepo) GetLastByUser(ctx context.Context, userID string) (*mode
 		&login.ID, &login.UserID, &login.LoginAt, &login.IPAddress, &login.UserAgent, &login.Metadata, &login.LastActivityAt,
 	)
 	if err != nil {
-		if err.Error() == "no rows in result set" {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("failed to get last user login: %w", err)
+		return nil, MapError(fmt.Errorf("failed to get last user login: %w", err))
 	}
 	return &login, nil
 }
@@ -121,10 +123,10 @@ func (r *userLoginRepo) GetLastWithUser(ctx context.Context, userID string) (*mo
 		&result.User.ID, &result.User.SSO_ID, &result.User.FirstName, &result.User.LastName, &result.User.Email,
 	)
 	if err != nil {
-		if err.Error() == "no rows in result set" {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("failed to get last user login with user: %w", err)
+		return nil, MapError(fmt.Errorf("failed to get last user login with user: %w", err))
 	}
 	return &result, nil
 }
@@ -156,7 +158,7 @@ func (r *userLoginRepo) GetLastByUsers(ctx context.Context, req *models.GetUserL
 
 	rows, err := r.db.Query(ctx, query, args...)
 	if err != nil {
-		return nil, fmt.Errorf("failed to execute query: %w", err)
+		return nil, MapError(fmt.Errorf("failed to execute query: %w", err))
 	}
 	defer rows.Close()
 
@@ -167,12 +169,12 @@ func (r *userLoginRepo) GetLastByUsers(ctx context.Context, req *models.GetUserL
 			&tmp.ID, &tmp.UserID, &tmp.LoginAt, &tmp.IPAddress, &tmp.UserAgent, &tmp.Metadata, &tmp.LastActivityAt,
 			&tmp.User.ID, &tmp.User.SSO_ID, &tmp.User.FirstName, &tmp.User.LastName, &tmp.User.Email,
 		); err != nil {
-			return nil, fmt.Errorf("failed to scan row: %w", err)
+			return nil, MapError(fmt.Errorf("failed to scan row: %w", err))
 		}
 		data = append(data, tmp)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error during rows iteration: %w", err)
+		return nil, MapError(fmt.Errorf("error during rows iteration: %w", err))
 	}
 	return data, nil
 }
@@ -186,7 +188,7 @@ func (r *userLoginRepo) Create(ctx context.Context, tx Tx, dto *models.UserLogin
 
 	_, err := r.getExec(tx).Exec(ctx, query, id, dto.UserID, dto.IPAddress, dto.UserAgent, dto.Metadata)
 	if err != nil {
-		return fmt.Errorf("failed to create user login: %w", err)
+		return MapError(fmt.Errorf("failed to create user login: %w", err))
 	}
 	return nil
 }
@@ -211,7 +213,7 @@ func (r *userLoginRepo) UpdateLastActivity(ctx context.Context, tx Tx, userID st
 	query := fmt.Sprintf(`UPDATE %s SET last_activity_at = $1 WHERE id = $2`, Tables.UserLogins)
 	_, err = r.getExec(tx).Exec(ctx, query, now, login.ID)
 	if err != nil {
-		return false, fmt.Errorf("failed to update last activity: %w", err)
+		return false, MapError(fmt.Errorf("failed to update last activity: %w", err))
 	}
 
 	return false, nil

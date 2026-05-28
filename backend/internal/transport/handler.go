@@ -19,7 +19,6 @@ import (
 	"github.com/Alexander272/Identic/backend/internal/transport/middleware"
 	"github.com/Alexander272/Identic/backend/internal/transport/ws"
 	"github.com/Alexander272/Identic/backend/pkg/auth"
-	"github.com/Alexander272/Identic/backend/pkg/error_bot"
 	"github.com/Alexander272/Identic/backend/pkg/limiter"
 	"github.com/Alexander272/Identic/backend/pkg/ws_hub"
 	"github.com/Alexander272/Identic/backend/web"
@@ -27,16 +26,22 @@ import (
 )
 
 type Handler struct {
-	keycloak *auth.KeycloakClient
-	services *services.Services
-	hub      *ws_hub.Hub
+	keycloak     *auth.KeycloakClient
+	services     *services.Services
+	hub          *ws_hub.Hub
+	pricesModule Modules
 }
 
-func NewHandler(keycloak *auth.KeycloakClient, services *services.Services, hub *ws_hub.Hub) *Handler {
+type Modules interface {
+	Init(*gin.RouterGroup, *middleware.Middleware)
+}
+
+func NewHandler(keycloak *auth.KeycloakClient, services *services.Services, hub *ws_hub.Hub, pricesModule Modules) *Handler {
 	return &Handler{
-		keycloak: keycloak,
-		services: services,
-		hub:      hub,
+		keycloak:     keycloak,
+		services:     services,
+		hub:          hub,
+		pricesModule: pricesModule,
 	}
 }
 
@@ -88,9 +93,8 @@ func (h *Handler) ErrorHandler(c *gin.Context, origErr any) {
 	cleanStack := strings.ReplaceAll(rawStack, "\t", "    ") // 2. Заменяем все табуляции на 4 пробела для красоты
 	stackLines := strings.Split(cleanStack, "\n")            // 3. Превращаем в срез строк, разделяя по символу \n
 
-	error_bot.Send(c, err.Error(), gin.H{"PANIC": true, "Stack trace": stackLines})
+	response.SendError(c, err, gin.H{"PANIC": true, "Stack trace": stackLines})
 	debug.PrintStack()
-	response.NewErrorResponse(c, http.StatusInternalServerError, err.Error(), "Произошла непредвиденная ошибка: "+err.Error())
 }
 
 func (h *Handler) initAPI(router *gin.Engine, conf *config.Config) {
@@ -105,6 +109,8 @@ func (h *Handler) initAPI(router *gin.Engine, conf *config.Config) {
 	api.GET("/ws", func(c *gin.Context) {
 		wsHandler.HandleWS(c)
 	})
+
+	h.pricesModule.Init(api, middleware)
 }
 
 var appStartTime = time.Now()

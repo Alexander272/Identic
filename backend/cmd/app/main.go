@@ -12,6 +12,7 @@ import (
 
 	"github.com/Alexander272/Identic/backend/internal/config"
 	"github.com/Alexander272/Identic/backend/internal/migrate"
+	"github.com/Alexander272/Identic/backend/internal/prices"
 	"github.com/Alexander272/Identic/backend/internal/repository"
 	"github.com/Alexander272/Identic/backend/internal/server"
 	"github.com/Alexander272/Identic/backend/internal/services"
@@ -81,18 +82,19 @@ func main() {
 
 	//* Services, Repos & API Handlers
 	repo := repository.NewRepository(db, memDB)
+	transaction := services.NewTransactionManager(repo.Transaction)
+
+	pricesModule := prices.NewPricesModule(db, transaction)
+
 	service := services.NewServices(&services.Deps{
-		Repo:     repo,
-		Conf:     conf,
-		Hub:      hub,
-		Keycloak: keycloak,
-		// MostClient:    mostClient,
-		// CheckUsedConf: conf.Notification.CheckUsed,
-		// Adapter:       adapter,
-		// BotUrl:   conf.Bot.Url,
+		Repo:        repo,
+		Conf:        conf,
+		Hub:         hub,
+		Keycloak:    keycloak,
+		Transaction: transaction,
 	})
 
-	handlers := transport.NewHandler(keycloak, service, hub)
+	handlers := transport.NewHandler(keycloak, service, hub, pricesModule)
 
 	//* HTTP Server
 	// if err := services.Scheduler.Start(&conf.Scheduler); err != nil {

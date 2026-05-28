@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -10,7 +11,6 @@ import (
 	"github.com/Alexander272/Identic/backend/internal/models/response"
 	"github.com/Alexander272/Identic/backend/internal/services"
 	"github.com/Alexander272/Identic/backend/internal/transport/middleware"
-	"github.com/Alexander272/Identic/backend/pkg/error_bot"
 	"github.com/Alexander272/Identic/backend/pkg/logger"
 	"github.com/gin-gonic/gin"
 )
@@ -49,7 +49,7 @@ func Register(api *gin.RouterGroup, deps Deps) {
 func (h *AuthHandler) SignIn(c *gin.Context) {
 	dto := &models.SignIn{}
 	if err := c.BindJSON(dto); err != nil {
-		response.NewErrorResponse(c, http.StatusBadRequest, err.Error(), "Отправлены некорректные данные")
+		response.SendError(c, err)
 		return
 	}
 
@@ -66,11 +66,10 @@ func (h *AuthHandler) SignIn(c *gin.Context) {
 		)
 
 		if strings.Contains(err.Error(), "invalid_grant") {
-			response.NewErrorResponse(c, http.StatusBadRequest, err.Error(), "Отправлены некорректные данные")
+			response.SendError(c, fmt.Errorf("%w: %v", models.ErrInvalidInput, err), dto)
 			return
 		}
-		response.NewErrorResponse(c, http.StatusInternalServerError, err.Error(), "Произошла ошибка: "+err.Error())
-		error_bot.Send(c, err.Error(), dto)
+		response.SendError(c, err, dto)
 		return
 	}
 
@@ -89,19 +88,18 @@ func (h *AuthHandler) SignIn(c *gin.Context) {
 	c.SetSameSite(http.SameSiteLaxMode)
 	c.SetCookie(constants.AuthCookie, user.RefreshToken, int(h.auth.RefreshTokenTTL.Seconds()), "/", domain, h.auth.Secure, true)
 	// c.SetCookie(constants.IdentityCookie, strings.Join(user.Permissions, ","), int(h.auth.RefreshTokenTTL.Seconds()), "/", domain, h.auth.Secure, true)
-	c.JSON(http.StatusOK, response.DataResponse{Data: user})
+	response.SendData(c, user)
 }
 
 func (h *AuthHandler) SignOut(c *gin.Context) {
 	refreshToken, err := c.Cookie(constants.AuthCookie)
 	if err != nil {
-		response.NewErrorResponse(c, http.StatusUnauthorized, err.Error(), "Сессия не найдена")
+		response.SendError(c, fmt.Errorf("%w: %v", models.ErrSessionEmpty, err))
 		return
 	}
 
 	if err := h.service.SignOut(c, refreshToken); err != nil {
-		response.NewErrorResponse(c, http.StatusInternalServerError, err.Error(), "Произошла ошибка: "+err.Error())
-		error_bot.Send(c, err.Error(), refreshToken)
+		response.SendError(c, err)
 		return
 	}
 
@@ -124,7 +122,7 @@ func (h *AuthHandler) SignOut(c *gin.Context) {
 func (h *AuthHandler) Refresh(c *gin.Context) {
 	refreshToken, err := c.Cookie(constants.AuthCookie)
 	if err != nil {
-		response.NewErrorResponse(c, http.StatusUnauthorized, err.Error(), "Сессия не найдена")
+		response.SendError(c, fmt.Errorf("%w: %v", models.ErrSessionEmpty, err))
 		return
 	}
 
@@ -136,7 +134,7 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 
 	if c.Request.ContentLength > 0 {
 		if err := c.ShouldBindJSON(dto); err != nil {
-			response.NewErrorResponse(c, http.StatusBadRequest, err.Error(), "Отправлены некорректные данные")
+			response.SendError(c, err)
 			return
 		}
 	}
@@ -144,11 +142,10 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 	user, err := h.service.Refresh(c, dto)
 	if err != nil {
 		if strings.Contains(err.Error(), "invalid_grant") {
-			response.NewErrorResponse(c, http.StatusUnauthorized, err.Error(), "Сессия не найдена")
+			response.SendError(c, fmt.Errorf("%w: %v", models.ErrSessionEmpty, err))
 			return
 		}
-		response.NewErrorResponse(c, http.StatusInternalServerError, err.Error(), "Произошла ошибка: "+err.Error())
-		error_bot.Send(c, err.Error(), dto)
+		response.SendError(c, err, dto)
 		return
 	}
 
@@ -167,5 +164,5 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 	c.SetSameSite(http.SameSiteLaxMode)
 	c.SetCookie(constants.AuthCookie, user.RefreshToken, int(h.auth.RefreshTokenTTL.Seconds()), "/", domain, h.auth.Secure, true)
 	// c.SetCookie(constants.IdentityCookie, strings.Join(user.Permissions, ","), int(h.auth.RefreshTokenTTL.Seconds()), "/", domain, h.auth.Secure, true)
-	c.JSON(http.StatusOK, response.DataResponse{Data: user})
+	response.SendData(c, user)
 }

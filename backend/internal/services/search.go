@@ -119,6 +119,9 @@ func (s *SearchService) Search(ctx context.Context, req *models.SearchRequest) (
 func (s *SearchService) GetCache(ctx context.Context, req *models.GetCacheDTO) ([]string, error) {
 	positions, err := s.repo.GetCache(ctx, req)
 	if err != nil {
+		if err == models.ErrSearchExpired {
+			return nil, err
+		}
 		return nil, fmt.Errorf("failed to get cache. error: %w", err)
 	}
 	return positions, nil

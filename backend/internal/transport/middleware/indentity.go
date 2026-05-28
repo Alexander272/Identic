@@ -1,10 +1,12 @@
 package middleware
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 
 	"github.com/Alexander272/Identic/backend/internal/constants"
+	"github.com/Alexander272/Identic/backend/internal/models"
 	"github.com/Alexander272/Identic/backend/internal/models/response"
 	"github.com/gin-gonic/gin"
 )
@@ -22,18 +24,18 @@ func (m *Middleware) VerifyToken(c *gin.Context) {
 
 		c.SetSameSite(http.SameSiteLaxMode)
 		c.SetCookie(constants.AuthCookie, "", -1, "/", domain, m.auth.Secure, true)
-		response.NewErrorResponse(c, http.StatusUnauthorized, err.Error(), "сессия не найдена")
+		response.SendError(c, fmt.Errorf("%w: %v", models.ErrSessionEmpty, err))
 		return
 	}
 
 	if !*result.Active {
-		response.NewErrorResponse(c, http.StatusUnauthorized, "token is not active", "время сессии истекло, повторите вход")
+		response.SendError(c, models.ErrSessionExpired)
 		return
 	}
 
 	user, err := m.services.Session.DecodeAccessToken(c, token)
 	if err != nil {
-		response.NewErrorResponse(c, http.StatusUnauthorized, err.Error(), "токен доступа не валиден")
+		response.SendError(c, fmt.Errorf("%w: %v", models.ErrInvalidToken, err))
 		return
 	}
 

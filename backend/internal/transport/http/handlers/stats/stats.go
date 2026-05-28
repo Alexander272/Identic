@@ -1,7 +1,6 @@
 package stats
 
 import (
-	"net/http"
 	"strconv"
 	"time"
 
@@ -10,7 +9,6 @@ import (
 	"github.com/Alexander272/Identic/backend/internal/models/response"
 	"github.com/Alexander272/Identic/backend/internal/services"
 	"github.com/Alexander272/Identic/backend/internal/transport/middleware"
-	"github.com/Alexander272/Identic/backend/pkg/error_bot"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
@@ -128,49 +126,46 @@ func (h *Handler) getSearch(c *gin.Context) {
 	req := &searchLogsAdapter{&models.GetSearchLogsDTO{}}
 
 	if err := parseCommonParams(c, req); err != nil {
-		response.NewErrorResponse(c, http.StatusBadRequest, err.Error(), "Некорректные данные")
+		response.SendError(c, err)
 		return
 	}
 
 	data, err := h.service.GetSearch(c, req.GetSearchLogsDTO)
 	if err != nil {
-		response.NewErrorResponse(c, http.StatusInternalServerError, err.Error(), "Произошла ошибка: "+err.Error())
-		error_bot.Send(c, err.Error(), req)
+		response.SendError(c, err, req)
 		return
 	}
-	c.JSON(http.StatusOK, response.DataResponse{Data: data, Total: len(data)})
+	response.SendData(c, data, len(data))
 }
 
 func (h *Handler) getActivity(c *gin.Context) {
 	req := &activityLogsAdapter{&models.GetAllActivityLogsDTO{}}
 
 	if err := parseCommonParams(c, req); err != nil {
-		response.NewErrorResponse(c, http.StatusBadRequest, err.Error(), "Некорректные данные")
+		response.SendError(c, err)
 		return
 	}
 
 	data, err := h.service.GetActivity(c, req.GetAllActivityLogsDTO)
 	if err != nil {
-		response.NewErrorResponse(c, http.StatusInternalServerError, err.Error(), "Произошла ошибка: "+err.Error())
-		error_bot.Send(c, err.Error(), req)
+		response.SendError(c, err, req)
 		return
 	}
-	c.JSON(http.StatusOK, response.DataResponse{Data: data, Total: len(data)})
+	response.SendData(c, data, len(data))
 }
 
 func (h *Handler) getUserLogins(c *gin.Context) {
 	req := &userLoginsAdapter{&models.GetUserLoginsDTO{}}
 
 	if err := parseCommonParams(c, req); err != nil {
-		response.NewErrorResponse(c, http.StatusBadRequest, err.Error(), "Некорректные данные")
+		response.SendError(c, err)
 		return
 	}
 
 	data, err := h.service.GetLastUserLogin(c, req.GetUserLoginsDTO)
 	if err != nil {
-		response.NewErrorResponse(c, http.StatusInternalServerError, err.Error(), "Произошла ошибка: "+err.Error())
-		error_bot.Send(c, err.Error(), req)
+		response.SendError(c, err, req)
 		return
 	}
-	c.JSON(http.StatusOK, response.DataResponse{Data: data, Total: len(data)})
+	response.SendData(c, data, len(data))
 }

@@ -50,7 +50,7 @@ func (r *RoleRepo) GetOne(ctx context.Context, req *models.GetRoleDTO) (*models.
 		condition = fmt.Sprintf("WHERE slug = $%d", len(params))
 	}
 	if condition == "" {
-		return nil, models.ErrInvalidInput
+		return nil, MapError(models.ErrInvalidInput)
 	}
 
 	query := fmt.Sprintf(`SELECT id, slug, name, description, level, is_active, is_system, is_editable, created_at, updated_at FROM %s %s`,
@@ -71,7 +71,7 @@ func (r *RoleRepo) GetOne(ctx context.Context, req *models.GetRoleDTO) (*models.
 		&data.UpdatedAt,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to execute query: %w", err)
+		return nil, MapError(fmt.Errorf("failed to execute query: %w", err))
 	}
 	return data, nil
 }
@@ -93,7 +93,7 @@ func (r *RoleRepo) GetIDsBySlugs(ctx context.Context, slugs []string) (map[strin
 
 	rows, err := r.db.Query(ctx, query, args...)
 	if err != nil {
-		return nil, fmt.Errorf("failed to execute query: %w", err)
+		return nil, MapError(fmt.Errorf("failed to execute query: %w", err))
 	}
 	defer rows.Close()
 
@@ -102,7 +102,7 @@ func (r *RoleRepo) GetIDsBySlugs(ctx context.Context, slugs []string) (map[strin
 		var slug string
 		var id uuid.UUID
 		if err := rows.Scan(&slug, &id); err != nil {
-			return nil, fmt.Errorf("failed to scan row: %w", err)
+			return nil, MapError(fmt.Errorf("failed to scan row: %w", err))
 		}
 		result[slug] = id
 	}
@@ -119,7 +119,7 @@ func (r *RoleRepo) GetAll(ctx context.Context) ([]*models.Role, error) {
 
 	rows, err := r.db.Query(ctx, query)
 	if err != nil {
-		return nil, fmt.Errorf("failed to execute query: %w", err)
+		return nil, MapError(fmt.Errorf("failed to execute query: %w", err))
 	}
 	defer rows.Close()
 
@@ -129,12 +129,12 @@ func (r *RoleRepo) GetAll(ctx context.Context) ([]*models.Role, error) {
 			&item.ID, &item.Slug, &item.Name, &item.Description, &item.Level, &item.IsActive, &item.IsSystem, &item.IsEditable,
 			&item.CreatedAt, &item.UpdatedAt,
 		); err != nil {
-			return nil, fmt.Errorf("scan row error: %w", err)
+			return nil, MapError(fmt.Errorf("scan row error: %w", err))
 		}
 		data = append(data, item)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("rows iteration error: %w", err)
+		return nil, MapError(fmt.Errorf("rows iteration error: %w", err))
 	}
 
 	return data, nil
@@ -155,7 +155,7 @@ func (r *RoleRepo) GetUserCount(ctx context.Context, req []string) (map[string]i
 	// Передаем слайс IDs (в зависимости от драйвера может понадобиться pq.Array)
 	rows, err := r.db.Query(ctx, query, req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get user counts: %w", err)
+		return nil, MapError(fmt.Errorf("failed to get user counts: %w", err))
 	}
 	defer rows.Close()
 
@@ -164,7 +164,7 @@ func (r *RoleRepo) GetUserCount(ctx context.Context, req []string) (map[string]i
 		var roleID string
 		var count int
 		if err := rows.Scan(&roleID, &count); err != nil {
-			return nil, fmt.Errorf("scan count error: %w", err)
+			return nil, MapError(fmt.Errorf("scan count error: %w", err))
 		}
 		counts[roleID] = count
 	}
@@ -178,7 +178,7 @@ func (r *RoleRepo) IsExists(ctx context.Context, roleName string) (bool, error) 
 
 	err := r.db.QueryRow(ctx, query, roleName).Scan(&exists)
 	if err != nil {
-		return false, fmt.Errorf("failed to execute query: %w", err)
+		return false, MapError(fmt.Errorf("failed to execute query: %w", err))
 	}
 	return exists, nil
 }
@@ -188,14 +188,14 @@ func (r *RoleRepo) IsExistsById(ctx context.Context, id uuid.UUID) (bool, error)
 
 	err := r.db.QueryRow(ctx, query, id).Scan(&exists)
 	if err != nil {
-		return false, fmt.Errorf("failed to execute query: %w", err)
+		return false, MapError(fmt.Errorf("failed to execute query: %w", err))
 	}
 	return exists, nil
 }
 
 func (r *RoleRepo) Create(ctx context.Context, tx Tx, dto *models.RoleDTO) error {
 	if dto.Slug == "root" || dto.Slug == "superadmin" {
-		return models.ErrReservedRole
+		return MapError(models.ErrReservedRole)
 	}
 
 	query := fmt.Sprintf(`INSERT INTO %s (slug, name, level, description, is_system)
@@ -207,14 +207,14 @@ func (r *RoleRepo) Create(ctx context.Context, tx Tx, dto *models.RoleDTO) error
 		ctx, query, dto.Slug, dto.Name, dto.Level, dto.Description, dto.IsSystem,
 	).Scan(&dto.ID, &dto.CreatedAt)
 	if err != nil {
-		return fmt.Errorf("failed to execute query: %w", err)
+		return MapError(fmt.Errorf("failed to execute query: %w", err))
 	}
 	return nil
 }
 
 func (r *RoleRepo) Update(ctx context.Context, tx Tx, dto *models.RoleDTO) error {
 	if dto.Slug == "root" || dto.Slug == "superadmin" {
-		return models.ErrReservedRole
+		return MapError(models.ErrReservedRole)
 	}
 
 	query := fmt.Sprintf(`UPDATE %s SET name=$1, level=$2, slug=$3, description=$4, updated_at=NOW() WHERE id=$5`,
@@ -223,7 +223,7 @@ func (r *RoleRepo) Update(ctx context.Context, tx Tx, dto *models.RoleDTO) error
 
 	_, err := r.getExec(tx).Exec(ctx, query, dto.Name, dto.Level, dto.Slug, dto.Description, dto.ID)
 	if err != nil {
-		return fmt.Errorf("failed to execute query: %w", err)
+		return MapError(fmt.Errorf("failed to execute query: %w", err))
 	}
 	return nil
 }
@@ -233,7 +233,7 @@ func (r *RoleRepo) Delete(ctx context.Context, tx Tx, dto *models.DeleteRoleDTO)
 
 	_, err := r.getExec(tx).Exec(ctx, query, dto.ID)
 	if err != nil {
-		return fmt.Errorf("failed to execute query: %w", err)
+		return MapError(fmt.Errorf("failed to execute query: %w", err))
 	}
 	return nil
 }
@@ -243,7 +243,7 @@ func (r *RoleRepo) AssignPermission(ctx context.Context, tx Tx, dto *models.Role
 
 	_, err := r.getExec(tx).Exec(ctx, query, dto.RoleID, dto.PermissionID)
 	if err != nil {
-		return fmt.Errorf("failed to execute query: %w", err)
+		return MapError(fmt.Errorf("failed to execute query: %w", err))
 	}
 	return nil
 }
@@ -264,7 +264,7 @@ func (r *RoleRepo) AssignPermissions(ctx context.Context, tx Tx, roleID uuid.UUI
 
 	_, err := r.getExec(tx).Exec(ctx, query, args...)
 	if err != nil {
-		return fmt.Errorf("failed to execute query: %w", err)
+		return MapError(fmt.Errorf("failed to execute query: %w", err))
 	}
 	return nil
 }
@@ -274,7 +274,7 @@ func (r *RoleRepo) DeletePermission(ctx context.Context, tx Tx, dto *models.Role
 
 	_, err := r.getExec(tx).Exec(ctx, query, dto.RoleID, dto.PermissionID)
 	if err != nil {
-		return fmt.Errorf("failed to execute query: %w", err)
+		return MapError(fmt.Errorf("failed to execute query: %w", err))
 	}
 	return nil
 }

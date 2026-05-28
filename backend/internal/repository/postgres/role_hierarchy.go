@@ -69,7 +69,7 @@ func (r *RoleHierarchyRepo) GetInheritedRoles(ctx context.Context, req *models.G
 
 	rows, err := r.db.Query(ctx, query, req.Roles)
 	if err != nil {
-		return nil, fmt.Errorf("failed to execute query: %w", err)
+		return nil, MapError(fmt.Errorf("failed to execute query: %w", err))
 	}
 	defer rows.Close()
 
@@ -77,7 +77,7 @@ func (r *RoleHierarchyRepo) GetInheritedRoles(ctx context.Context, req *models.G
 	for rows.Next() {
 		var root, parent string
 		if err := rows.Scan(&root, &parent); err != nil {
-			return nil, err
+			return nil, MapError(fmt.Errorf("scan row error: %w", err))
 		}
 		result[root] = append(result[root], parent)
 	}
@@ -120,7 +120,7 @@ func (r *RoleHierarchyRepo) GetRoleDescendants(ctx context.Context, req *models.
 
 	rows, err := r.db.Query(ctx, query, req.Roles)
 	if err != nil {
-		return nil, fmt.Errorf("failed to execute query: %w", err)
+		return nil, MapError(fmt.Errorf("failed to execute query: %w", err))
 	}
 	defer rows.Close()
 
@@ -133,7 +133,7 @@ func (r *RoleHierarchyRepo) GetRoleDescendants(ctx context.Context, req *models.
 	for rows.Next() {
 		var root, child string
 		if err := rows.Scan(&root, &child); err != nil {
-			return nil, err
+			return nil, MapError(fmt.Errorf("scan row error: %w", err))
 		}
 		result[root] = append(result[root], child)
 	}
@@ -153,7 +153,7 @@ func (r *RoleHierarchyRepo) GetDirectChildren(ctx context.Context, req *models.G
 
 	rows, err := r.db.Query(ctx, query, req.Roles)
 	if err != nil {
-		return nil, fmt.Errorf("failed to execute query: %w", err)
+		return nil, MapError(fmt.Errorf("failed to execute query: %w", err))
 	}
 	defer rows.Close()
 
@@ -165,7 +165,7 @@ func (r *RoleHierarchyRepo) GetDirectChildren(ctx context.Context, req *models.G
 	for rows.Next() {
 		var parent, child string
 		if err := rows.Scan(&parent, &child); err != nil {
-			return nil, err
+			return nil, MapError(fmt.Errorf("scan row error: %w", err))
 		}
 		result[parent] = append(result[parent], child)
 	}
@@ -185,7 +185,7 @@ func (r *RoleHierarchyRepo) SyncRoleInheritance(ctx context.Context, req *models
 
 	rows, err := r.db.Query(ctx, query, req.Role)
 	if err != nil {
-		return nil, fmt.Errorf("failed to execute query: %w", err)
+		return nil, MapError(fmt.Errorf("failed to execute query: %w", err))
 	}
 	defer rows.Close()
 	data := make([]*models.SyncRoleInheritance, 0, 5)
@@ -193,7 +193,7 @@ func (r *RoleHierarchyRepo) SyncRoleInheritance(ctx context.Context, req *models
 	for rows.Next() {
 		var parentCode string
 		if err := rows.Scan(&parentCode); err != nil {
-			return nil, fmt.Errorf("scan row error: %w", err)
+			return nil, MapError(fmt.Errorf("scan row error: %w", err))
 		}
 		// // g(дочерняя_роль, родительская_роль, домен)
 		// casbin.AddGroupingPolicy(roleCode, parentCode, domain)
@@ -214,7 +214,7 @@ func (r *RoleHierarchyRepo) LoadPolicy(ctx context.Context, req *models.GetPolic
 
 	rows, err := r.db.Query(ctx, query)
 	if err != nil {
-		return nil, fmt.Errorf("failed to execute query: %w", err)
+		return nil, MapError(fmt.Errorf("failed to execute query: %w", err))
 	}
 	defer rows.Close()
 	data := make([]*models.SyncRoleInheritance, 0, 5)
@@ -222,7 +222,7 @@ func (r *RoleHierarchyRepo) LoadPolicy(ctx context.Context, req *models.GetPolic
 	for rows.Next() {
 		item := &models.SyncRoleInheritance{}
 		if err := rows.Scan(&item.Role, &item.ParentRole); err != nil {
-			return nil, fmt.Errorf("scan row error: %w", err)
+			return nil, MapError(fmt.Errorf("scan row error: %w", err))
 		}
 		// // g(дочерняя_роль, родительская_роль, домен)
 		// casbin.AddGroupingPolicy(roleCode, parentCode, domain)
@@ -240,7 +240,7 @@ func (r *RoleHierarchyRepo) AddInheritance(ctx context.Context, tx Tx, dto *mode
 
 	_, err := r.getExec(tx).Exec(ctx, query, dto.RoleID, dto.ParentRoleID)
 	if err != nil {
-		return fmt.Errorf("failed to execute query: %w", err)
+		return MapError(fmt.Errorf("failed to execute query: %w", err))
 	}
 	return nil
 }
@@ -262,7 +262,7 @@ func (r *RoleHierarchyRepo) AddInheritances(ctx context.Context, tx Tx, roleID u
 
 	_, err := r.getExec(tx).Exec(ctx, query, args...)
 	if err != nil {
-		return fmt.Errorf("failed to execute query: %w", err)
+		return MapError(fmt.Errorf("failed to execute query: %w", err))
 	}
 	return nil
 }
@@ -274,7 +274,7 @@ func (r *RoleHierarchyRepo) RemoveInheritance(ctx context.Context, tx Tx, dto *m
 
 	_, err := r.getExec(tx).Exec(ctx, query, dto.RoleID, dto.ParentRoleID)
 	if err != nil {
-		return fmt.Errorf("failed to execute query: %w", err)
+		return MapError(fmt.Errorf("failed to execute query: %w", err))
 	}
 	return nil
 }
@@ -296,7 +296,7 @@ func (r *RoleHierarchyRepo) RemoveInheritances(ctx context.Context, tx Tx, roleI
 
 	_, err := r.getExec(tx).Exec(ctx, query, args...)
 	if err != nil {
-		return fmt.Errorf("failed to execute query: %w", err)
+		return MapError(fmt.Errorf("failed to execute query: %w", err))
 	}
 	return nil
 }

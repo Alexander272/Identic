@@ -1,7 +1,7 @@
 package middleware
 
 import (
-	"net/http"
+	"fmt"
 
 	"github.com/Alexander272/Identic/backend/internal/access"
 	"github.com/Alexander272/Identic/backend/internal/constants"
@@ -19,8 +19,7 @@ func (m *Middleware) CheckPermissions(required ...access.Permission) gin.Handler
 	return func(c *gin.Context) {
 		u, exists := c.Get(constants.CtxUser)
 		if !exists {
-			response.NewErrorResponse(c, http.StatusUnauthorized, "empty user", "сессия не найдена")
-			c.Abort()
+			response.SendError(c, models.ErrSessionEmpty)
 			return
 		}
 		user := u.(models.User)
@@ -41,14 +40,12 @@ func (m *Middleware) CheckPermissions(required ...access.Permission) gin.Handler
 		}
 
 		if lastErr != nil && !accessAllowed {
-			response.NewErrorResponse(c, http.StatusInternalServerError, lastErr.Error(), "ошибка проверки прав")
-			c.Abort()
+			response.SendError(c, fmt.Errorf("%w: %v", models.ErrPolicyCheck, lastErr))
 			return
 		}
 
 		if !accessAllowed {
-			response.NewErrorResponse(c, http.StatusForbidden, "forbidden", "недостаточно прав")
-			c.Abort()
+			response.SendError(c, models.ErrPermissionDenied)
 			return
 		}
 

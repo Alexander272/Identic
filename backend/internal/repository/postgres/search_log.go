@@ -31,7 +31,7 @@ func (r *SearchLogRepo) Create(ctx context.Context, dto *models.CreateSearchLogD
 
 	queryJSON, err := json.Marshal(dto.Query)
 	if err != nil {
-		return fmt.Errorf("failed to marshal query: %w", err)
+		return MapError(fmt.Errorf("failed to marshal query: %w", err))
 	}
 
 	_, err = r.db.Exec(ctx, query,
@@ -45,7 +45,7 @@ func (r *SearchLogRepo) Create(ctx context.Context, dto *models.CreateSearchLogD
 		dto.ItemsCount,
 	)
 	if err != nil {
-		return fmt.Errorf("failed to create search log: %w", err)
+		return MapError(fmt.Errorf("failed to create search log: %w", err))
 	}
 
 	return nil
@@ -75,7 +75,7 @@ func (r *SearchLogRepo) Get(ctx context.Context, dto *models.GetSearchLogsDTO) (
 
 	rows, err := r.db.Query(ctx, query, args...)
 	if err != nil {
-		return nil, fmt.Errorf("failed to query search logs: %w", err)
+		return nil, MapError(fmt.Errorf("failed to query search logs: %w", err))
 	}
 	defer rows.Close()
 
@@ -89,7 +89,7 @@ func (r *SearchLogRepo) Get(ctx context.Context, dto *models.GetSearchLogsDTO) (
 			&queryBytes, &log.DurationMs, &log.ResultsCount, &log.ItemsCount, &log.CreatedAt,
 			&log.Actor.LastName, &log.Actor.FirstName, &log.Actor.Email,
 		); err != nil {
-			return nil, fmt.Errorf("failed to scan search log: %w", err)
+			return nil, MapError(fmt.Errorf("failed to scan search log: %w", err))
 		}
 
 		if queryBytes != nil {

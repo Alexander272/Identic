@@ -104,7 +104,7 @@ func (r *OrderRepo) Get(ctx context.Context, req *models.OrderFilterDTO) ([]*mod
 
 	rows, err := r.db.Query(ctx, query, args...)
 	if err != nil {
-		return nil, fmt.Errorf("failed to execute query. error: %w", err)
+		return nil, MapError(fmt.Errorf("failed to execute query. error: %w", err))
 	}
 	defer rows.Close()
 
@@ -114,12 +114,12 @@ func (r *OrderRepo) Get(ctx context.Context, req *models.OrderFilterDTO) ([]*mod
 			&tmp.Id, &tmp.Customer, &tmp.Consumer, &tmp.Manager, &tmp.IsBargaining, &tmp.IsBudget,
 			&tmp.Bill, &tmp.Date, &tmp.Notes, &tmp.PositionCount,
 		); err != nil {
-			return nil, fmt.Errorf("failed to scan row. error: %w", err)
+			return nil, MapError(fmt.Errorf("failed to scan row. error: %w", err))
 		}
 		data = append(data, tmp)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error during rows iteration: %w", err)
+		return nil, MapError(fmt.Errorf("error during rows iteration: %w", err))
 	}
 	return data, nil
 }
@@ -135,10 +135,7 @@ func (r *OrderRepo) GetById(ctx context.Context, tx Tx, req *models.GetOrderById
 		&order.Bill, &order.Date, &order.Notes, &order.CreatedAt,
 	)
 	if err != nil {
-		if err == pgx.ErrNoRows {
-			return nil, models.ErrNoRows
-		}
-		return nil, fmt.Errorf("failed to execute query. error: %w", err)
+		return nil, MapError(fmt.Errorf("failed to execute query. error: %w", err))
 	}
 	return order, nil
 }
@@ -156,7 +153,7 @@ func (r *OrderRepo) GetByYear(ctx context.Context, req *models.GetOrderByYearDTO
 
 	rows, err := r.db.Query(ctx, query, req.Year)
 	if err != nil {
-		return nil, fmt.Errorf("failed to execute query. error: %w", err)
+		return nil, MapError(fmt.Errorf("failed to execute query. error: %w", err))
 	}
 	defer rows.Close()
 
@@ -166,12 +163,12 @@ func (r *OrderRepo) GetByYear(ctx context.Context, req *models.GetOrderByYearDTO
 			&tmp.Id, &tmp.Customer, &tmp.Consumer, &tmp.Manager, &tmp.IsBargaining, &tmp.IsBudget,
 			&tmp.Bill, &tmp.Date, &tmp.Notes, &tmp.PositionCount,
 		); err != nil {
-			return nil, fmt.Errorf("failed to scan row. error: %w", err)
+			return nil, MapError(fmt.Errorf("failed to scan row. error: %w", err))
 		}
 		data = append(data, tmp)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error during rows iteration: %w", err)
+		return nil, MapError(fmt.Errorf("error during rows iteration: %w", err))
 	}
 	return data, nil
 }
@@ -190,7 +187,7 @@ func (r *OrderRepo) GetUniqueData(ctx context.Context, req *models.GetUniqueDTO)
 		field := strings.ToLower(snake)
 
 		if _, exist := allowedFields[field]; !exist {
-			return nil, models.ErrFieldNotAllowed
+			return nil, MapError(models.ErrFieldNotAllowed)
 		}
 		validFields = append(validFields, pgx.Identifier{field}.Sanitize())
 	}
@@ -212,7 +209,7 @@ func (r *OrderRepo) GetUniqueData(ctx context.Context, req *models.GetUniqueDTO)
 	var data []string
 	err := r.db.QueryRow(ctx, query).Scan(&data)
 	if err != nil {
-		return nil, fmt.Errorf("failed to execute query: %w", err)
+		return nil, MapError(fmt.Errorf("failed to execute query: %w", err))
 	}
 
 	slices.SortFunc(data, func(a, b string) int {
@@ -279,7 +276,7 @@ func (r *OrderRepo) GetFlatData(ctx context.Context, req *models.GetFlatOrderDTO
 	if req.Cursor != "" {
 		cursorState, err := DecodeCursor(req.Cursor)
 		if err != nil {
-			return nil, fmt.Errorf("invalid cursor: %w", err)
+			return nil, MapError(fmt.Errorf("invalid cursor: %w", err))
 		}
 
 		// Проверяем, что курсор соответствует текущей сортировке
@@ -289,7 +286,7 @@ func (r *OrderRepo) GetFlatData(ctx context.Context, req *models.GetFlatOrderDTO
 		// Парсим значения с учётом типов
 		values, err := cursorState.ParseCursorValues()
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse cursor: %w", err)
+			return nil, MapError(fmt.Errorf("failed to parse cursor: %w", err))
 		}
 
 		// Извлекаем поля и направления из курсора или берём из sortConfig
@@ -324,7 +321,7 @@ func (r *OrderRepo) GetFlatData(ctx context.Context, req *models.GetFlatOrderDTO
 
 	rows, err := r.db.Query(ctx, query, args...)
 	if err != nil {
-		return nil, fmt.Errorf("failed to execute query. error: %w", err)
+		return nil, MapError(fmt.Errorf("failed to execute query. error: %w", err))
 	}
 	defer rows.Close()
 
@@ -334,12 +331,12 @@ func (r *OrderRepo) GetFlatData(ctx context.Context, req *models.GetFlatOrderDTO
 			&tmp.Id, &tmp.Customer, &tmp.Consumer, &tmp.Manager, &tmp.IsBargaining, &tmp.IsBudget, &tmp.Bill, &tmp.Date, &tmp.Notes,
 			&tmp.RowNumber, &tmp.Name, &tmp.Quantity, &tmp.PositionNotes,
 		); err != nil {
-			return nil, fmt.Errorf("failed to scan row. error: %w", err)
+			return nil, MapError(fmt.Errorf("failed to scan row. error: %w", err))
 		}
 		data = append(data, tmp)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error during rows iteration: %w", err)
+		return nil, MapError(fmt.Errorf("error during rows iteration: %w", err))
 	}
 
 	hasMore := false
@@ -367,7 +364,7 @@ func (r *OrderRepo) GetFlatData(ctx context.Context, req *models.GetFlatOrderDTO
 		for _, sf := range sortFields {
 			val, typ, ok := last.CursorValue(sf.Field)
 			if !ok {
-				return nil, fmt.Errorf("unknown cursor field: %s", sf.Field)
+				return nil, MapError(fmt.Errorf("unknown cursor field: %s", sf.Field))
 			}
 
 			rowValues = append(rowValues, val)
@@ -377,7 +374,7 @@ func (r *OrderRepo) GetFlatData(ctx context.Context, req *models.GetFlatOrderDTO
 
 		nextCursor, err = BuildCursorFromRow(rowValues, fieldTypes, desc)
 		if err != nil {
-			return nil, fmt.Errorf("failed to build cursor: %w", err)
+			return nil, MapError(fmt.Errorf("failed to build cursor: %w", err))
 		}
 	}
 
@@ -407,7 +404,7 @@ func (r *OrderRepo) IsExist(ctx context.Context, tx Tx, dto *models.OrderDTO) (b
 
 	err := r.db.QueryRow(ctx, query, dto.Customer, dto.Consumer, dto.Notes, dto.Date, len(dto.Positions)).Scan(&exists)
 	if err != nil {
-		return false, fmt.Errorf("failed to execute query: %w", err)
+		return false, MapError(fmt.Errorf("failed to execute query: %w", err))
 	}
 	return exists, nil
 }
@@ -425,7 +422,7 @@ func (r *OrderRepo) IsExistByPos(ctx context.Context, tx Tx, dto *models.OrderDT
 		if errors.Is(err, pgx.ErrNoRows) {
 			return "", nil
 		}
-		return "", fmt.Errorf("failed to execute query: %w", err)
+		return "", MapError(fmt.Errorf("failed to execute query: %w", err))
 	}
 	return id, nil
 }
@@ -444,7 +441,7 @@ func (r *OrderRepo) Create(ctx context.Context, tx Tx, dto *models.OrderDTO) err
 		dto.Id, dto.Customer, dto.Consumer, dto.Manager, dto.IsBargaining, dto.IsBudget, dto.Bill, dto.Date, dto.Year, dto.Notes, dto.Hash,
 	)
 	if err != nil {
-		return fmt.Errorf("failed to execute query. error: %w", err)
+		return MapError(fmt.Errorf("failed to execute query. error: %w", err))
 	}
 
 	payload, _ := json.Marshal(ws_hub.WSMessage{
@@ -465,7 +462,7 @@ func (r *OrderRepo) Create(ctx context.Context, tx Tx, dto *models.OrderDTO) err
 	})
 	_, err = r.getExec(tx).Exec(ctx, "SELECT pg_notify('order_updates', $1)", string(payload))
 	if err != nil {
-		return fmt.Errorf("failed to execute notify query. error: %w", err)
+		return MapError(fmt.Errorf("failed to execute notify query. error: %w", err))
 	}
 
 	return nil
@@ -508,7 +505,7 @@ func (r *OrderRepo) CreateSeveral(ctx context.Context, tx Tx, dto []*models.Orde
 	)
 
 	if err != nil {
-		return fmt.Errorf("failed to execute query. error: %w", err)
+		return MapError(fmt.Errorf("failed to execute query. error: %w", err))
 	}
 
 	// 3. Отправка уведомления через pg_notify
@@ -523,7 +520,7 @@ func (r *OrderRepo) CreateSeveral(ctx context.Context, tx Tx, dto []*models.Orde
 	// чтобы уведомление ушло только если транзакция закоммитится.
 	notifyQuery := fmt.Sprintf("SELECT pg_notify('order_updates', %s)", quoteLiteral(string(payload)))
 	if _, err = r.getExec(tx).Exec(ctx, notifyQuery); err != nil {
-		return fmt.Errorf("failed to execute notify query. error: %w", err)
+		return MapError(fmt.Errorf("failed to execute notify query. error: %w", err))
 	}
 
 	return nil
@@ -545,7 +542,7 @@ func (r *OrderRepo) Update(ctx context.Context, tx Tx, dto *models.OrderDTO) err
 		dto.Id, dto.Customer, dto.Consumer, dto.Manager, dto.IsBargaining, dto.IsBudget, dto.Bill, dto.Date, dto.Year, dto.Notes, dto.Hash,
 	)
 	if err != nil {
-		return fmt.Errorf("failed to execute query. error: %w", err)
+		return MapError(fmt.Errorf("failed to execute query. error: %w", err))
 	}
 
 	payload, _ := json.Marshal(ws_hub.WSMessage{
@@ -567,7 +564,7 @@ func (r *OrderRepo) Update(ctx context.Context, tx Tx, dto *models.OrderDTO) err
 
 	_, err = r.getExec(tx).Exec(ctx, "SELECT pg_notify('order_updates', $1)", string(payload))
 	if err != nil {
-		return fmt.Errorf("failed to execute notify query. error: %w", err)
+		return MapError(fmt.Errorf("failed to execute notify query. error: %w", err))
 	}
 
 	return nil
@@ -582,7 +579,7 @@ func (r *OrderRepo) Delete(ctx context.Context, tx Tx, dto *models.DeleteOrderDT
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil // Заказ уже удален или не существовал
 		}
-		return fmt.Errorf("failed to execute query. error: %w", err)
+		return MapError(fmt.Errorf("failed to execute query. error: %w", err))
 	}
 
 	payload, _ := json.Marshal(ws_hub.WSMessage{
@@ -595,7 +592,7 @@ func (r *OrderRepo) Delete(ctx context.Context, tx Tx, dto *models.DeleteOrderDT
 
 	_, err = r.getExec(tx).Exec(ctx, "SELECT pg_notify('order_updates', $1)", string(payload))
 	if err != nil {
-		return fmt.Errorf("failed to execute notify query. error: %w", err)
+		return MapError(fmt.Errorf("failed to execute notify query. error: %w", err))
 	}
 
 	return nil

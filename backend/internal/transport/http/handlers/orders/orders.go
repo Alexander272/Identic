@@ -1,7 +1,7 @@
 package orders
 
 import (
-	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -12,7 +12,6 @@ import (
 	"github.com/Alexander272/Identic/backend/internal/models/response"
 	"github.com/Alexander272/Identic/backend/internal/services"
 	"github.com/Alexander272/Identic/backend/internal/transport/middleware"
-	"github.com/Alexander272/Identic/backend/pkg/error_bot"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
@@ -78,17 +77,16 @@ func (h *Handler) get(c *gin.Context) {
 
 	data, err := h.service.Get(c, req)
 	if err != nil {
-		response.NewErrorResponse(c, http.StatusInternalServerError, err.Error(), "Произошла ошибка: "+err.Error())
-		error_bot.Send(c, err.Error(), req)
+		response.SendError(c, err, req)
 		return
 	}
-	c.JSON(http.StatusOK, &response.DataResponse{Data: data})
+	response.SendData(c, data, len(data))
 }
 
 func (h *Handler) getById(c *gin.Context) {
 	id := c.Param("id")
 	if err := uuid.Validate(id); err != nil {
-		response.NewErrorResponse(c, http.StatusBadRequest, err.Error(), "Некорректные данные")
+		response.SendError(c, fmt.Errorf("%w: %v", models.ErrInvalidInput, err))
 		return
 	}
 	req := &models.GetOrderByIdDTO{Id: id}
@@ -100,22 +98,16 @@ func (h *Handler) getById(c *gin.Context) {
 
 	order, err := h.service.GetById(c, nil, req)
 	if err != nil {
-		if errors.Is(err, models.ErrNoData) {
-			response.NewErrorResponse(c, http.StatusNotFound, err.Error(),
-				"Срок действия результатов поиска истек. Повторите поиск, чтобы получить актуальные данные.")
-			return
-		}
-		response.NewErrorResponse(c, http.StatusInternalServerError, err.Error(), "Произошла ошибка: "+err.Error())
-		error_bot.Send(c, err.Error(), req)
+		response.SendError(c, err, req)
 		return
 	}
-	c.JSON(http.StatusOK, &response.DataResponse{Data: order})
+	response.SendData(c, order)
 }
 
 func (h *Handler) getInfo(c *gin.Context) {
 	id := c.Param("id")
 	if err := uuid.Validate(id); err != nil {
-		response.NewErrorResponse(c, http.StatusBadRequest, err.Error(), "Некорректные данные")
+		response.SendError(c, fmt.Errorf("%w: %v", models.ErrInvalidInput, err))
 		return
 	}
 	req := &models.GetOrderByIdDTO{Id: id}
@@ -131,28 +123,22 @@ func (h *Handler) getInfo(c *gin.Context) {
 
 	order, err := h.service.GetInfoById(c, req)
 	if err != nil {
-		if errors.Is(err, models.ErrNoData) {
-			response.NewErrorResponse(c, http.StatusNotFound, err.Error(),
-				"Срок действия результатов поиска истек. Повторите поиск, чтобы получить актуальные данные.")
-			return
-		}
-		response.NewErrorResponse(c, http.StatusInternalServerError, err.Error(), "Произошла ошибка: "+err.Error())
-		error_bot.Send(c, err.Error(), req)
+		response.SendError(c, err, req)
 		return
 	}
-	c.JSON(http.StatusOK, &response.DataResponse{Data: order})
+	response.SendData(c, order)
 }
 
 func (h *Handler) getByYear(c *gin.Context) {
 	yearStr := c.Param("year")
 	if yearStr == "" {
-		response.NewErrorResponse(c, http.StatusBadRequest, "year is empty", "Отправлены некорректные данные")
+		response.SendError(c, fmt.Errorf("%w: %v", models.ErrInvalidInput, "year is empty"))
 		return
 	}
 
 	year, err := strconv.Atoi(yearStr)
 	if err != nil {
-		response.NewErrorResponse(c, http.StatusBadRequest, err.Error(), "Некорректные данные")
+		response.SendError(c, fmt.Errorf("%w: %v", models.ErrInvalidInput, err))
 		return
 	}
 
@@ -160,17 +146,16 @@ func (h *Handler) getByYear(c *gin.Context) {
 
 	data, err := h.service.GetByYear(c, req)
 	if err != nil {
-		response.NewErrorResponse(c, http.StatusInternalServerError, err.Error(), "Произошла ошибка: "+err.Error())
-		error_bot.Send(c, err.Error(), req)
+		response.SendError(c, err, req)
 		return
 	}
-	c.JSON(http.StatusOK, response.DataResponse{Data: data, Total: len(data)})
+	response.SendData(c, data, len(data))
 }
 
 func (h *Handler) getUniqueData(c *gin.Context) {
 	field := c.Param("field")
 	if field == "" {
-		response.NewErrorResponse(c, http.StatusBadRequest, "field is empty", "Отправлены некорректные данные")
+		response.SendError(c, fmt.Errorf("%w: %v", models.ErrInvalidInput, "field is empty"))
 		return
 	}
 
@@ -185,11 +170,10 @@ func (h *Handler) getUniqueData(c *gin.Context) {
 
 	data, err := h.service.GetUniqueData(c, req)
 	if err != nil {
-		response.NewErrorResponse(c, http.StatusInternalServerError, err.Error(), "Произошла ошибка: "+err.Error())
-		error_bot.Send(c, err.Error(), req)
+		response.SendError(c, err, req)
 		return
 	}
-	c.JSON(http.StatusOK, response.DataResponse{Data: data, Total: len(data)})
+	response.SendData(c, data, len(data))
 }
 
 func (h *Handler) getFlatData(c *gin.Context) {
@@ -233,23 +217,22 @@ func (h *Handler) getFlatData(c *gin.Context) {
 
 	data, err := h.service.GetFlatData(c, req)
 	if err != nil {
-		response.NewErrorResponse(c, http.StatusInternalServerError, err.Error(), "Произошла ошибка: "+err.Error())
-		error_bot.Send(c, err.Error(), req)
+		response.SendError(c, err, req)
 		return
 	}
-	c.JSON(http.StatusOK, response.DataResponse{Data: data})
+	response.SendData(c, data)
 }
 
 func (h *Handler) create(c *gin.Context) {
 	dto := &models.OrderDTO{}
 	if err := c.BindJSON(dto); err != nil {
-		response.NewErrorResponse(c, http.StatusBadRequest, err.Error(), "Некорректные данные")
+		response.SendError(c, err)
 		return
 	}
 
 	u, exists := c.Get(constants.CtxUser)
 	if !exists {
-		response.NewErrorResponse(c, http.StatusUnauthorized, "empty user", "Сессия не найдена")
+		response.SendError(c, models.ErrSessionEmpty)
 		return
 	}
 	user := u.(models.User)
@@ -259,46 +242,33 @@ func (h *Handler) create(c *gin.Context) {
 		Name: user.Name,
 	}
 
-	id, err := h.service.Create(c, dto)
+	_, err := h.service.Create(c, dto)
 	if err != nil {
-		if errors.Is(err, models.ErrOrderAlreadyExists) {
-			// response.NewErrorResponse(c, http.StatusBadRequest, err.Error(), "Заказ уже существует")
-			c.JSON(http.StatusConflict, &response.IdResponse{Id: id, Message: "Заказ уже существует"})
-			return
-		}
-
-		response.NewErrorResponse(c, http.StatusInternalServerError, err.Error(), "Произошла ошибка: "+err.Error())
-		error_bot.Send(c, err.Error(), dto)
+		response.SendError(c, err, dto)
 		return
 	}
-
-	// if id != "" {
-	// 	c.JSON(http.StatusConflict, &response.IdResponse{Id: id, Message: "Заказ уже существует"})
-	// 	return
-	// }
-
 	c.JSON(http.StatusOK, &response.IdResponse{Id: dto.Id, Message: "Заказ успешно создан"})
 }
 
 func (h *Handler) update(c *gin.Context) {
 	id := c.Param("id")
 	if err := uuid.Validate(id); err != nil {
-		response.NewErrorResponse(c, http.StatusBadRequest, err.Error(), "Некорректные данные")
+		response.SendError(c, fmt.Errorf("%w: %v", models.ErrInvalidInput, err))
 		return
 	}
 	dto := &models.OrderDTO{}
 	if err := c.BindJSON(dto); err != nil {
-		response.NewErrorResponse(c, http.StatusBadRequest, err.Error(), "Некорректные данные")
+		response.SendError(c, err)
 		return
 	}
 	if id != dto.Id {
-		response.NewErrorResponse(c, http.StatusBadRequest, "id is not equal to dto.Id", "Некорректные данные")
+		response.SendError(c, fmt.Errorf("%w: %s", models.ErrInvalidInput, "id is not equal to dto.Id"))
 		return
 	}
 
 	u, exists := c.Get(constants.CtxUser)
 	if !exists {
-		response.NewErrorResponse(c, http.StatusUnauthorized, "empty user", "Сессия не найдена")
+		response.SendError(c, models.ErrSessionEmpty)
 		return
 	}
 	user := u.(models.User)
@@ -309,8 +279,7 @@ func (h *Handler) update(c *gin.Context) {
 	}
 
 	if err := h.service.Update(c, dto); err != nil {
-		response.NewErrorResponse(c, http.StatusInternalServerError, err.Error(), "Произошла ошибка: "+err.Error())
-		error_bot.Send(c, err.Error(), dto)
+		response.SendError(c, err, dto)
 		return
 	}
 	c.JSON(http.StatusOK, &response.IdResponse{Id: dto.Id, Message: "Заказ успешно обновлен"})

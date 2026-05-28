@@ -33,14 +33,15 @@ type Services struct {
 }
 
 type Deps struct {
-	Repo     *repository.Repository
-	Keycloak *auth.KeycloakClient
-	Conf     *config.Config
-	Hub      *ws_hub.Hub
+	Repo        *repository.Repository
+	Keycloak    *auth.KeycloakClient
+	Conf        *config.Config
+	Hub         *ws_hub.Hub
+	Transaction TransactionManager
 }
 
 func NewServices(deps *Deps) *Services {
-	transaction := NewTransactionManager(deps.Repo.Transaction)
+	transaction := deps.Transaction
 
 	updatePolicyEvent := &events.PolicyEventManager{}
 

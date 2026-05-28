@@ -40,14 +40,14 @@ func Register(api *gin.RouterGroup, service services.SearchStream, hub *ws_hub.H
 func (h *Handler) search(c *gin.Context) {
 	dto := &models.SearchRequest{}
 	if err := c.BindJSON(dto); err != nil {
-		response.NewErrorResponse(c, http.StatusBadRequest, err.Error(), "Некорректные данные")
+		response.SendError(c, err)
 		return
 	}
 	dto.SearchId = uuid.NewString()
 
 	u, exists := c.Get(constants.CtxUser)
 	if !exists {
-		response.NewErrorResponse(c, http.StatusUnauthorized, "empty user", "Сессия не найдена")
+		response.SendError(c, models.ErrSessionEmpty)
 		return
 	}
 	user := u.(models.User)

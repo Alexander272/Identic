@@ -48,7 +48,7 @@ func (r *PermissionRepo) LoadPolicy(ctx context.Context, req *models.GetPolicies
 
 	rows, err := r.db.Query(ctx, query)
 	if err != nil {
-		return nil, fmt.Errorf("failed to execute query: %w", err)
+		return nil, MapError(fmt.Errorf("failed to execute query: %w", err))
 	}
 	defer rows.Close()
 
@@ -56,13 +56,13 @@ func (r *PermissionRepo) LoadPolicy(ctx context.Context, req *models.GetPolicies
 	for rows.Next() {
 		item := &models.Permission{}
 		if err := rows.Scan(&item.Role, &item.Object, &item.Action); err != nil {
-			return nil, fmt.Errorf("scan row error: %w", err)
+			return nil, MapError(fmt.Errorf("scan row error: %w", err))
 		}
 		permissions = append(permissions, item)
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("rows iteration error: %w", err)
+		return nil, MapError(fmt.Errorf("rows iteration error: %w", err))
 	}
 	return permissions, nil
 }
@@ -88,7 +88,7 @@ func (r *PermissionRepo) Sync(ctx context.Context, tx Tx, dto []*models.Permissi
 
 	_, err := r.getExec(tx).Exec(ctx, query, args...)
 	if err != nil {
-		return fmt.Errorf("failed to execute query: %w", err)
+		return MapError(fmt.Errorf("failed to execute query: %w", err))
 	}
 	return nil
 }
@@ -101,7 +101,7 @@ func (r *PermissionRepo) GetById(ctx context.Context, id uuid.UUID) (*models.Per
 	data := &models.Permission{}
 	err := r.db.QueryRow(ctx, query, id).Scan(&data.ID, &data.Object, &data.Action)
 	if err != nil {
-		return nil, fmt.Errorf("failed to execute query: %w", err)
+		return nil, MapError(fmt.Errorf("failed to execute query: %w", err))
 	}
 	return data, nil
 }
@@ -118,19 +118,19 @@ func (r *PermissionRepo) GetByRole(ctx context.Context, req *models.GetPermsByRo
 	data := make([]*models.Permission, 0, 50)
 	rows, err := r.db.Query(ctx, query)
 	if err != nil {
-		return nil, fmt.Errorf("failed to execute query: %w", err)
+		return nil, MapError(fmt.Errorf("failed to execute query: %w", err))
 	}
 	defer rows.Close()
 
 	for rows.Next() {
 		item := &models.Permission{}
 		if err := rows.Scan(&item.ID, &item.Role, &item.Object, &item.Action); err != nil {
-			return nil, fmt.Errorf("scan row error: %w", err)
+			return nil, MapError(fmt.Errorf("scan row error: %w", err))
 		}
 		data = append(data, item)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("rows iteration error: %w", err)
+		return nil, MapError(fmt.Errorf("rows iteration error: %w", err))
 	}
 
 	return data, nil
@@ -148,7 +148,7 @@ func (r *PermissionRepo) Count(ctx context.Context, req *models.GetPermsCountDTO
 	data := &models.PermsWithCount{}
 	err := r.db.QueryRow(ctx, query, req.Role, req.Inherited).Scan(&data.Own.Items, &data.Inherited.Items)
 	if err != nil {
-		return nil, fmt.Errorf("failed to execute query: %w", err)
+		return nil, MapError(fmt.Errorf("failed to execute query: %w", err))
 	}
 
 	data.Own.Count = len(data.Own.Items)
@@ -183,7 +183,7 @@ func (r *PermissionRepo) CountForAll(ctx context.Context, roleToDescendants map[
 
 		err := r.db.QueryRow(ctx, ownQuery, roleSlug).Scan(&c.Own.Items)
 		if err != nil {
-			return nil, fmt.Errorf("failed to count own perms for role %s: %w", roleSlug, err)
+			return nil, MapError(fmt.Errorf("failed to count own perms for role %s: %w", roleSlug, err))
 		}
 		c.Own.Count = len(c.Own.Items)
 
@@ -217,7 +217,7 @@ func (r *PermissionRepo) CountForAll(ctx context.Context, roleToDescendants map[
 
 		rows, err := r.db.Query(ctx, descQuery, allDescendants)
 		if err != nil {
-			return nil, fmt.Errorf("failed to count descendant perms: %w", err)
+			return nil, MapError(fmt.Errorf("failed to count descendant perms: %w", err))
 		}
 		defer rows.Close()
 
@@ -255,19 +255,19 @@ func (r *PermissionRepo) GetAll(ctx context.Context) ([]*models.Permission, erro
 	data := make([]*models.Permission, 0, 50)
 	rows, err := r.db.Query(ctx, query)
 	if err != nil {
-		return nil, fmt.Errorf("failed to execute query: %w", err)
+		return nil, MapError(fmt.Errorf("failed to execute query: %w", err))
 	}
 	defer rows.Close()
 
 	for rows.Next() {
 		item := &models.Permission{}
 		if err := rows.Scan(&item.ID, &item.Object, &item.Action, &item.Description); err != nil {
-			return nil, fmt.Errorf("scan row error: %w", err)
+			return nil, MapError(fmt.Errorf("scan row error: %w", err))
 		}
 		data = append(data, item)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("rows iteration error: %w", err)
+		return nil, MapError(fmt.Errorf("rows iteration error: %w", err))
 	}
 
 	return data, nil
@@ -278,7 +278,7 @@ func (r *PermissionRepo) GetRolePermissionsMap(ctx context.Context, roleID uuid.
 
 	rows, err := r.db.Query(ctx, query, roleID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get role permissions: %w", err)
+		return nil, MapError(fmt.Errorf("failed to get role permissions: %w", err))
 	}
 	defer rows.Close()
 
@@ -286,12 +286,12 @@ func (r *PermissionRepo) GetRolePermissionsMap(ctx context.Context, roleID uuid.
 	for rows.Next() {
 		var permID uuid.UUID
 		if err := rows.Scan(&permID); err != nil {
-			return nil, fmt.Errorf("scan row error: %w", err)
+			return nil, MapError(fmt.Errorf("scan row error: %w", err))
 		}
 		result[permID] = true
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("rows iteration error: %w", err)
+		return nil, MapError(fmt.Errorf("rows iteration error: %w", err))
 	}
 
 	return result, nil
@@ -319,7 +319,7 @@ func (r *PermissionRepo) GetInheritedByRole(ctx context.Context, roleID uuid.UUI
 
 	rows, err := r.db.Query(ctx, query, roleID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to execute query: %w", err)
+		return nil, MapError(fmt.Errorf("failed to execute query: %w", err))
 	}
 	defer rows.Close()
 
@@ -327,12 +327,12 @@ func (r *PermissionRepo) GetInheritedByRole(ctx context.Context, roleID uuid.UUI
 	for rows.Next() {
 		var permID uuid.UUID
 		if err := rows.Scan(&permID); err != nil {
-			return nil, fmt.Errorf("scan row error: %w", err)
+			return nil, MapError(fmt.Errorf("scan row error: %w", err))
 		}
 		result[permID] = struct{}{}
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("rows iteration error: %w", err)
+		return nil, MapError(fmt.Errorf("rows iteration error: %w", err))
 	}
 
 	return result, nil
@@ -346,7 +346,7 @@ func (r *PermissionRepo) Create(ctx context.Context, tx Tx, dto *models.Permissi
 
 	_, err := r.getExec(tx).Exec(ctx, query, dto.ID, dto.Object, dto.Action)
 	if err != nil {
-		return fmt.Errorf("failed to execute query: %w", err)
+		return MapError(fmt.Errorf("failed to execute query: %w", err))
 	}
 	return nil
 }
@@ -356,7 +356,7 @@ func (r *PermissionRepo) Delete(ctx context.Context, tx Tx, dto *models.DeletePe
 
 	_, err := r.getExec(tx).Exec(ctx, query, dto.ID)
 	if err != nil {
-		return fmt.Errorf("failed to execute query: %w", err)
+		return MapError(fmt.Errorf("failed to execute query: %w", err))
 	}
 	return nil
 }
@@ -384,7 +384,7 @@ func (r *PermissionRepo) DeleteByKeys(ctx context.Context, tx Tx, dto []*models.
 
 	_, err := r.getExec(tx).Exec(ctx, query, args...)
 	if err != nil {
-		return fmt.Errorf("failed to execute query: %w", err)
+		return MapError(fmt.Errorf("failed to execute query: %w", err))
 	}
 	return nil
 }
@@ -395,7 +395,7 @@ func (r *PermissionRepo) ReplacePermissions(ctx context.Context, tx Tx, roleID u
 	query := fmt.Sprintf(`DELETE FROM %s WHERE role_id = $1`, Tables.RolePermissions)
 	_, err := exec.Exec(ctx, query, roleID)
 	if err != nil {
-		return fmt.Errorf("failed to delete old permissions: %w", err)
+		return MapError(fmt.Errorf("failed to delete old permissions: %w", err))
 	}
 
 	if len(permissionIDs) == 0 {
@@ -413,7 +413,7 @@ func (r *PermissionRepo) ReplacePermissions(ctx context.Context, tx Tx, roleID u
 
 	_, err = exec.Exec(ctx, query, args...)
 	if err != nil {
-		return fmt.Errorf("failed to insert permissions: %w", err)
+		return MapError(fmt.Errorf("failed to insert permissions: %w", err))
 	}
 
 	return nil

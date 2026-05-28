@@ -38,7 +38,7 @@ func (r *auditRepo) Get(ctx context.Context, req *models.GetAuditLogsDTO) ([]*mo
 
 	rows, err := r.db.Query(ctx, query)
 	if err != nil {
-		return nil, fmt.Errorf("failed to execute query. error: %w", err)
+		return nil, MapError(fmt.Errorf("failed to execute query. error: %w", err))
 	}
 	defer rows.Close()
 
@@ -48,12 +48,12 @@ func (r *auditRepo) Get(ctx context.Context, req *models.GetAuditLogsDTO) ([]*mo
 			&tmp.ID, &tmp.ChangedBy, &tmp.ChangedByName, &tmp.Action, &tmp.EntityType, &tmp.Entity, &tmp.EntityID,
 			&tmp.OldValues, &tmp.NewValues, &tmp.CreatedAt,
 		); err != nil {
-			return nil, fmt.Errorf("failed to scan row. error: %w", err)
+			return nil, MapError(fmt.Errorf("failed to scan row. error: %w", err))
 		}
 		data = append(data, tmp)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error during rows iteration: %w", err)
+		return nil, MapError(fmt.Errorf("error during rows iteration: %w", err))
 	}
 	return data, nil
 }
@@ -108,7 +108,7 @@ func (r *auditRepo) CreateSeveral(ctx context.Context, tx Tx, dto []*models.Audi
 	)
 
 	if err != nil {
-		return fmt.Errorf("failed to execute query. error: %w", err)
+		return MapError(fmt.Errorf("failed to execute query. error: %w", err))
 	}
 	return nil
 }
