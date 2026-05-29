@@ -1,6 +1,11 @@
 package models
 
-import "github.com/google/uuid"
+import (
+	"strings"
+
+	"github.com/go-playground/validator/v10"
+	"github.com/google/uuid"
+)
 
 type Price struct {
 	ID            uuid.UUID `json:"id"`
@@ -16,14 +21,14 @@ type Price struct {
 }
 
 type SearchPriceRequest struct {
-	Query   string   `json:"query"`
+	Queries []string `form:"query" json:"queries"`
 	Codes   []string `json:"codes"`
 	Page    int      `json:"page"`
 	PerPage int      `json:"per_page"`
 }
 
 type ExportPriceRequest struct {
-	Query   string   `json:"query"`
+	Queries []string `form:"query" json:"queries"`
 	Codes   []string `json:"codes"`
 	Columns []string `json:"columns"`
 }
@@ -42,4 +47,33 @@ type UpdatePrice struct {
 type BatchSavePricesRequest struct {
 	Prices      []UpdatePrice `json:"prices" binding:"required"`
 	DeleteCodes []string      `json:"delete_codes"`
+}
+
+func CleanAndValidateAtLeastOne(sl validator.StructLevel) {
+	// Получаем указатель на структуру, чтобы была возможность изменить её значения
+	req, ok := sl.Current().Addr().Interface().(*SearchPriceRequest)
+	if !ok {
+		return
+	}
+
+	// Фильтруем слайсы на месте
+	req.Queries = filterEmptyStrings(req.Queries)
+	req.Codes = filterEmptyStrings(req.Codes)
+
+	// Если после очистки оба слайса оказались пустыми — возвращаем ошибку
+	if len(req.Queries) == 0 && len(req.Codes) == 0 {
+		sl.ReportError(req.Queries, "Queries", "queries", "at_least_one_non_empty", "")
+	}
+}
+
+// Вспомогательная функция для удаления пустых строк и строк из одних пробелов
+func filterEmptyStrings(slice []string) []string {
+	var result []string
+	for _, val := range slice {
+		// strings.TrimSpace уберет пробелы (например, "   " тоже посчитается пустым)
+		if strings.TrimSpace(val) != "" {
+			result = append(result, val)
+		}
+	}
+	return result
 }

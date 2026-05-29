@@ -29,7 +29,7 @@ type Permissions interface {
 	GetAll(ctx context.Context) ([]*models.Permission, error)
 	GetByRole(ctx context.Context, req *models.GetPermsByRoleDTO) ([]*models.Permission, error)
 	GetInheritedByRole(ctx context.Context, roleID uuid.UUID) (map[uuid.UUID]struct{}, error)
-	GetRolePermissionsMap(ctx context.Context, roleID uuid.UUID) (map[uuid.UUID]bool, error)
+	GetRolePermissionsMap(ctx context.Context, tx Tx, roleID uuid.UUID) (map[uuid.UUID]bool, error)
 	ReplacePermissions(ctx context.Context, tx Tx, roleID uuid.UUID, permissionIDs []uuid.UUID) error
 	Count(ctx context.Context, req *models.GetPermsCountDTO) (*models.PermsWithCount, error)
 	CountForAll(ctx context.Context, roleToDescendants map[string][]string) (map[string]models.PermsWithCount, error)
@@ -273,10 +273,10 @@ func (r *PermissionRepo) GetAll(ctx context.Context) ([]*models.Permission, erro
 	return data, nil
 }
 
-func (r *PermissionRepo) GetRolePermissionsMap(ctx context.Context, roleID uuid.UUID) (map[uuid.UUID]bool, error) {
+func (r *PermissionRepo) GetRolePermissionsMap(ctx context.Context, tx Tx, roleID uuid.UUID) (map[uuid.UUID]bool, error) {
 	query := fmt.Sprintf(`SELECT permission_id FROM %s WHERE role_id = $1`, Tables.RolePermissions)
 
-	rows, err := r.db.Query(ctx, query, roleID)
+	rows, err := r.getExec(tx).Query(ctx, query, roleID)
 	if err != nil {
 		return nil, MapError(fmt.Errorf("failed to get role permissions: %w", err))
 	}

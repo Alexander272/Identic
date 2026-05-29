@@ -3,7 +3,6 @@ package postgres
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/jackc/pgx/v5"
@@ -12,8 +11,6 @@ import (
 	"github.com/Alexander272/Identic/backend/internal/prices/models"
 	"github.com/Alexander272/Identic/backend/internal/repository/postgres"
 )
-
-const tablePrices = "prices"
 
 type PricesRepo struct {
 	db *pgxpool.Pool
@@ -24,8 +21,8 @@ func NewPricesRepo(db *pgxpool.Pool) *PricesRepo {
 }
 
 type Prices interface {
-	Search(ctx context.Context, query string, codes []string, page, perPage int) ([]*models.Price, int, error)
-	SearchAll(ctx context.Context, query string, codes []string) ([]*models.Price, error)
+	Search(ctx context.Context, queries []string, codes []string, page, perPage int) ([]*models.Price, int, error)
+	SearchAll(ctx context.Context, queries []string, codes []string) ([]*models.Price, error)
 	CreateSeveral(ctx context.Context, tx postgres.Tx, dto []*models.Price) error
 	UpsertSeveral(ctx context.Context, tx postgres.Tx, dto []*models.Price) error
 	DeleteSeveral(ctx context.Context, tx postgres.Tx, codes []string) error
@@ -38,29 +35,63 @@ func (r *PricesRepo) getExec(tx postgres.Tx) postgres.QueryExecutor {
 	return r.db
 }
 
-func (r *PricesRepo) Search(ctx context.Context, query string, codes []string, page, perPage int) ([]*models.Price, int, error) {
+func (r *PricesRepo) Search(ctx context.Context, queries []string, codes []string, page, perPage int) ([]*models.Price, int, error) {
 	columns := "id, code, current_name, new_name, price, template, note, technique, under_drawing"
 
-	countQuery := fmt.Sprintf(`SELECT COUNT(*) FROM %s WHERE ($1 = '' OR search_text ILIKE '%%' || $1 || '%%')
-		AND (cardinality($2::text[]) = 0 OR code = ANY($2))`,
-		tablePrices,
-	)
+	var conditions []string
+	args := make([]any, 0)
+
+	var firstQueryIdx int
+	if len(queries) > 0 {
+		firstQueryIdx = len(args) + 1
+		queryConds := make([]string, len(queries))
+		for i, q := range queries {
+			queryConds[i] = fmt.Sprintf("search_text ILIKE '%%' || $%d || '%%'", i+1)
+			args = append(args, q)
+		}
+		conditions = append(conditions, strings.Join(queryConds, " AND "))
+	}
+
+	var codesParamIdx int
+	if len(codes) > 0 {
+		codesParamIdx = len(args) + 1
+		conditions = append(conditions, fmt.Sprintf("code::text = ANY($%d::text[])", codesParamIdx))
+		args = append(args, codes)
+	}
+
+	where := strings.Join(conditions, " AND ")
+
+	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM %s WHERE %s", Tables.Prices, where)
 	var total int
-	if err := r.db.QueryRow(ctx, countQuery, query, codes).Scan(&total); err != nil {
+	if err := r.db.QueryRow(ctx, countQuery, args...).Scan(&total); err != nil {
 		return nil, 0, postgres.MapError(fmt.Errorf("failed to count: %w", err))
 	}
 
-	dataQuery := fmt.Sprintf(`
-		SELECT %s FROM %s
-		WHERE ($1 = '' OR search_text ILIKE '%%' || $1 || '%%')
-		  AND (cardinality($2::text[]) = 0 OR code = ANY($2))
-		ORDER BY
-			CASE WHEN $1 = '' THEN 0 ELSE Prices($1 IN search_text) END,
-			array_position($2::text[], code)
-		LIMIT $3 OFFSET $4`, columns, tablePrices)
+	var orderConds []string
+	if len(queries) == 1 {
+		orderConds = append(orderConds, fmt.Sprintf("similarity(search_text, $%d) DESC", firstQueryIdx))
+	}
+	if len(codes) > 0 {
+		orderConds = append(orderConds, fmt.Sprintf("array_position($%d::text[], code::text)", codesParamIdx))
+	}
+
+	orderBy := ""
+	if len(orderConds) > 0 {
+		orderBy = "ORDER BY " + strings.Join(orderConds, ", ")
+	}
 
 	offset := (page - 1) * perPage
-	rows, err := r.db.Query(ctx, dataQuery, query, codes, perPage, offset)
+	perPageIdx := len(args) + 1
+	offsetIdx := len(args) + 2
+	dataArgs := make([]any, len(args)+2)
+	copy(dataArgs, args)
+	dataArgs[len(args)] = perPage
+	dataArgs[len(args)+1] = offset
+
+	dataQuery := fmt.Sprintf("SELECT %s FROM %s WHERE %s %s LIMIT $%d OFFSET $%d",
+		columns, Tables.Prices, where, orderBy, perPageIdx, offsetIdx)
+
+	rows, err := r.db.Query(ctx, dataQuery, dataArgs...)
 	if err != nil {
 		return nil, 0, postgres.MapError(fmt.Errorf("failed to execute query: %w", err))
 	}
@@ -73,18 +104,48 @@ func (r *PricesRepo) Search(ctx context.Context, query string, codes []string, p
 	return positions, total, nil
 }
 
-func (r *PricesRepo) SearchAll(ctx context.Context, query string, codes []string) ([]*models.Price, error) {
+func (r *PricesRepo) SearchAll(ctx context.Context, queries []string, codes []string) ([]*models.Price, error) {
 	columns := "id, code, current_name, new_name, price, template, note, technique, under_drawing"
 
-	queryStr := fmt.Sprintf(`
-		SELECT %s FROM %s
-		WHERE ($1 = '' OR search_text ILIKE '%%' || $1 || '%%')
-		  AND (cardinality($2::text[]) = 0 OR code = ANY($2))
-		ORDER BY
-			CASE WHEN $1 = '' THEN 0 ELSE Prices($1 IN search_text) END,
-			array_position($2::text[], code)`, columns, tablePrices)
+	var conditions []string
+	args := make([]any, 0)
 
-	rows, err := r.db.Query(ctx, queryStr, query, codes)
+	var firstQueryIdx int
+	if len(queries) > 0 {
+		firstQueryIdx = len(args) + 1
+		queryConds := make([]string, len(queries))
+		for i, q := range queries {
+			queryConds[i] = fmt.Sprintf("search_text ILIKE '%%' || $%d || '%%'", i+1)
+			args = append(args, q)
+		}
+		conditions = append(conditions, strings.Join(queryConds, " AND "))
+	}
+
+	var codesParamIdx int
+	if len(codes) > 0 {
+		codesParamIdx = len(args) + 1
+		conditions = append(conditions, fmt.Sprintf("code::text = ANY($%d::text[])", codesParamIdx))
+		args = append(args, codes)
+	}
+
+	where := strings.Join(conditions, " AND ")
+
+	var orderConds []string
+	if len(queries) == 1 {
+		orderConds = append(orderConds, fmt.Sprintf("similarity(search_text, $%d) DESC", firstQueryIdx))
+	}
+	if len(codes) > 0 {
+		orderConds = append(orderConds, fmt.Sprintf("array_position($%d::text[], code::text)", codesParamIdx))
+	}
+
+	orderBy := ""
+	if len(orderConds) > 0 {
+		orderBy = "ORDER BY " + strings.Join(orderConds, ", ")
+	}
+
+	queryStr := fmt.Sprintf("SELECT %s FROM %s WHERE %s %s", columns, Tables.Prices, where, orderBy)
+
+	rows, err := r.db.Query(ctx, queryStr, args...)
 	if err != nil {
 		return nil, postgres.MapError(fmt.Errorf("failed to execute query: %w", err))
 	}
@@ -105,7 +166,7 @@ func (r *PricesRepo) CreateSeveral(ctx context.Context, tx postgres.Tx, dto []*m
 	}
 
 	columns := []string{"code", "current_name", "new_name", "price", "template", "note", "technique", "under_drawing", "search_text"}
-	_, err := r.getExec(tx).CopyFrom(ctx, pgx.Identifier{tablePrices}, columns, pgx.CopyFromRows(rows))
+	_, err := r.getExec(tx).CopyFrom(ctx, pgx.Identifier{Tables.Prices}, columns, pgx.CopyFromRows(rows))
 	if err != nil {
 		return postgres.MapError(fmt.Errorf("failed to execute query: %w", err))
 	}
@@ -128,8 +189,9 @@ func (r *PricesRepo) UpsertSeveral(ctx context.Context, tx postgres.Tx, dto []*m
 			note = EXCLUDED.note,
 			technique = EXCLUDED.technique,
 			under_drawing = EXCLUDED.under_drawing,
-			search_text = EXCLUDED.search_text
-	`, tablePrices)
+			search_text = EXCLUDED.search_text`,
+		Tables.Prices,
+	)
 
 	codes := make([]string, len(dto))
 	currentNames := make([]string, len(dto))
@@ -167,7 +229,7 @@ func (r *PricesRepo) DeleteSeveral(ctx context.Context, tx postgres.Tx, codes []
 		return nil
 	}
 
-	sql := fmt.Sprintf(`DELETE FROM %s WHERE code = ANY($1::text[])`, tablePrices)
+	sql := fmt.Sprintf(`DELETE FROM %s WHERE code::text = ANY($1::text[])`, Tables.Prices)
 	_, err := r.getExec(tx).Exec(ctx, sql, codes)
 	if err != nil {
 		return postgres.MapError(fmt.Errorf("failed to execute query: %w", err))
@@ -191,7 +253,7 @@ func scanPositions(rows pgx.Rows) ([]*models.Price, error) {
 }
 
 func buildSearchText(p *models.Price) string {
-	parts := []string{p.CurrentName, p.NewName, strconv.FormatFloat(p.Price, 'f', -1, 64), p.Template}
+	parts := []string{p.CurrentName, p.NewName, p.Template}
 	text := strings.Join(parts, " ")
 	return normalizeSearch(text)
 }

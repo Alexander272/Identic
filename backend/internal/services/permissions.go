@@ -39,7 +39,7 @@ type Permissions interface {
 	GetResources(ctx context.Context) []access.Resource
 	GetAll(ctx context.Context) ([]*models.Permission, error)
 	GetGrouped(ctx context.Context) ([]*models.GroupedPermission, error)
-	GetRolePermissions(ctx context.Context, roleID uuid.UUID) (map[uuid.UUID]bool, error)
+	GetRolePermissions(ctx context.Context, tx postgres.Tx, roleID uuid.UUID) (map[uuid.UUID]bool, error)
 	GetInherited(ctx context.Context, roleID uuid.UUID) (map[uuid.UUID]bool, error)
 	ReplacePermissions(ctx context.Context, tx postgres.Tx, roleID uuid.UUID, permissionIDs []uuid.UUID) error
 	GetByRole(ctx context.Context, req *models.GetPermsByRoleDTO) ([]*models.Permission, error)
@@ -178,8 +178,8 @@ func (s *PermissionService) GetGrouped(ctx context.Context) ([]*models.GroupedPe
 	return res, nil
 }
 
-func (s *PermissionService) GetRolePermissions(ctx context.Context, roleID uuid.UUID) (map[uuid.UUID]bool, error) {
-	data, err := s.repo.GetRolePermissionsMap(ctx, roleID)
+func (s *PermissionService) GetRolePermissions(ctx context.Context, tx postgres.Tx, roleID uuid.UUID) (map[uuid.UUID]bool, error) {
+	data, err := s.repo.GetRolePermissionsMap(ctx, tx, roleID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get role permissions: %w", err)
 	}

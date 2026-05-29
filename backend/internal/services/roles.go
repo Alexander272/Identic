@@ -180,7 +180,7 @@ func (s *RoleService) GetPermissionsGrouped(ctx context.Context, req *models.Get
 		return nil, err
 	}
 
-	assigned, err := s.perms.GetRolePermissions(ctx, req.ID)
+	assigned, err := s.perms.GetRolePermissions(ctx, nil, req.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -225,7 +225,16 @@ func (s *RoleService) IsExists(ctx context.Context, roleName string) (bool, erro
 }
 
 func (s *RoleService) Create(ctx context.Context, dto *models.RoleDTO) error {
-	return s.tm.WithinTransaction(ctx, func(tx postgres.Tx) error {
+	if len(dto.Permissions) == 0 {
+		return models.ErrInvalidInput
+	}
+
+	permIDs, err := parseUUIDs(dto.Permissions)
+	if err != nil {
+		return err
+	}
+
+	err = s.tm.WithinTransaction(ctx, func(tx postgres.Tx) error {
 		err := s.repo.Create(ctx, tx, dto)
 		if err != nil {
 			return fmt.Errorf("failed to create role: %w", err)
@@ -250,31 +259,32 @@ func (s *RoleService) Create(ctx context.Context, dto *models.RoleDTO) error {
 			}
 		}
 
-		permIDs, err := parseUUIDs(dto.Permissions)
-		if err != nil {
-			return err
-		}
 		if err := s.repo.AssignPermissions(ctx, tx, dto.ID, permIDs); err != nil {
 			return fmt.Errorf("failed to assign permissions: %w", err)
 		}
 
-		entity := dto.Name
-		newValues, err := json.Marshal(dto)
-		if err != nil {
-			return fmt.Errorf("failed to marshal new values: %w", err)
-		}
-		s.eventBus.Notify(events.PolicyEvent{
-			ChangedBy:     dto.Actor.ID,
-			ChangedByName: dto.Actor.Name,
-			Action:        "CREATE",
-			EntityType:    "role",
-			Entity:        &entity,
-			EntityID:      &dto.ID,
-			NewValues:     newValues,
-		})
-
 		return nil
 	})
+	if err != nil {
+		return err
+	}
+
+	entity := dto.Name
+	newValues, err := json.Marshal(dto)
+	if err != nil {
+		return fmt.Errorf("failed to marshal new values: %w", err)
+	}
+	s.eventBus.Notify(events.PolicyEvent{
+		ChangedBy:     dto.Actor.ID,
+		ChangedByName: dto.Actor.Name,
+		Action:        "CREATE",
+		EntityType:    "role",
+		Entity:        &entity,
+		EntityID:      &dto.ID,
+		NewValues:     newValues,
+	})
+
+	return nil
 }
 
 func (s *RoleService) Update(ctx context.Context, dto *models.RoleDTO) error {
@@ -295,9 +305,11 @@ func (s *RoleService) Update(ctx context.Context, dto *models.RoleDTO) error {
 		roleChange = true
 	}
 
-	return s.tm.WithinTransaction(ctx, func(tx postgres.Tx) error {
-		err := s.repo.Update(ctx, tx, dto)
-		if err != nil {
+	var assigned map[uuid.UUID]bool
+	var oldValues, newValues []byte
+
+	err = s.tm.WithinTransaction(ctx, func(tx postgres.Tx) error {
+		if err := s.repo.Update(ctx, tx, dto); err != nil {
 			return fmt.Errorf("failed to update role: %w", err)
 		}
 
@@ -376,11 +388,10 @@ func (s *RoleService) Update(ctx context.Context, dto *models.RoleDTO) error {
 			}
 		}
 
-		var assigned map[uuid.UUID]bool
-		if len(dto.Permissions) > 0 {
+		if dto.Permissions != nil {
 			permChange = true
 
-			assigned, err = s.perms.GetRolePermissions(ctx, dto.ID)
+			assigned, err = s.perms.GetRolePermissions(ctx, tx, dto.ID)
 			if err != nil {
 				return err
 			}
@@ -395,21 +406,21 @@ func (s *RoleService) Update(ctx context.Context, dto *models.RoleDTO) error {
 		}
 
 		oldMap := make(map[string]interface{})
-		newMap := make(map[string]interface{})
+		newM := make(map[string]interface{})
 		if roleChange {
 			oldMap["name"] = oldRole.Name
 			oldMap["slug"] = oldRole.Slug
 			oldMap["level"] = oldRole.Level
 			oldMap["description"] = oldRole.Description
 
-			newMap["name"] = dto.Name
-			newMap["slug"] = dto.Slug
-			newMap["level"] = dto.Level
-			newMap["description"] = dto.Description
+			newM["name"] = dto.Name
+			newM["slug"] = dto.Slug
+			newM["level"] = dto.Level
+			newM["description"] = dto.Description
 		}
 		if inheritChange {
 			oldMap["inherits"] = currentInherits
-			newMap["inherits"] = dto.Inherits
+			newM["inherits"] = dto.Inherits
 		}
 		if permChange {
 			perms := make([]string, 0, len(assigned))
@@ -417,32 +428,37 @@ func (s *RoleService) Update(ctx context.Context, dto *models.RoleDTO) error {
 				perms = append(perms, p.String())
 			}
 			oldMap["permissions"] = perms
-			newMap["permissions"] = dto.Permissions
+			newM["permissions"] = dto.Permissions
 		}
 
-		oldValues, err := json.Marshal(oldMap)
+		oldValues, err = json.Marshal(oldMap)
 		if err != nil {
 			return fmt.Errorf("failed to marshal old values: %w", err)
 		}
-		newValues, err := json.Marshal(newMap)
+		newValues, err = json.Marshal(newM)
 		if err != nil {
 			return fmt.Errorf("failed to marshal new values: %w", err)
 		}
 
-		entity := dto.Name
-		s.eventBus.Notify(events.PolicyEvent{
-			ChangedBy:     dto.Actor.ID,
-			ChangedByName: dto.Actor.Name,
-			Action:        "UPDATE",
-			EntityType:    "role",
-			Entity:        &entity,
-			EntityID:      &dto.ID,
-			OldValues:     oldValues,
-			NewValues:     newValues,
-		})
-
 		return nil
 	})
+	if err != nil {
+		return err
+	}
+
+	entity := dto.Name
+	s.eventBus.Notify(events.PolicyEvent{
+		ChangedBy:     dto.Actor.ID,
+		ChangedByName: dto.Actor.Name,
+		Action:        "UPDATE",
+		EntityType:    "role",
+		Entity:        &entity,
+		EntityID:      &dto.ID,
+		OldValues:     oldValues,
+		NewValues:     newValues,
+	})
+
+	return nil
 }
 
 func (s *RoleService) Delete(ctx context.Context, dto *models.DeleteRoleDTO) error {

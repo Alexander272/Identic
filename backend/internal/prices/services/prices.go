@@ -3,7 +3,6 @@ package services
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"strings"
 
 	base_models "github.com/Alexander272/Identic/backend/internal/models"
@@ -27,11 +26,11 @@ func NewPricesService(repo repository.Prices, txManager TransactionManager) *Pri
 }
 
 func (s *PricesService) Search(ctx context.Context, req models.SearchPriceRequest) ([]*models.Price, int, error) {
-	if req.Query == "" && len(req.Codes) == 0 {
+	if len(req.Queries) == 0 && len(req.Codes) == 0 {
 		return nil, 0, base_models.ErrInvalidInput
 	}
 
-	normalizedQuery := normalizeQuery(req.Query)
+	normalizedQueries := normalizeQueries(req.Queries)
 	codes := req.Codes
 	if codes == nil {
 		codes = []string{}
@@ -47,14 +46,14 @@ func (s *PricesService) Search(ctx context.Context, req models.SearchPriceReques
 		req.PerPage = 100
 	}
 
-	prices, total, err := s.repo.Search(ctx, normalizedQuery, codes, req.Page, req.PerPage)
+	prices, total, err := s.repo.Search(ctx, normalizedQueries, codes, req.Page, req.PerPage)
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to search prices. error: %w", err)
 	}
 
-	if normalizedQuery != "" {
+	if len(normalizedQueries) > 0 {
 		for i := range prices {
-			prices[i].MatchedFields = computeMatchedFields(prices[i], normalizedQuery)
+			prices[i].MatchedFields = computeMatchedFields(prices[i], normalizedQueries)
 		}
 	}
 
@@ -101,22 +100,38 @@ func normalizeQuery(q string) string {
 	return q
 }
 
-func computeMatchedFields(p *models.Price, query string) []string {
-	if query == "" {
+func normalizeQueries(queries []string) []string {
+	if len(queries) == 0 {
 		return nil
 	}
-	var fields []string
-	if strings.Contains(normalizeQuery(p.CurrentName), query) {
-		fields = append(fields, "current_name")
+	normalized := make([]string, len(queries))
+	for i, q := range queries {
+		normalized[i] = normalizeQuery(q)
 	}
-	if strings.Contains(normalizeQuery(p.NewName), query) {
-		fields = append(fields, "new_name")
+	return normalized
+}
+
+func computeMatchedFields(p *models.Price, queries []string) []string {
+	if len(queries) == 0 {
+		return nil
 	}
-	if strings.Contains(normalizeQuery(strconv.FormatFloat(p.Price, 'f', -1, 64)), query) {
-		fields = append(fields, "price")
+
+	fieldsMap := make(map[string]struct{})
+	for _, query := range queries {
+		if strings.Contains(normalizeQuery(p.CurrentName), query) {
+			fieldsMap["current_name"] = struct{}{}
+		}
+		if strings.Contains(normalizeQuery(p.NewName), query) {
+			fieldsMap["new_name"] = struct{}{}
+		}
+		if strings.Contains(normalizeQuery(p.Template), query) {
+			fieldsMap["template"] = struct{}{}
+		}
 	}
-	if strings.Contains(normalizeQuery(p.Template), query) {
-		fields = append(fields, "template")
+
+	fields := make([]string, 0, len(fieldsMap))
+	for f := range fieldsMap {
+		fields = append(fields, f)
 	}
 	return fields
 }

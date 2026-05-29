@@ -24,17 +24,17 @@ type Export interface {
 }
 
 func (s *ExportService) ExportXLSX(ctx context.Context, req models.ExportPriceRequest) ([]byte, error) {
-	if req.Query == "" && len(req.Codes) == 0 {
+	if len(req.Queries) == 0 && len(req.Codes) == 0 {
 		return nil, base_models.ErrInvalidInput
 	}
 
-	normalizedQuery := normalizeQuery(req.Query)
+	normalizedQueries := normalizeQueries(req.Queries)
 	codes := req.Codes
 	if codes == nil {
 		codes = []string{}
 	}
 
-	positions, err := s.repo.SearchAll(ctx, normalizedQuery, codes)
+	positions, err := s.repo.SearchAll(ctx, normalizedQueries, codes)
 	if err != nil {
 		return nil, fmt.Errorf("failed to search positions for export: %w", err)
 	}

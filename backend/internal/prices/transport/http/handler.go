@@ -22,10 +22,10 @@ func NewHandler(services *services.Services) *Handler {
 }
 
 func (h *Handler) Init(api *gin.RouterGroup, middleware *middleware.Middleware) {
-	prices := api.Group("/prices", middleware.VerifyToken)
+	prices := api.Group("v1/prices", middleware.VerifyToken)
 	{
 		prices.Use(middleware.CheckPermissions(access.Reg.R(access.ResourcePrice).Read()))
-		prices.GET("", h.search)
+		prices.POST("search", h.search)
 		prices.POST("/export", h.exportXLSX)
 
 		prices.Use(middleware.CheckPermissions(access.Reg.R(access.ResourcePrice).Write()))
@@ -37,7 +37,7 @@ func (h *Handler) Init(api *gin.RouterGroup, middleware *middleware.Middleware) 
 
 func (h *Handler) search(c *gin.Context) {
 	var req models.SearchPriceRequest
-	if err := c.ShouldBindQuery(&req); err != nil {
+	if err := c.BindJSON(&req); err != nil {
 		response.SendError(c, err)
 		return
 	}
