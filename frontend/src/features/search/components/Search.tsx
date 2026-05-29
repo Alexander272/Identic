@@ -200,7 +200,7 @@ export const Search = () => {
 									':hover': { svg: { fill: palette.primary.main }, color: palette.primary.main },
 								}}
 							>
-								<SearchIcon fontSize={18} mr={1} />
+								<SearchIcon sx={{ fontSize: 18, mr: 1 }} />
 								Найти
 							</Button>
 						</Tooltip>
@@ -218,7 +218,7 @@ export const Search = () => {
 									':hover': { svg: { fill: palette.secondary.main } },
 								}}
 							>
-								<RefreshIcon fontSize={18} />
+								<RefreshIcon sx={{ fontSize: 18 }} />
 							</Button>
 						</Tooltip>
 					</Stack>

@@ -349,7 +349,7 @@ const Grid: FC<{ orderId: string; data?: IOrder }> = ({ orderId, data }) => {
 								':hover': { svg: { fill: palette.secondary.main } },
 							}}
 						>
-							<RefreshIcon fontSize={18} />
+							<RefreshIcon sx={{ fontSize: 18 }} />
 						</Button>
 					</Box>
 				</Tooltip>

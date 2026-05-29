@@ -215,7 +215,7 @@ export const InheritanceCard: FC<Props> = ({ roleId }) => {
 										input: {
 											startAdornment: (
 												<InputAdornment position='start'>
-													<SearchIcon fontSize={16} fill={'#9ca3af'} />
+													<SearchIcon sx={{ fontSize: 16, fill: '#9ca3af' }} />
 												</InputAdornment>
 											),
 										},

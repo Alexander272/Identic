@@ -176,7 +176,7 @@ export const SelectWithFilter: FC<Props> = ({
 										input: {
 											startAdornment: (
 												<InputAdornment position='start'>
-													<SearchIcon fontSize={16} ml={1} />
+													<SearchIcon sx={{ fontSize: 16, ml: 1 }} />
 												</InputAdornment>
 											),
 										},

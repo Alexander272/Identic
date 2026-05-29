@@ -49,6 +49,7 @@ const TableComponents = {
 				sx={{
 					'&:nth-of-type(even)': { backgroundColor: '#fafafa' },
 					'&:hover': { backgroundColor: '#f0f4f8 !important' },
+					transition: 'background-color 0.2s ease-in-out',
 					cursor: 'pointer',
 				}}
 			/>

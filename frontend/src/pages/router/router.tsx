@@ -16,6 +16,8 @@ import { Users } from '@/pages/accesses/users/UsersLazy'
 import { Role } from '@/pages/accesses/role/RoleLazy'
 import { Permissions } from '@/pages/accesses/permissions/PermsLazy'
 import { Statistics } from '@/pages/statistics/StatisticsLazy'
+import { Price } from '@/pages/price/PriceLazy'
+import { EditPrice } from '@/pages/editPrice/EditPriceLazy'
 import PrivateRoute from './PrivateRoute'
 
 const config: RouteObject[] = [
@@ -58,6 +60,15 @@ const config: RouteObject[] = [
 					{
 						path: AppRoutes.Statistics,
 						element: <Statistics />,
+					},
+
+					{
+						path: AppRoutes.Price,
+						element: <Price />,
+					},
+					{
+						path: AppRoutes.PriceEdit,
+						element: <EditPrice />,
 					},
 
 					{

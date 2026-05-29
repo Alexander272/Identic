@@ -289,7 +289,7 @@ const Grid = () => {
 				<Tooltip title={isDirty && !isLoading ? 'Очистить форму' : ''}>
 					<Box>
 						<Button onClick={clearHandler} disabled={!isDirty || isLoading} sx={buttonStyles}>
-							<RefreshIcon fontSize={18} />
+							<RefreshIcon sx={{ fontSize: 18 }} />
 						</Button>
 					</Box>
 				</Tooltip>

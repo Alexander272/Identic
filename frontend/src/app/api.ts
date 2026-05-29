@@ -36,4 +36,12 @@ export const API = {
 		activity: '/statistics/activity' as const,
 		logins: '/statistics/logins' as const,
 	},
+
+	price: {
+		base: '/prices' as const,
+		search: '/prices/search' as const,
+		export: '/prices/export' as const,
+		import: '/prices/import' as const,
+		batch: '/prices/batch' as const,
+	},
 }

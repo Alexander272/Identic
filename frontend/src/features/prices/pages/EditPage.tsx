@@ -1,0 +1,94 @@
+import { useState, useCallback, type FC } from 'react'
+import { Button, Stack, Typography } from '@mui/material'
+import { toast } from 'react-toastify'
+
+import type { Price } from '@/features/prices/types/types'
+import { gridRowToUpdate, positionToGridRow, type GridRow } from '@/features/prices/utils/grid'
+import { useBatchPriceSaveMutation } from '@/features/prices/priceApiSlice'
+import { SearchModes } from '@/features/prices/components/search/SearchModes'
+import { EditPositionsGrid } from '@/features/prices/components/EditPositionsGrid'
+import { FileImportButton } from '@/features/prices/components/FileImportButton'
+import { Fallback } from '@/components/Fallback/Fallback'
+import { LeftArrowIcon } from '@/components/Icons/LeftArrowIcon'
+import { Link } from 'react-router'
+import { AppRoutes } from '@/pages/router/routes'
+
+export const EditPage: FC = () => {
+	const [batchSave, { isLoading: isSaving }] = useBatchPriceSaveMutation()
+
+	const [isLoading, setIsLoading] = useState(false)
+	const [rows, setRows] = useState<GridRow[]>([])
+
+	const hasChanges = rows.some(r => r.status !== 'ORIGINAL')
+	const hasInvalid = rows.some(r => r.status !== 'DELETED' && !r.code)
+
+	const handleSearchResults = useCallback((data: Price[]) => {
+		setRows(data.map(positionToGridRow))
+	}, [])
+
+	const handleError = useCallback(() => {
+		toast.error('Ошибка поиска')
+	}, [])
+
+	const handleSave = useCallback(async () => {
+		if (hasInvalid) {
+			toast.error('Заполните код для всех новых строк')
+			return
+		}
+
+		const toUpdate = rows.filter(r => r.status === 'CREATED' || r.status === 'UPDATED')
+		const toDelete = rows.filter(r => r.status === 'DELETED').map(r => r.code || '')
+
+		try {
+			await batchSave({
+				positions: toUpdate.map(gridRowToUpdate),
+				delete_codes: toDelete.length > 0 ? toDelete : undefined,
+			}).unwrap()
+			toast.success('Изменения сохранены')
+			setRows(prev => prev.filter(r => r.status !== 'DELETED').map(r => ({ ...r, status: 'ORIGINAL' as const })))
+		} catch (err) {
+			const fetchError = err as { data?: { message?: string } }
+			toast.error(fetchError.data?.message ?? 'Ошибка сохранения', { autoClose: false })
+		}
+	}, [rows, batchSave, hasInvalid])
+
+	return (
+		<>
+			<Stack direction={'row'} spacing={2} sx={{ mt: 1, mb: 3, alignItems: 'center' }}>
+				<Button
+					variant='outlined'
+					color='inherit'
+					component={Link}
+					to={AppRoutes.Price}
+					sx={{ textTransform: 'none', width: 100 }}
+				>
+					<LeftArrowIcon fontSize={12} mr={1} />
+					Назад
+				</Button>
+
+				<Typography align='center' variant='h5' sx={{ width: 'calc(100% - 100px)' }}>
+					Редактирование позиций
+				</Typography>
+			</Stack>
+
+			<SearchModes
+				onSearchResults={results => handleSearchResults(results)}
+				onError={handleError}
+				onLoadingChange={setIsLoading}
+			/>
+
+			<FileImportButton />
+
+			{isLoading && <Fallback />}
+
+			<EditPositionsGrid
+				rows={rows}
+				onRowsChange={setRows}
+				onSave={handleSave}
+				isSaving={isSaving}
+				hasChanges={hasChanges}
+				hasInvalid={hasInvalid}
+			/>
+		</>
+	)
+}

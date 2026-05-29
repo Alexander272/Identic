@@ -40,7 +40,7 @@ export const Filter: FC<Props> = ({ filters, onChange, showFound }) => {
 					input: {
 						endAdornment: (
 							<InputAdornment position='end'>
-								<SearchIcon fontSize={14} />
+								<SearchIcon sx={{ fontSize: 14 }} />
 							</InputAdornment>
 						),
 					},
