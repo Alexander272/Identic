@@ -15,6 +15,7 @@ type Services struct {
 	Prices
 	Export
 	Import
+	PriceSearchLogs
 }
 
 type Deps struct {
@@ -23,13 +24,15 @@ type Deps struct {
 }
 
 func NewServices(deps *Deps) *Services {
-	prices := NewPricesService(deps.Repos.Prices, deps.TxManager)
+	searchLog := NewPriceSearchLogService(deps.Repos.PriceSearchLogs)
+	prices := NewPricesService(deps.Repos.Prices, deps.TxManager, searchLog)
 	export := NewExportService(deps.Repos.Prices)
 	importSvc := NewImportService(deps.Repos.Prices, deps.TxManager)
 
 	return &Services{
-		Prices: prices,
-		Export: export,
-		Import: importSvc,
+		Prices:          prices,
+		Export:          export,
+		Import:          importSvc,
+		PriceSearchLogs: searchLog,
 	}
 }

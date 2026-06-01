@@ -1,7 +1,9 @@
 package postgres
 
 var Tables = struct {
-	Prices string
+	Prices          string
+	PriceSearchLogs string
 }{
-	Prices: "prices",
+	Prices:          "prices",
+	PriceSearchLogs: "price_search_logs",
 }

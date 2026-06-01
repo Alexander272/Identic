@@ -21,11 +21,37 @@ func NewPricesRepo(db *pgxpool.Pool) *PricesRepo {
 }
 
 type Prices interface {
-	Search(ctx context.Context, queries []string, codes []string, page, perPage int) ([]*models.Price, int, error)
+	GetAll(ctx context.Context, page, perPage int) ([]*models.Price, int, error)
+	Search(ctx context.Context, queries, codes, fields []string, page, perPage int) ([]*models.Price, int, error)
 	SearchAll(ctx context.Context, queries []string, codes []string) ([]*models.Price, error)
 	CreateSeveral(ctx context.Context, tx postgres.Tx, dto []*models.Price) error
 	UpsertSeveral(ctx context.Context, tx postgres.Tx, dto []*models.Price) error
 	DeleteSeveral(ctx context.Context, tx postgres.Tx, codes []string) error
+}
+
+func (r *PricesRepo) GetAll(ctx context.Context, page, perPage int) ([]*models.Price, int, error) {
+	columns := "id, code, current_name, new_name, price, template, note, technique, under_drawing"
+
+	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM %s", Tables.Prices)
+	var total int
+	if err := r.db.QueryRow(ctx, countQuery).Scan(&total); err != nil {
+		return nil, 0, postgres.MapError(fmt.Errorf("failed to count: %w", err))
+	}
+
+	offset := (page - 1) * perPage
+	dataQuery := fmt.Sprintf("SELECT %s FROM %s ORDER BY code LIMIT $1 OFFSET $2", columns, Tables.Prices)
+
+	rows, err := r.db.Query(ctx, dataQuery, perPage, offset)
+	if err != nil {
+		return nil, 0, postgres.MapError(fmt.Errorf("failed to execute query: %w", err))
+	}
+	defer rows.Close()
+
+	positions, err := scanPositions(rows)
+	if err != nil {
+		return nil, 0, err
+	}
+	return positions, total, nil
 }
 
 func (r *PricesRepo) getExec(tx postgres.Tx) postgres.QueryExecutor {
@@ -35,7 +61,13 @@ func (r *PricesRepo) getExec(tx postgres.Tx) postgres.QueryExecutor {
 	return r.db
 }
 
-func (r *PricesRepo) Search(ctx context.Context, queries []string, codes []string, page, perPage int) ([]*models.Price, int, error) {
+var allowedFields = map[string]string{
+	"current_name": "current_name_norm",
+	"new_name":     "new_name_norm",
+	"template":     "template_norm",
+}
+
+func (r *PricesRepo) Search(ctx context.Context, queries, codes, fields []string, page, perPage int) ([]*models.Price, int, error) {
 	columns := "id, code, current_name, new_name, price, template, note, technique, under_drawing"
 
 	var conditions []string
@@ -44,12 +76,36 @@ func (r *PricesRepo) Search(ctx context.Context, queries []string, codes []strin
 	var firstQueryIdx int
 	if len(queries) > 0 {
 		firstQueryIdx = len(args) + 1
-		queryConds := make([]string, len(queries))
-		for i, q := range queries {
-			queryConds[i] = fmt.Sprintf("search_text ILIKE '%%' || $%d || '%%'", i+1)
-			args = append(args, q)
+
+		if len(fields) > 0 {
+			normCols := make([]string, 0, len(fields))
+			for _, f := range fields {
+				if col, ok := allowedFields[f]; ok {
+					normCols = append(normCols, col)
+				}
+			}
+			if len(normCols) == 0 {
+				normCols = []string{"search_text"}
+			}
+
+			queryConds := make([]string, len(queries))
+			for i, q := range queries {
+				fieldConds := make([]string, len(normCols))
+				for j, col := range normCols {
+					fieldConds[j] = fmt.Sprintf("%s ILIKE '%%' || $%d || '%%'", col, i+1)
+				}
+				queryConds[i] = "(" + strings.Join(fieldConds, " OR ") + ")"
+				args = append(args, q)
+			}
+			conditions = append(conditions, strings.Join(queryConds, " AND "))
+		} else {
+			queryConds := make([]string, len(queries))
+			for i, q := range queries {
+				queryConds[i] = fmt.Sprintf("search_text ILIKE '%%' || $%d || '%%'", i+1)
+				args = append(args, q)
+			}
+			conditions = append(conditions, strings.Join(queryConds, " AND "))
 		}
-		conditions = append(conditions, strings.Join(queryConds, " AND "))
 	}
 
 	var codesParamIdx int
@@ -68,7 +124,7 @@ func (r *PricesRepo) Search(ctx context.Context, queries []string, codes []strin
 	}
 
 	var orderConds []string
-	if len(queries) == 1 {
+	if len(fields) == 0 && len(queries) == 1 {
 		orderConds = append(orderConds, fmt.Sprintf("similarity(search_text, $%d) DESC", firstQueryIdx))
 	}
 	if len(codes) > 0 {
@@ -161,11 +217,17 @@ func (r *PricesRepo) CreateSeveral(ctx context.Context, tx postgres.Tx, dto []*m
 
 	rows := make([][]interface{}, len(dto))
 	for i, p := range dto {
-		searchText := buildSearchText(p)
-		rows[i] = []interface{}{p.Code, p.CurrentName, p.NewName, p.Price, p.Template, p.Note, p.Technique, p.UnderDrawing, searchText}
+		rows[i] = []interface{}{
+			p.Code, p.CurrentName, p.NewName, p.Price, p.Template, p.Note, p.Technique, p.UnderDrawing,
+			p.SearchText,
+			p.CurrentNameNorm, p.NewNameNorm, p.TemplateNorm,
+		}
 	}
 
-	columns := []string{"code", "current_name", "new_name", "price", "template", "note", "technique", "under_drawing", "search_text"}
+	columns := []string{
+		"code", "current_name", "new_name", "price", "template", "note", "technique", "under_drawing", "search_text",
+		"current_name_norm", "new_name_norm", "template_norm",
+	}
 	_, err := r.getExec(tx).CopyFrom(ctx, pgx.Identifier{Tables.Prices}, columns, pgx.CopyFromRows(rows))
 	if err != nil {
 		return postgres.MapError(fmt.Errorf("failed to execute query: %w", err))
@@ -179,8 +241,10 @@ func (r *PricesRepo) UpsertSeveral(ctx context.Context, tx postgres.Tx, dto []*m
 	}
 
 	sql := fmt.Sprintf(`
-		INSERT INTO %s (code, current_name, new_name, price, template, note, technique, under_drawing, search_text)
-		SELECT * FROM UNNEST($1::text[], $2::text[], $3::text[], $4::float8[], $5::text[], $6::text[], $7::text[], $8::text[], $9::text[])
+		INSERT INTO %s (code, current_name, new_name, price, template, note, technique, under_drawing, search_text,
+			current_name_norm, new_name_norm, template_norm)
+		SELECT * FROM UNNEST($1::text[], $2::text[], $3::text[], $4::float8[], $5::text[], $6::text[], $7::text[], $8::text[], $9::text[],
+			$10::text[], $11::text[], $12::text[])
 		ON CONFLICT (code) DO UPDATE SET
 			current_name = EXCLUDED.current_name,
 			new_name = EXCLUDED.new_name,
@@ -189,7 +253,10 @@ func (r *PricesRepo) UpsertSeveral(ctx context.Context, tx postgres.Tx, dto []*m
 			note = EXCLUDED.note,
 			technique = EXCLUDED.technique,
 			under_drawing = EXCLUDED.under_drawing,
-			search_text = EXCLUDED.search_text`,
+			search_text = EXCLUDED.search_text,
+			current_name_norm = EXCLUDED.current_name_norm,
+			new_name_norm = EXCLUDED.new_name_norm,
+			template_norm = EXCLUDED.template_norm`,
 		Tables.Prices,
 	)
 
@@ -202,6 +269,9 @@ func (r *PricesRepo) UpsertSeveral(ctx context.Context, tx postgres.Tx, dto []*m
 	techniques := make([]string, len(dto))
 	underDrawings := make([]string, len(dto))
 	searchTexts := make([]string, len(dto))
+	currentNameNorms := make([]string, len(dto))
+	newNameNorms := make([]string, len(dto))
+	templateNorms := make([]string, len(dto))
 
 	for i, p := range dto {
 		codes[i] = p.Code
@@ -212,11 +282,15 @@ func (r *PricesRepo) UpsertSeveral(ctx context.Context, tx postgres.Tx, dto []*m
 		notes[i] = p.Note
 		techniques[i] = p.Technique
 		underDrawings[i] = p.UnderDrawing
-		searchTexts[i] = buildSearchText(p)
+		searchTexts[i] = p.SearchText
+		currentNameNorms[i] = p.CurrentNameNorm
+		newNameNorms[i] = p.NewNameNorm
+		templateNorms[i] = p.TemplateNorm
 	}
 
 	_, err := r.getExec(tx).Exec(ctx, sql,
 		codes, currentNames, newNames, prices, templates, notes, techniques, underDrawings, searchTexts,
+		currentNameNorms, newNameNorms, templateNorms,
 	)
 	if err != nil {
 		return postgres.MapError(fmt.Errorf("failed to execute query: %w", err))
@@ -252,14 +326,4 @@ func scanPositions(rows pgx.Rows) ([]*models.Price, error) {
 	return data, nil
 }
 
-func buildSearchText(p *models.Price) string {
-	parts := []string{p.CurrentName, p.NewName, p.Template}
-	text := strings.Join(parts, " ")
-	return normalizeSearch(text)
-}
 
-func normalizeSearch(s string) string {
-	s = strings.ToLower(s)
-	s = strings.ReplaceAll(s, "х", "x")
-	return s
-}

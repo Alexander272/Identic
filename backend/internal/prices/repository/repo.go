@@ -16,12 +16,18 @@ type Prices interface {
 	pg.Prices
 }
 
+type PriceSearchLogs interface {
+	pg.PriceSearchLogs
+}
+
 type Repository struct {
 	Prices
+	PriceSearchLogs
 }
 
 func NewRepository(db *pgxpool.Pool) *Repository {
 	return &Repository{
-		Prices: pg.NewPricesRepo(db),
+		Prices:          pg.NewPricesRepo(db),
+		PriceSearchLogs: pg.NewPriceSearchLogRepo(db),
 	}
 }

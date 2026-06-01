@@ -18,13 +18,21 @@ type Price struct {
 	Technique     string    `json:"technique"`
 	UnderDrawing  string    `json:"under_drawing"`
 	MatchedFields []string  `json:"matched_fields,omitempty"`
+
+	CurrentNameNorm string `json:"-"`
+	NewNameNorm     string `json:"-"`
+	TemplateNorm    string `json:"-"`
+	SearchText      string `json:"-"`
 }
 
 type SearchPriceRequest struct {
-	Queries []string `form:"query" json:"queries"`
-	Codes   []string `json:"codes"`
-	Page    int      `json:"page"`
-	PerPage int      `json:"per_page"`
+	Queries   []string  `form:"query" json:"queries"`
+	Codes     []string  `json:"codes"`
+	Fields    []string  `json:"fields"`
+	Page      int       `json:"page"`
+	PerPage   int       `json:"limit"`
+	ActorID   uuid.UUID `json:"-"`
+	ActorName string    `json:"-"`
 }
 
 type ExportPriceRequest struct {
@@ -45,8 +53,8 @@ type UpdatePrice struct {
 }
 
 type BatchSavePricesRequest struct {
-	Prices      []UpdatePrice `json:"prices" binding:"required"`
-	DeleteCodes []string      `json:"delete_codes"`
+	Prices      []*UpdatePrice `json:"prices" binding:"required"`
+	DeleteCodes []string       `json:"delete_codes"`
 }
 
 func CleanAndValidateAtLeastOne(sl validator.StructLevel) {
@@ -62,7 +70,7 @@ func CleanAndValidateAtLeastOne(sl validator.StructLevel) {
 
 	// Если после очистки оба слайса оказались пустыми — возвращаем ошибку
 	if len(req.Queries) == 0 && len(req.Codes) == 0 {
-		sl.ReportError(req.Queries, "Queries", "queries", "at_least_one_non_empty", "")
+		sl.ReportError(req.Queries, "Queries", "queries", "at_least_one", "")
 	}
 }
 
@@ -70,7 +78,7 @@ func CleanAndValidateAtLeastOne(sl validator.StructLevel) {
 func filterEmptyStrings(slice []string) []string {
 	var result []string
 	for _, val := range slice {
-		// strings.TrimSpace уберет пробелы (например, "   " тоже посчитается пустым)
+		// strings.TrimSpace уберет пробелы
 		if strings.TrimSpace(val) != "" {
 			result = append(result, val)
 		}
