@@ -123,7 +123,7 @@ export const EditPositionsGrid: FC<Props> = ({ rows, onRowsChange, onSave, isSav
 						'&:disabled': { svg: { fill: palette.action.disabled } },
 					}}
 				>
-					<SaveIcon sx={{ mr: 1, fontSize: 16 }} />
+					<SaveIcon mr={1} fontSize={16} />
 					Сохранить
 				</Button>
 			</Stack>

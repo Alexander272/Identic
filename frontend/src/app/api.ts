@@ -40,6 +40,7 @@ export const API = {
 	price: {
 		base: '/prices' as const,
 		search: '/prices/search' as const,
+		searchAll: '/prices/search-all' as const,
 		export: '/prices/export' as const,
 		import: '/prices/import' as const,
 		batch: '/prices/batch' as const,

@@ -27,6 +27,7 @@ export const LayoutHeader = () => {
 		void signOut(null)
 	}
 
+	const canSeePrice = useCheckPermission(PermRules.Prices.Read)
 	const canEditSettings = useCheckPermission(PermRules.Users.Write)
 	const canSeeStats = useCheckPermission([
 		PermRules.SearchLog.Read,
@@ -58,18 +59,17 @@ export const LayoutHeader = () => {
 						gap={2}
 						divider={<Divider orientation='vertical' flexItem variant='middle' />}
 					>
-						<Link to={AppRoutes.Price}>
-							<Tooltip title='Книга цен' disableInteractive>
-								<NavBox sx={{ ':hover': { svg: { fill: palette.primary.main } } }}>
-									<LedgerIcon
-										sx={{ fontSize: 28, transition: '0.3s all ease-in-out', fill: '#000' }}
-									/>
-									{/* <ContractIcon
-										sx={{ fontSize: 28, transition: '0.3s all ease-in-out', fill: '#000' }}
-									/> */}
-								</NavBox>
-							</Tooltip>
-						</Link>
+						{canSeePrice ? (
+							<Link to={AppRoutes.Price}>
+								<Tooltip title='Книга цен' disableInteractive>
+									<NavBox sx={{ ':hover': { svg: { fill: palette.primary.main } } }}>
+										<LedgerIcon
+											sx={{ fontSize: 28, transition: '0.3s all ease-in-out', fill: '#000' }}
+										/>
+									</NavBox>
+								</Tooltip>
+							</Link>
+						) : null}
 
 						<Stack direction={'row'} spacing={0.5}>
 							{canEditSettings ? (

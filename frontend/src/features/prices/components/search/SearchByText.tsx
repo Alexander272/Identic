@@ -1,11 +1,25 @@
-import { type FC } from 'react'
-import { Box, Button, IconButton, Stack, TextField } from '@mui/material'
+import { useState, type FC } from 'react'
+import {
+	Badge,
+	Box,
+	Button,
+	Checkbox,
+	FormControlLabel,
+	IconButton,
+	InputAdornment,
+	Popover,
+	Stack,
+	TextField,
+	Typography,
+} from '@mui/material'
 import { useFormContext, Controller, useFieldArray, useWatch } from 'react-hook-form'
 
 import type { FormValues, SearchHandlers } from './SearchModes'
+import { SEARCH_FIELD_OPTIONS } from './SearchModes'
 import { SearchIcon } from '@/components/Icons/SearchIcon'
 import { RefreshIcon } from '@/components/Icons/RefreshIcon'
 import { TimesIcon } from '@/components/Icons/TimesIcon'
+import { FilterIcon } from '@/components/Icons/FilterIcon'
 import { cardSx, buttonSx } from './searchStyles'
 
 type Props = SearchHandlers & {
@@ -21,6 +35,12 @@ export const SearchByText: FC<Props> = ({ onSearch, onReset, isLoading }) => {
 	})
 
 	const singleQuery = useWatch({ name: 'singleQuery', control })
+
+	const searchFields = useWatch({ name: 'searchFields', control })
+	const filterActive = searchFields?.length !== SEARCH_FIELD_OPTIONS.length
+
+	const [filterAnchor, setFilterAnchor] = useState<null | HTMLElement>(null)
+	const filterOpen = Boolean(filterAnchor)
 
 	return (
 		<Box component='form' onSubmit={onSearch} sx={cardSx}>
@@ -42,9 +62,65 @@ export const SearchByText: FC<Props> = ({ onSearch, onReset, isLoading }) => {
 						size='small'
 						fullWidth
 						sx={{ mb: 1, '& .MuiOutlinedInput-notchedOutline': { borderRadius: 1.5 } }}
+						slotProps={{
+							input: {
+								endAdornment: (
+									<InputAdornment position='end'>
+										<IconButton onClick={e => setFilterAnchor(e.currentTarget)}>
+											<Badge variant='dot' color='primary' invisible={!filterActive}>
+												<FilterIcon sx={{ fontSize: 18 }} />
+											</Badge>
+										</IconButton>
+									</InputAdornment>
+								),
+							},
+						}}
 					/>
 				)}
 			/>
+
+			<Popover
+				open={filterOpen}
+				anchorEl={filterAnchor}
+				onClose={() => setFilterAnchor(null)}
+				anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+				transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+			>
+				<Box sx={{ p: 1.5, minWidth: 220 }}>
+					<Typography variant='body2' sx={{ fontWeight: 600, mb: 1 }}>
+						Поля поиска:
+					</Typography>
+					<Controller
+						name='searchFields'
+						control={control}
+						render={({ field }) => (
+							<Stack spacing={0.5}>
+								{SEARCH_FIELD_OPTIONS.map(opt => (
+									<FormControlLabel
+										key={opt.value}
+										control={
+											<Checkbox
+												size='small'
+												checked={field.value.includes(opt.value)}
+												onChange={(_, checked) => {
+													if (checked) {
+														field.onChange([...field.value, opt.value])
+													} else {
+														field.onChange(
+															field.value.filter((v: string) => v !== opt.value),
+														)
+													}
+												}}
+											/>
+										}
+										label={opt.label}
+									/>
+								))}
+							</Stack>
+						)}
+					/>
+				</Box>
+			</Popover>
 
 			{fields.map((field, index) => (
 				<Box key={field.id} sx={{ display: 'flex', gap: 0.5, mb: 1 }}>
@@ -90,7 +166,7 @@ export const SearchByText: FC<Props> = ({ onSearch, onReset, isLoading }) => {
 					</Button>
 				</Box>
 
-				<Button variant='text' size='small' onClick={() => append({ value: '' })} color='inherit' sx={buttonSx}>
+				<Button variant='text' onClick={() => append({ value: '' })} color='inherit' sx={buttonSx}>
 					+ Добавить поле
 				</Button>
 			</Stack>

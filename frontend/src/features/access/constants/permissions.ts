@@ -3,6 +3,10 @@ export const PermRules = Object.freeze({
 		Read: 'orders:read',
 		Write: 'orders:write',
 	},
+	Prices: {
+		Read: 'price:read',
+		Write: 'price:write',
+	},
 	Users: {
 		Read: 'user:read',
 		Write: 'user:write',

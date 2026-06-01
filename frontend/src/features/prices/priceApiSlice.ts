@@ -1,15 +1,33 @@
 import { toast } from 'react-toastify'
 
 import type { IBaseFetchError } from '@/app/types/error'
-import type { Price, SearchPriceRequest, ExportPriceRequest, BatchSaveRequest, BatchSaveResponse } from './types/types'
+import type {
+	Price,
+	PaginatedPriceResponse,
+	SearchPriceRequest,
+	ExportPriceRequest,
+	BatchSaveRequest,
+	BatchSaveResponse,
+} from './types/types'
 import { apiSlice } from '@/app/apiSlice'
 import { API } from '@/app/api'
 
 export const priceApiSlice = apiSlice.injectEndpoints({
 	endpoints: builder => ({
-		searchPrice: builder.mutation<{ data: Price[] }, SearchPriceRequest>({
+		getPrices: builder.query<PaginatedPriceResponse, { page: number; limit: number }>({
+			query: ({ page, limit }) => `${API.price.base}?page=${page}&limit=${limit}`,
+			providesTags: ['Prices'],
+		}),
+		searchPrice: builder.mutation<{ data: Price[]; total?: number }, SearchPriceRequest>({
 			query: body => ({
 				url: API.price.search,
+				method: 'POST',
+				body,
+			}),
+		}),
+		searchAllPrices: builder.mutation<{ data: Price[]; total?: number }, SearchPriceRequest>({
+			query: body => ({
+				url: API.price.searchAll,
 				method: 'POST',
 				body,
 			}),
@@ -79,5 +97,11 @@ export const priceApiSlice = apiSlice.injectEndpoints({
 	}),
 })
 
-export const { useSearchPriceMutation, useExportPricesMutation, useImportPricesMutation, useBatchPriceSaveMutation } =
-	priceApiSlice
+export const {
+	useGetPricesQuery,
+	useSearchPriceMutation,
+	useSearchAllPricesMutation,
+	useExportPricesMutation,
+	useImportPricesMutation,
+	useBatchPriceSaveMutation,
+} = priceApiSlice

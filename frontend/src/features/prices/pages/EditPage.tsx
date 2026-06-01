@@ -1,34 +1,53 @@
-import { useState, useCallback, type FC } from 'react'
+import { useState, useCallback, type FC, useRef } from 'react'
 import { Button, Stack, Typography } from '@mui/material'
+import { Link } from 'react-router'
 import { toast } from 'react-toastify'
 
-import type { Price } from '@/features/prices/types/types'
+import type { IFetchError } from '@/app/types/error'
+import type { SearchPriceRequest } from '@/features/prices/types/types'
+import { AppRoutes } from '@/pages/router/routes'
 import { gridRowToUpdate, positionToGridRow, type GridRow } from '@/features/prices/utils/grid'
-import { useBatchPriceSaveMutation } from '@/features/prices/priceApiSlice'
+import { useBatchPriceSaveMutation, useSearchAllPricesMutation } from '@/features/prices/priceApiSlice'
 import { SearchModes } from '@/features/prices/components/search/SearchModes'
 import { EditPositionsGrid } from '@/features/prices/components/EditPositionsGrid'
 import { FileImportButton } from '@/features/prices/components/FileImportButton'
 import { Fallback } from '@/components/Fallback/Fallback'
 import { LeftArrowIcon } from '@/components/Icons/LeftArrowIcon'
-import { Link } from 'react-router'
-import { AppRoutes } from '@/pages/router/routes'
 
 export const EditPage: FC = () => {
 	const [batchSave, { isLoading: isSaving }] = useBatchPriceSaveMutation()
 
-	const [isLoading, setIsLoading] = useState(false)
 	const [rows, setRows] = useState<GridRow[]>([])
+	const textSearchParams = useRef<{ queries: string[]; fields?: string[] } | null>(null)
 
 	const hasChanges = rows.some(r => r.status !== 'ORIGINAL')
 	const hasInvalid = rows.some(r => r.status !== 'DELETED' && !r.code)
 
-	const handleSearchResults = useCallback((data: Price[]) => {
-		setRows(data.map(positionToGridRow))
-	}, [])
+	const [search, { isLoading }] = useSearchAllPricesMutation()
 
-	const handleError = useCallback(() => {
-		toast.error('Ошибка поиска')
-	}, [])
+	const handleSearch = useCallback(
+		async (params: { queries?: string[]; fields?: string[]; codes?: string[] }) => {
+			const isText = !!params.queries?.length
+			const isCodes = !!params.codes?.length
+			if (!isText && !isCodes) return
+
+			textSearchParams.current = isText ? { queries: params.queries!, fields: params.fields } : null
+
+			try {
+				const body: SearchPriceRequest = isCodes
+					? { codes: params.codes }
+					: { queries: params.queries, fields: params.fields }
+				const result = await search(body).unwrap()
+
+				setRows(result.data.map(positionToGridRow))
+			} catch (err) {
+				const fetchErr = err as IFetchError
+				toast.error(fetchErr.data.message)
+				setRows([])
+			}
+		},
+		[search],
+	)
 
 	const handleSave = useCallback(async () => {
 		if (hasInvalid) {
@@ -71,11 +90,7 @@ export const EditPage: FC = () => {
 				</Typography>
 			</Stack>
 
-			<SearchModes
-				onSearchResults={results => handleSearchResults(results)}
-				onError={handleError}
-				onLoadingChange={setIsLoading}
-			/>
+			<SearchModes onSearch={handleSearch} isLoading={isLoading} />
 
 			<FileImportButton />
 

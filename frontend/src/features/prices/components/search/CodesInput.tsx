@@ -1,11 +1,4 @@
-import {
-	useState,
-	useCallback,
-	useRef,
-	useEffect,
-	useMemo,
-	type FC,
-} from 'react'
+import { useState, useCallback, useRef, useEffect, useMemo, type FC } from 'react'
 import { Box, Chip, Popover } from '@mui/material'
 import { toast } from 'react-toastify'
 
@@ -110,7 +103,12 @@ export const CodesInput: FC<CodesInputProps> = ({ codes, onChange }) => {
 			const parts = text.split(/[^0-9]+/).filter(Boolean)
 			if (parts.length > 1) {
 				e.preventDefault()
-				onChange([...new Set([...codes, ...parts])])
+				const newCodes = parts.filter(p => !codes.includes(p))
+				const duplicates = parts.filter(p => codes.includes(p))
+				if (duplicates.length > 0) {
+					toast.warn(`Пропущено ${duplicates.length} повторяющихся кодов`)
+				}
+				onChange([...codes, ...newCodes])
 			}
 		},
 		[codes, onChange],
@@ -118,7 +116,12 @@ export const CodesInput: FC<CodesInputProps> = ({ codes, onChange }) => {
 
 	const handleKeyDown = useCallback(
 		(e: React.KeyboardEvent) => {
-			if (e.key === 'Enter' || e.key === ' ' || e.key === ',') {
+			if (e.key === 'Enter') {
+				if (value.trim()) {
+					e.preventDefault()
+					if (addCode(value)) setValue('')
+				}
+			} else if (e.key === ' ' || e.key === ',') {
 				e.preventDefault()
 				if (addCode(value)) setValue('')
 			}

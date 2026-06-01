@@ -1,3 +1,8 @@
+export type PaginatedPriceResponse = {
+	data: Price[]
+	total: number
+}
+
 export type Price = {
 	id: string
 	code: string
@@ -14,6 +19,9 @@ export type Price = {
 export type SearchPriceRequest = {
 	queries?: string[]
 	codes?: string[]
+	fields?: string[]
+	page?: number
+	limit?: number
 }
 
 export type ExportPriceRequest = {

@@ -1,17 +1,21 @@
-import { useCallback, useEffect, type FC } from 'react'
+import { useCallback, type FC } from 'react'
 import { Box } from '@mui/material'
 import { useForm, FormProvider } from 'react-hook-form'
 
-import type { Price } from '@/features/prices/types/types'
-import { useSearchPriceMutation } from '@/features/prices/priceApiSlice'
-import type { IFetchError } from '@/app/types/error'
 import { SearchByText } from './SearchByText'
 import { SearchByCodes } from './SearchByCodes'
+
+export const SEARCH_FIELD_OPTIONS = [
+	{ value: 'current_name', label: 'Текущее наименование' },
+	{ value: 'new_name', label: 'Наименование АСВНСИ' },
+	{ value: 'template', label: 'Шаблон' },
+] as const
 
 export type FormValues = {
 	singleQuery: string
 	codes: string[]
 	extraQueries: { value: string }[]
+	searchFields: string[]
 }
 
 export type SearchHandlers = {
@@ -20,63 +24,58 @@ export type SearchHandlers = {
 	onReset?: () => void
 }
 
-type SearchModesProps = {
-	onSearchResults: (results: Price[], params: { queries?: string[]; codes?: string[] }) => void
-	onError: (error: unknown) => void
-	onLoadingChange: (loading: boolean) => void
-}
+	type SearchModesProps = {
+		onSearch: (params: { queries?: string[]; fields?: string[]; codes?: string[] }) => void
+		isLoading: boolean
+		onResetSearch?: () => void
+	}
 
-export const SearchModes: FC<SearchModesProps> = ({ onSearchResults, onError, onLoadingChange }) => {
-	const form = useForm<FormValues>({
-		defaultValues: { singleQuery: '', codes: [], extraQueries: [] },
-	})
+	export const SearchModes: FC<SearchModesProps> = ({ onSearch, isLoading, onResetSearch }) => {
+		const form = useForm<FormValues>({
+			defaultValues: {
+				singleQuery: '',
+				codes: [],
+				extraQueries: [],
+				searchFields: SEARCH_FIELD_OPTIONS.map(f => f.value),
+			},
+		})
 
-	const [search, { isLoading }] = useSearchPriceMutation()
+		const onTextSearch = form.handleSubmit(async formData => {
+			const queries = [formData.singleQuery, ...formData.extraQueries.map(q => q.value)]
+				.map(q => q.trim())
+				.filter(Boolean)
+			if (!queries.length) return
+			const selected = formData.searchFields
+			const fields = selected.length > 0 && selected.length < SEARCH_FIELD_OPTIONS.length ? selected : undefined
+			onSearch({ queries, fields })
+		})
 
-	useEffect(() => {
-		onLoadingChange(isLoading)
-	}, [isLoading, onLoadingChange])
-
-	const onSearch = form.handleSubmit(async formData => {
-		const queries = [formData.singleQuery, ...formData.extraQueries.map(q => q.value)]
-			.map(q => q.trim())
-			.filter(Boolean)
-		if (!queries.length) return
-		try {
-			const data = await search({ queries }).unwrap()
-			onSearchResults(data.data ?? [], { queries })
-		} catch (err) {
-			const fetchErr = err as IFetchError
-			if (fetchErr.data) onError(fetchErr.data)
-			else onError(err)
-		}
-	})
-
-	const onCodesSearch = form.handleSubmit(async formData => {
-		const codes = formData.codes
-		if (!codes.length) return
-		try {
-			const data = await search({ codes }).unwrap()
-			onSearchResults(data.data ?? [], { codes })
-		} catch (err) {
-			onError(err)
-		}
-	})
+		const onCodesSearch = form.handleSubmit(async formData => {
+			const codes = formData.codes
+			if (!codes.length) return
+			onSearch({ codes })
+		})
 
 	const handleReset = useCallback(() => {
 		form.setValue('singleQuery', '')
 		form.setValue('extraQueries', [])
-	}, [form])
+		form.setValue(
+			'searchFields',
+			SEARCH_FIELD_OPTIONS.map(f => f.value),
+		)
+		onResetSearch?.()
+	}, [form, onResetSearch])
 
 	const handleClear = useCallback(() => {
 		form.setValue('codes', [])
-	}, [form])
+		onResetSearch?.()
+	}, [form, onResetSearch])
 
 	return (
 		<FormProvider {...form}>
 			<Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 1 }}>
-				<SearchByText onSearch={onSearch} onReset={handleReset} isLoading={isLoading} />
 				<SearchByCodes onSearch={onCodesSearch} onClear={handleClear} isLoading={isLoading} />
+				<SearchByText onSearch={onTextSearch} onReset={handleReset} isLoading={isLoading} />
 			</Box>
 		</FormProvider>
 	)
