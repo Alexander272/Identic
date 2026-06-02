@@ -60,8 +60,8 @@ export const LayoutHeader = () => {
 						divider={<Divider orientation='vertical' flexItem variant='middle' />}
 					>
 						{canSeePrice ? (
-							<Link to={AppRoutes.Price}>
-								<Tooltip title='Книга цен' disableInteractive>
+							<Link to={AppRoutes.Price} target='_blank' rel='noopener noreferrer'>
+								<Tooltip title='Книга цен СИБУР' disableInteractive>
 									<NavBox sx={{ ':hover': { svg: { fill: palette.primary.main } } }}>
 										<LedgerIcon
 											sx={{ fontSize: 28, transition: '0.3s all ease-in-out', fill: '#000' }}

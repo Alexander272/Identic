@@ -17,7 +17,7 @@ export const PaginationBar: FC<Props> = ({ page, rowsPerPage, totalCount, onPage
 			<Box sx={{ ml: '50%', transform: 'translateX(-50%)' }}>
 				{Math.ceil(totalCount / rowsPerPage) > 1 && (
 					<Pagination
-						page={page + 1}
+						page={page}
 						totalPages={Math.ceil(totalCount / rowsPerPage)}
 						onClick={p => onPageChange(p - 1)}
 					/>
@@ -46,7 +46,7 @@ export const PaginationBar: FC<Props> = ({ page, rowsPerPage, totalCount, onPage
 					))}
 				</Select>
 				<Typography variant='body2' sx={{ ml: 2 }}>
-					{page * rowsPerPage + 1}-{Math.min((page + 1) * rowsPerPage, totalCount)} из {totalCount}
+					{(page - 1) * rowsPerPage || 1}-{Math.min(page * rowsPerPage, totalCount)} из {totalCount}
 				</Typography>
 			</Stack>
 		</Box>

@@ -1,6 +1,7 @@
 import { toast } from 'react-toastify'
 
-import type { IBaseFetchError } from '@/app/types/error'
+import type { IBaseFetchError, IFetchError } from '@/app/types/error'
+import { saveAs } from '@/features/prices/utils/saveAs'
 import type {
 	Price,
 	PaginatedPriceResponse,
@@ -32,34 +33,32 @@ export const priceApiSlice = apiSlice.injectEndpoints({
 				body,
 			}),
 		}),
-		exportPrices: builder.mutation<Blob, ExportPriceRequest>({
-			query: body => ({
-				url: API.price.export,
-				method: 'POST',
-				body,
-				responseHandler: async response => {
-					const blob = await response.blob()
-					const disposition = response.headers.get('Content-Disposition') || ''
-					const match = disposition.match(/filename="?(.+?)"?$/)
-					const filename = match ? match[1] : 'книга цен.xlsx'
-					const url = window.URL.createObjectURL(blob)
-					const a = document.createElement('a')
-					a.href = url
-					a.download = filename
-					a.click()
-					window.URL.revokeObjectURL(url)
-					return blob
-				},
-			}),
-			invalidatesTags: ['Prices'],
-			onQueryStarted: async (_arg, api) => {
-				try {
-					await api.queryFulfilled
-				} catch (error) {
-					const fetchError = (error as IBaseFetchError).error
-					toast.error(fetchError.data.message, { autoClose: false })
+		exportPrices: builder.mutation<null, ExportPriceRequest>({
+			queryFn: async (params, _api, _options, baseQuery) => {
+				const filename = `Книга цен.xlsx`
+				const result = await baseQuery({
+					url: API.price.export,
+					method: 'POST',
+					body: params,
+					cache: 'no-cache',
+					responseHandler: async response => {
+						if (!response.ok) return response.json()
+						return response.blob()
+					},
+				})
+				if (result.error) {
+					const fetchError = result.error as IFetchError
+					if (fetchError.status !== 401) {
+						toast.error(fetchError.data.message, { autoClose: false })
+					}
+					return { data: null }
 				}
+				if (result.data instanceof Blob) {
+					saveAs(result.data, filename)
+				}
+				return { data: null }
 			},
+			invalidatesTags: ['Prices'],
 		}),
 		importPrices: builder.mutation<{ imported: number }, FormData>({
 			query: body => ({

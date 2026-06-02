@@ -11,8 +11,7 @@ export type Price = {
 	price: number | null
 	template: string | null
 	note: string | null
-	technique: string | null
-	under_drawing: string | null
+	need_sibur_approval: string | null
 	matched_fields: string[] | null
 }
 
@@ -37,8 +36,7 @@ export type UpdatePrice = {
 	price?: number | null
 	template?: string | null
 	note?: string | null
-	technique?: string | null
-	under_drawing?: string | null
+	need_sibur_approval?: string | null
 }
 
 export type BatchSaveRequest = {

@@ -1,3 +1,5 @@
+/* eslint-disable react-refresh/only-export-components */
+
 import { useCallback, type FC } from 'react'
 import { Box } from '@mui/material'
 import { useForm, FormProvider } from 'react-hook-form'
@@ -5,10 +7,13 @@ import { useForm, FormProvider } from 'react-hook-form'
 import { SearchByText } from './SearchByText'
 import { SearchByCodes } from './SearchByCodes'
 
+export const DEFAULT_SEARCH_FIELDS = ['current_name', 'new_name', 'template']
+
 export const SEARCH_FIELD_OPTIONS = [
-	{ value: 'current_name', label: 'Текущее наименование' },
-	{ value: 'new_name', label: 'Наименование АСВНСИ' },
+	{ value: 'current_name', label: 'Наименование СИБУР' },
+	{ value: 'new_name', label: 'Наименование СИЛУР' },
 	{ value: 'template', label: 'Шаблон' },
+	{ value: 'price', label: 'Цена' },
 ] as const
 
 export type FormValues = {
@@ -24,45 +29,41 @@ export type SearchHandlers = {
 	onReset?: () => void
 }
 
-	type SearchModesProps = {
-		onSearch: (params: { queries?: string[]; fields?: string[]; codes?: string[] }) => void
-		isLoading: boolean
-		onResetSearch?: () => void
-	}
+type SearchModesProps = {
+	onSearch: (params: { queries?: string[]; fields?: string[]; codes?: string[] }) => void
+	isLoading: boolean
+	onResetSearch?: () => void
+}
 
-	export const SearchModes: FC<SearchModesProps> = ({ onSearch, isLoading, onResetSearch }) => {
-		const form = useForm<FormValues>({
-			defaultValues: {
-				singleQuery: '',
-				codes: [],
-				extraQueries: [],
-				searchFields: SEARCH_FIELD_OPTIONS.map(f => f.value),
-			},
-		})
+export const SearchModes: FC<SearchModesProps> = ({ onSearch, isLoading, onResetSearch }) => {
+	const form = useForm<FormValues>({
+		defaultValues: {
+			singleQuery: '',
+			codes: [],
+			extraQueries: [],
+			searchFields: DEFAULT_SEARCH_FIELDS,
+		},
+	})
 
-		const onTextSearch = form.handleSubmit(async formData => {
-			const queries = [formData.singleQuery, ...formData.extraQueries.map(q => q.value)]
-				.map(q => q.trim())
-				.filter(Boolean)
-			if (!queries.length) return
-			const selected = formData.searchFields
-			const fields = selected.length > 0 && selected.length < SEARCH_FIELD_OPTIONS.length ? selected : undefined
-			onSearch({ queries, fields })
-		})
+	const onTextSearch = form.handleSubmit(async formData => {
+		const queries = [formData.singleQuery, ...formData.extraQueries.map(q => q.value)]
+			.map(q => q.trim())
+			.filter(Boolean)
+		if (!queries.length) return
+		const selected = formData.searchFields
+		const fields = selected.length > 0 && selected.length < SEARCH_FIELD_OPTIONS.length ? selected : undefined
+		onSearch({ queries, fields })
+	})
 
-		const onCodesSearch = form.handleSubmit(async formData => {
-			const codes = formData.codes
-			if (!codes.length) return
-			onSearch({ codes })
-		})
+	const onCodesSearch = form.handleSubmit(async formData => {
+		const codes = formData.codes
+		if (!codes.length) return
+		onSearch({ codes })
+	})
 
 	const handleReset = useCallback(() => {
 		form.setValue('singleQuery', '')
 		form.setValue('extraQueries', [])
-		form.setValue(
-			'searchFields',
-			SEARCH_FIELD_OPTIONS.map(f => f.value),
-		)
 		onResetSearch?.()
 	}, [form, onResetSearch])
 

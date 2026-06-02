@@ -53,6 +53,7 @@ export const ResultsTableToolbar: FC<Props> = ({
 						<Typography>Редактировать</Typography>
 					</Button>
 				) : null}
+
 				{results.length > 0 && (
 					<ExportButton lastParams={lastParams} visibleColumns={visibleColumns} allColumnKeys={COLUMN_KEYS} />
 				)}

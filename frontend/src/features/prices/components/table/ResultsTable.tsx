@@ -1,14 +1,5 @@
 import { type FC, useCallback, useMemo, useState, useEffect } from 'react'
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableContainer,
-	TableHead,
-	TableRow,
-	Alert,
-	Box,
-} from '@mui/material'
+import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Alert, Box } from '@mui/material'
 
 import type { Price } from '@/features/prices/types/types'
 import { COLUMNS, STORAGE_KEY, COLUMN_KEYS, createCellRenderers, highlight } from './cells'
@@ -76,6 +67,15 @@ export const ResultsTable: FC<ResultsTableProps> = ({
 		(value: string | null, field: string) => {
 			const text = value || ''
 			if (!queries.length || !matchedFields.includes(field)) return text
+
+			if (field === 'price') {
+				const raw = text.replace(/\s/g, '').replace(/,.*$/, '')
+				if (queries.some(q => raw.toLowerCase().includes(q.toLowerCase()))) {
+					return <span style={{ background: '#ffeb3b', fontWeight: 700 }}>{text}</span>
+				}
+				return text
+			}
+
 			return highlight(text, queries)
 		},
 		[queries, matchedFields],

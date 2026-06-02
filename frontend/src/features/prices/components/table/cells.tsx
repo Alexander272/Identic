@@ -10,13 +10,12 @@ export type ColumnDef = { key: string; label: string; sx?: Record<string, unknow
 
 export const COLUMNS: ColumnDef[] = [
 	{ key: 'code', label: 'Код', sx: { fontFamily: 'monospace', fontWeight: 600, whiteSpace: 'nowrap' as const } },
-	{ key: 'current_name', label: 'Текущее наименование' },
-	{ key: 'new_name', label: 'Наименование АСВНСИ' },
-	{ key: 'price', label: 'Цена', sx: { whiteSpace: 'nowrap' as const } },
+	{ key: 'current_name', label: 'Наименование СИБУР' },
+	{ key: 'new_name', label: 'Наименование СИЛУР (для проверки спецификации)' },
+	{ key: 'price', label: 'Цена, руб', sx: { whiteSpace: 'nowrap' as const } },
 	{ key: 'template', label: 'Шаблон' },
-	{ key: 'note', label: 'Примечание' },
-	{ key: 'technique', label: 'Техника' },
-	{ key: 'under_drawing', label: 'Под чертеж' },
+	{ key: 'note', label: 'Примечание для СИЛУР' },
+	{ key: 'need_sibur_approval', label: 'Требуется доп.согл. с СИБУР' },
 ]
 
 export const COLUMN_KEYS = COLUMNS.map(c => c.key)
@@ -48,7 +47,7 @@ export const highlight = (text: string | null, searchQueries: string[]) => {
 	const parts = text.split(regex)
 	const normalizedQueries = searchQueries.map(normalize)
 	return parts.map((part, i) =>
-		part && normalizedQueries.some(q => normalize(part) === q) ? (
+		part && normalizedQueries.some(q => normalize(part).replace(/\s+/g, '') === q) ? (
 			<span key={i} style={{ background: '#ffeb3b', fontWeight: 700 }}>
 				{part}
 			</span>
@@ -75,6 +74,5 @@ export const createCellRenderers = (renderCell: (value: string | null, field: st
 	),
 	template: (row: Price) => <TableCell key='template'>{renderCell(row.template, 'template')}</TableCell>,
 	note: (row: Price) => <TableCell key='note'>{row.note || ''}</TableCell>,
-	technique: (row: Price) => <TableCell key='technique'>{row.technique || ''}</TableCell>,
-	under_drawing: (row: Price) => <TableCell key='under_drawing'>{row.under_drawing || ''}</TableCell>,
+	need_sibur_approval: (row: Price) => <TableCell key='need_sibur_approval'>{row.need_sibur_approval || ''}</TableCell>,
 })

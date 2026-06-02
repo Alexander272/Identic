@@ -21,7 +21,7 @@ const getInitialRowsPerPage = (): number => {
 }
 
 export const SearchPage: FC = () => {
-	const [page, setPage] = useState(0)
+	const [page, setPage] = useState(1)
 	const [rowsPerPage, setRowsPerPage] = useState(getInitialRowsPerPage)
 
 	useEffect(() => {
@@ -62,7 +62,7 @@ export const SearchPage: FC = () => {
 			setMode('search')
 			setSearchQueries(params.queries ?? [])
 			setSearchCodes(params.codes ?? [])
-			setPage(0)
+			setPage(1)
 			setIsLoading(true)
 			setError(null)
 			textSearchParams.current = isText ? { queries: params.queries!, fields: params.fields } : null
@@ -70,7 +70,7 @@ export const SearchPage: FC = () => {
 			try {
 				const body: SearchPriceRequest = isCodes
 					? { codes: params.codes }
-					: { queries: params.queries, fields: params.fields, page: 0, limit: rowsPerPage }
+					: { queries: params.queries, fields: params.fields, page: 1, limit: rowsPerPage }
 				const result = await search(body).unwrap()
 				setResults(result.data ?? [])
 				setTotalCount(isCodes ? (result.data?.length ?? 0) : (result.total ?? 0))
@@ -89,10 +89,10 @@ export const SearchPage: FC = () => {
 
 	const handlePageChange = useCallback(
 		(newPage: number) => {
-			setPage(newPage)
+			setPage(newPage + 1)
 			const params = textSearchParams.current
 			if (params) {
-				search({ queries: params.queries, fields: params.fields, page: newPage, limit: rowsPerPage })
+				search({ queries: params.queries, fields: params.fields, page: newPage + 1, limit: rowsPerPage })
 					.unwrap()
 					.then(result => {
 						setResults(result.data ?? [])
@@ -110,10 +110,10 @@ export const SearchPage: FC = () => {
 	const handleRowsPerPageChange = useCallback(
 		(newRowsPerPage: number) => {
 			setRowsPerPage(newRowsPerPage)
-			setPage(0)
+			setPage(1)
 			const params = textSearchParams.current
 			if (params) {
-				search({ queries: params.queries, fields: params.fields, page: 0, limit: newRowsPerPage })
+				search({ queries: params.queries, fields: params.fields, page: 1, limit: newRowsPerPage })
 					.unwrap()
 					.then(result => {
 						setResults(result.data ?? [])
@@ -136,7 +136,7 @@ export const SearchPage: FC = () => {
 		setTotalCount(0)
 		setError(null)
 		setIsLoading(false)
-		setPage(0)
+		setPage(1)
 		setRowsPerPage(15)
 		textSearchParams.current = null
 	}, [])

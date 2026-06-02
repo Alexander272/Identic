@@ -70,9 +70,8 @@ export const FileImportButton: FC = () => {
 			toast.success(`Импортировано ${selectedFile.name}`)
 			setOpen(false)
 			setSelectedFile(null)
-		} catch (err) {
-			const fetchError = err as { data?: { message?: string } }
-			toast.error(fetchError.data?.message ?? 'Ошибка импорта', { autoClose: false })
+		} catch {
+			//
 		}
 	}, [selectedFile, importPositions])
 
