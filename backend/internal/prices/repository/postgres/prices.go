@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/jackc/pgx/v5"
@@ -30,7 +31,7 @@ type Prices interface {
 }
 
 func (r *PricesRepo) GetAll(ctx context.Context, page, perPage int) ([]*models.Price, int, error) {
-	columns := "id, code, current_name, new_name, price, template, note, technique, under_drawing"
+	columns := "id, code, current_name, new_name, price, template, note, need_sibur_approval"
 
 	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM %s", Tables.Prices)
 	var total int
@@ -61,14 +62,22 @@ func (r *PricesRepo) getExec(tx postgres.Tx) postgres.QueryExecutor {
 	return r.db
 }
 
-var allowedFields = map[string]string{
-	"current_name": "current_name_norm",
-	"new_name":     "new_name_norm",
-	"template":     "template_norm",
+type fieldMapping struct {
+	column string
+	exact  bool
+}
+
+var allowedFields = map[string]fieldMapping{
+	"current_name":        {"current_name_norm", false},
+	"new_name":            {"new_name_norm", false},
+	"template":            {"template_norm", false},
+	"price":               {"price", true},
+	"note":                {"note", false},
+	"need_sibur_approval": {"need_sibur_approval", false},
 }
 
 func (r *PricesRepo) Search(ctx context.Context, queries, codes, fields []string, page, perPage int) ([]*models.Price, int, error) {
-	columns := "id, code, current_name, new_name, price, template, note, technique, under_drawing"
+	columns := "id, code, current_name, new_name, price, template, note, need_sibur_approval"
 
 	var conditions []string
 	args := make([]any, 0)
@@ -78,21 +87,29 @@ func (r *PricesRepo) Search(ctx context.Context, queries, codes, fields []string
 		firstQueryIdx = len(args) + 1
 
 		if len(fields) > 0 {
-			normCols := make([]string, 0, len(fields))
+			fieldMappers := make([]fieldMapping, 0, len(fields))
 			for _, f := range fields {
-				if col, ok := allowedFields[f]; ok {
-					normCols = append(normCols, col)
+				if fm, ok := allowedFields[f]; ok {
+					fieldMappers = append(fieldMappers, fm)
 				}
 			}
-			if len(normCols) == 0 {
-				normCols = []string{"search_text"}
+			if len(fieldMappers) == 0 {
+				fieldMappers = []fieldMapping{{column: "search_text", exact: false}}
 			}
 
 			queryConds := make([]string, len(queries))
 			for i, q := range queries {
-				fieldConds := make([]string, len(normCols))
-				for j, col := range normCols {
-					fieldConds[j] = fmt.Sprintf("%s ILIKE '%%' || $%d || '%%'", col, i+1)
+				fieldConds := make([]string, len(fieldMappers))
+				for j, fm := range fieldMappers {
+					if fm.exact {
+						if _, err := strconv.ParseFloat(q, 64); err == nil {
+							fieldConds[j] = fmt.Sprintf("%s = $%d::numeric", fm.column, i+1)
+						} else {
+							fieldConds[j] = "false"
+						}
+					} else {
+						fieldConds[j] = fmt.Sprintf("%s ILIKE '%%' || $%d || '%%'", fm.column, i+1)
+					}
 				}
 				queryConds[i] = "(" + strings.Join(fieldConds, " OR ") + ")"
 				args = append(args, q)
@@ -161,7 +178,7 @@ func (r *PricesRepo) Search(ctx context.Context, queries, codes, fields []string
 }
 
 func (r *PricesRepo) SearchAll(ctx context.Context, queries []string, codes []string) ([]*models.Price, error) {
-	columns := "id, code, current_name, new_name, price, template, note, technique, under_drawing"
+	columns := "id, code, current_name, new_name, price, template, note, need_sibur_approval"
 
 	var conditions []string
 	args := make([]any, 0)
@@ -199,7 +216,13 @@ func (r *PricesRepo) SearchAll(ctx context.Context, queries []string, codes []st
 		orderBy = "ORDER BY " + strings.Join(orderConds, ", ")
 	}
 
-	queryStr := fmt.Sprintf("SELECT %s FROM %s WHERE %s %s", columns, Tables.Prices, where, orderBy)
+	queryStr := "SELECT " + columns + " FROM " + Tables.Prices
+	if where != "" {
+		queryStr += " WHERE " + where
+	}
+	if orderBy != "" {
+		queryStr += " " + orderBy
+	}
 
 	rows, err := r.db.Query(ctx, queryStr, args...)
 	if err != nil {
@@ -218,14 +241,14 @@ func (r *PricesRepo) CreateSeveral(ctx context.Context, tx postgres.Tx, dto []*m
 	rows := make([][]interface{}, len(dto))
 	for i, p := range dto {
 		rows[i] = []interface{}{
-			p.Code, p.CurrentName, p.NewName, p.Price, p.Template, p.Note, p.Technique, p.UnderDrawing,
+			p.Code, p.CurrentName, p.NewName, p.Price, p.Template, p.Note, p.NeedSiburApproval,
 			p.SearchText,
 			p.CurrentNameNorm, p.NewNameNorm, p.TemplateNorm,
 		}
 	}
 
 	columns := []string{
-		"code", "current_name", "new_name", "price", "template", "note", "technique", "under_drawing", "search_text",
+		"code", "current_name", "new_name", "price", "template", "note", "need_sibur_approval", "search_text",
 		"current_name_norm", "new_name_norm", "template_norm",
 	}
 	_, err := r.getExec(tx).CopyFrom(ctx, pgx.Identifier{Tables.Prices}, columns, pgx.CopyFromRows(rows))
@@ -241,18 +264,17 @@ func (r *PricesRepo) UpsertSeveral(ctx context.Context, tx postgres.Tx, dto []*m
 	}
 
 	sql := fmt.Sprintf(`
-		INSERT INTO %s (code, current_name, new_name, price, template, note, technique, under_drawing, search_text,
+		INSERT INTO %s (code, current_name, new_name, price, template, note, need_sibur_approval, search_text,
 			current_name_norm, new_name_norm, template_norm)
-		SELECT * FROM UNNEST($1::text[], $2::text[], $3::text[], $4::float8[], $5::text[], $6::text[], $7::text[], $8::text[], $9::text[],
-			$10::text[], $11::text[], $12::text[])
+		SELECT * FROM UNNEST($1::text[], $2::text[], $3::text[], $4::float8[], $5::text[], $6::text[], $7::text[], $8::text[],
+			$9::text[], $10::text[], $11::text[])
 		ON CONFLICT (code) DO UPDATE SET
 			current_name = EXCLUDED.current_name,
 			new_name = EXCLUDED.new_name,
 			price = EXCLUDED.price,
 			template = EXCLUDED.template,
 			note = EXCLUDED.note,
-			technique = EXCLUDED.technique,
-			under_drawing = EXCLUDED.under_drawing,
+			need_sibur_approval = EXCLUDED.need_sibur_approval,
 			search_text = EXCLUDED.search_text,
 			current_name_norm = EXCLUDED.current_name_norm,
 			new_name_norm = EXCLUDED.new_name_norm,
@@ -266,8 +288,7 @@ func (r *PricesRepo) UpsertSeveral(ctx context.Context, tx postgres.Tx, dto []*m
 	prices := make([]float64, len(dto))
 	templates := make([]string, len(dto))
 	notes := make([]string, len(dto))
-	techniques := make([]string, len(dto))
-	underDrawings := make([]string, len(dto))
+	needSiburApprovals := make([]string, len(dto))
 	searchTexts := make([]string, len(dto))
 	currentNameNorms := make([]string, len(dto))
 	newNameNorms := make([]string, len(dto))
@@ -280,8 +301,7 @@ func (r *PricesRepo) UpsertSeveral(ctx context.Context, tx postgres.Tx, dto []*m
 		prices[i] = p.Price
 		templates[i] = p.Template
 		notes[i] = p.Note
-		techniques[i] = p.Technique
-		underDrawings[i] = p.UnderDrawing
+		needSiburApprovals[i] = p.NeedSiburApproval
 		searchTexts[i] = p.SearchText
 		currentNameNorms[i] = p.CurrentNameNorm
 		newNameNorms[i] = p.NewNameNorm
@@ -289,7 +309,7 @@ func (r *PricesRepo) UpsertSeveral(ctx context.Context, tx postgres.Tx, dto []*m
 	}
 
 	_, err := r.getExec(tx).Exec(ctx, sql,
-		codes, currentNames, newNames, prices, templates, notes, techniques, underDrawings, searchTexts,
+		codes, currentNames, newNames, prices, templates, notes, needSiburApprovals, searchTexts,
 		currentNameNorms, newNameNorms, templateNorms,
 	)
 	if err != nil {
@@ -315,7 +335,7 @@ func scanPositions(rows pgx.Rows) ([]*models.Price, error) {
 	var data []*models.Price
 	for rows.Next() {
 		var p models.Price
-		if err := rows.Scan(&p.ID, &p.Code, &p.CurrentName, &p.NewName, &p.Price, &p.Template, &p.Note, &p.Technique, &p.UnderDrawing); err != nil {
+		if err := rows.Scan(&p.ID, &p.Code, &p.CurrentName, &p.NewName, &p.Price, &p.Template, &p.Note, &p.NeedSiburApproval); err != nil {
 			return nil, postgres.MapError(fmt.Errorf("scan row error: %w", err))
 		}
 		data = append(data, &p)
@@ -325,5 +345,3 @@ func scanPositions(rows pgx.Rows) ([]*models.Price, error) {
 	}
 	return data, nil
 }
-
-

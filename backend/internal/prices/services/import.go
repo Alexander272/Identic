@@ -50,7 +50,7 @@ func (s *ImportService) ImportXLSX(ctx context.Context, r io.Reader) error {
 		if len(row) < 2 {
 			continue
 		}
-		priceRaw := strings.TrimSpace(safeGet(row, 4))
+		priceRaw := strings.TrimSpace(safeGet(row, 3))
 		priceStr := strings.ReplaceAll(priceRaw, " ", "")
 		if strings.Contains(priceStr, ",") && strings.Contains(priceStr, ".") {
 			priceStr = strings.ReplaceAll(priceStr, ",", "")
@@ -61,20 +61,19 @@ func (s *ImportService) ImportXLSX(ctx context.Context, r io.Reader) error {
 		if err != nil {
 			logger.Warn("failed to parse price",
 				logger.StringAttr("code", strings.TrimSpace(row[1])),
-				logger.StringAttr("raw", safeGet(row, 4)),
+				logger.StringAttr("raw", safeGet(row, 3)),
 			)
 			price = 0
 		}
 
 		p := &models.Price{
-			Code:         strings.TrimSpace(row[1]),
-			CurrentName:  safeGet(row, 2),
-			NewName:      safeGet(row, 3),
-			Price:        price,
-			Template:     safeGet(row, 5),
-			Note:         safeGet(row, 6),
-			Technique:    safeGet(row, 7),
-			UnderDrawing: safeGet(row, 8),
+			Code:              strings.TrimSpace(row[0]),
+			CurrentName:       safeGet(row, 1),
+			NewName:           safeGet(row, 2),
+			Price:             price,
+			Template:          safeGet(row, 4),
+			Note:              safeGet(row, 5),
+			NeedSiburApproval: safeGet(row, 6),
 		}
 		data = append(data, p)
 	}

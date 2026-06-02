@@ -8,16 +8,15 @@ import (
 )
 
 type Price struct {
-	ID            uuid.UUID `json:"id"`
-	Code          string    `json:"code"`
-	CurrentName   string    `json:"current_name"`
-	NewName       string    `json:"new_name"`
-	Price         float64   `json:"price"`
-	Template      string    `json:"template"`
-	Note          string    `json:"note"`
-	Technique     string    `json:"technique"`
-	UnderDrawing  string    `json:"under_drawing"`
-	MatchedFields []string  `json:"matched_fields,omitempty"`
+	ID               uuid.UUID `json:"id"`
+	Code             string    `json:"code"`
+	CurrentName      string    `json:"current_name"`
+	NewName          string    `json:"new_name"`
+	Price            float64   `json:"price"`
+	Template         string    `json:"template"`
+	Note             string    `json:"note"`
+	NeedSiburApproval string   `json:"need_sibur_approval"`
+	MatchedFields    []string  `json:"matched_fields,omitempty"`
 
 	CurrentNameNorm string `json:"-"`
 	NewNameNorm     string `json:"-"`
@@ -42,14 +41,13 @@ type ExportPriceRequest struct {
 }
 
 type UpdatePrice struct {
-	Code         string  `json:"code" binding:"required"`
-	CurrentName  string  `json:"current_name"`
-	NewName      string  `json:"new_name"`
-	Price        float64 `json:"price"`
-	Template     string  `json:"template"`
-	Note         string  `json:"note"`
-	Technique    string  `json:"technique"`
-	UnderDrawing string  `json:"under_drawing"`
+	Code              string  `json:"code" binding:"required"`
+	CurrentName       string  `json:"current_name"`
+	NewName           string  `json:"new_name"`
+	Price             float64 `json:"price"`
+	Template          string  `json:"template"`
+	Note              string  `json:"note"`
+	NeedSiburApproval string  `json:"need_sibur_approval"`
 }
 
 type BatchSavePricesRequest struct {

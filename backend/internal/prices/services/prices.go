@@ -111,18 +111,17 @@ func (s *PricesService) BatchSave(ctx context.Context, req *models.BatchSavePric
 	priceList := make([]*models.Price, len(req.Prices))
 	for i, p := range req.Prices {
 		priceList[i] = &models.Price{
-			Code:            p.Code,
-			CurrentName:     p.CurrentName,
-			NewName:         p.NewName,
-			Price:           p.Price,
-			Template:        p.Template,
-			Note:            p.Note,
-			Technique:       p.Technique,
-			UnderDrawing:    p.UnderDrawing,
-			SearchText:      buildSearchText(p.CurrentName, p.NewName, p.Template),
-			CurrentNameNorm: normalizeQuery(p.CurrentName),
-			NewNameNorm:     normalizeQuery(p.NewName),
-			TemplateNorm:    normalizeQuery(p.Template),
+			Code:              p.Code,
+			CurrentName:       p.CurrentName,
+			NewName:           p.NewName,
+			Price:             p.Price,
+			Template:          p.Template,
+			Note:              p.Note,
+			NeedSiburApproval: p.NeedSiburApproval,
+			SearchText:        buildSearchText(p.CurrentName, p.NewName, p.Template),
+			CurrentNameNorm:   normalizeQuery(p.CurrentName),
+			NewNameNorm:       normalizeQuery(p.NewName),
+			TemplateNorm:      normalizeQuery(p.Template),
 		}
 	}
 
