@@ -74,6 +74,10 @@ func (s *ImportService) ImportXLSX(ctx context.Context, r io.Reader) error {
 			Template:          safeGet(row, 4),
 			Note:              safeGet(row, 5),
 			NeedSiburApproval: safeGet(row, 6),
+			SearchText:        buildSearchText(safeGet(row, 1), safeGet(row, 2), safeGet(row, 4)),
+			CurrentNameNorm:   normalizeQuery(safeGet(row, 1)),
+			NewNameNorm:       normalizeQuery(safeGet(row, 2)),
+			TemplateNorm:      normalizeQuery(safeGet(row, 4)),
 		}
 		data = append(data, p)
 	}

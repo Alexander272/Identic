@@ -17,8 +17,7 @@ const defaultRow = (): GridRow => ({
 	price: null,
 	template: null,
 	note: null,
-	technique: null,
-	under_drawing: null,
+	need_sibur_approval: null,
 	status: 'CREATED',
 })
 
@@ -29,8 +28,11 @@ const columns: Column<GridRow>[] = [
 	{ ...keyColumn<GridRow, 'price'>('price', floatColumn), title: 'Цена', width: 0.5 },
 	{ ...keyColumn<GridRow, 'template'>('template', textColumn), title: 'Шаблон', width: 1 },
 	{ ...keyColumn<GridRow, 'note'>('note', textColumn), title: 'Примечание', width: 1 },
-	{ ...keyColumn<GridRow, 'technique'>('technique', textColumn), title: 'Техника', width: 1 },
-	{ ...keyColumn<GridRow, 'under_drawing'>('under_drawing', textColumn), title: 'Под чертеж', width: 1 },
+	{
+		...keyColumn<GridRow, 'need_sibur_approval'>('need_sibur_approval', textColumn),
+		title: 'Требуется доп.согл. с СИБУР',
+		width: 1,
+	},
 ]
 
 type Props = {

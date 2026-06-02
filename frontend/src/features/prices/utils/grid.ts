@@ -8,8 +8,7 @@ export type GridRow = {
 	price: number | null
 	template: string | null
 	note: string | null
-	technique: string | null
-	under_drawing: string | null
+	need_sibur_approval: string | null
 	status: 'ORIGINAL' | 'CREATED' | 'UPDATED' | 'DELETED'
 }
 
@@ -22,8 +21,7 @@ export function positionToGridRow(p: Price): GridRow {
 		price: p.price,
 		template: p.template,
 		note: p.note,
-		technique: p.technique,
-		under_drawing: p.under_drawing,
+		need_sibur_approval: p.need_sibur_approval,
 		status: 'ORIGINAL',
 	}
 }
@@ -36,7 +34,6 @@ export function gridRowToUpdate(r: GridRow): UpdatePrice {
 		price: r.price,
 		template: r.template,
 		note: r.note,
-		technique: r.technique,
-		under_drawing: r.under_drawing,
+		need_sibur_approval: r.need_sibur_approval,
 	}
 }
