@@ -20,7 +20,7 @@ export const Results: FC<Props> = ({ data, search, isLoading, searchId }) => {
 			paddingX={2}
 			paddingY={1}
 			border={'1px solid rgba(0, 0, 0, 0.12)'}
-			sx={{ background: '#fff', height: '100%', flexGrow: 1, maxHeight: 750, display: 'flex' }}
+			sx={{ background: '#fff', height: '100%', flexGrow: 1, display: 'flex' }}
 		>
 			<Stack direction={'row'} justifyContent={'center'} mb={2} position={'relative'}>
 				<Typography component='h2' variant='h5'>
@@ -46,7 +46,7 @@ export const Results: FC<Props> = ({ data, search, isLoading, searchId }) => {
 			)}
 
 			{data.length > 0 && !isLoading ? (
-				<Box sx={{ flexGrow: 1, minHeight: 0 }}>
+				<Box sx={{ flexGrow: 1, minHeight: 500 }}>
 					<ResultsTable data={data} search={search} searchId={searchId} />
 				</Box>
 			) : null}

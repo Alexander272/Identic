@@ -137,7 +137,6 @@ export const Search = () => {
 		<Stack
 			direction={{ xl: 'row' }}
 			position={'relative'}
-			height={'100%'}
 			justifyContent={'center'}
 			// spacing={1}
 			sx={{ height: '100%', minWidth: 900 }}

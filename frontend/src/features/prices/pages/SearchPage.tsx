@@ -51,7 +51,7 @@ export const SearchPage: FC = () => {
 	const displayTotalCount = mode === 'browse' ? (pricesData?.total ?? 0) : totalCount
 	const displayIsLoading = mode === 'browse' ? isPricesLoading : isLoading
 	const displayError = mode === 'browse' ? pricesError : error
-	const showPagination = mode === 'browse' || searchCodes.length === 0
+	const showPagination = !displayIsLoading && (mode === 'browse' || searchCodes.length === 0)
 
 	const handleSearch = useCallback(
 		async (params: { queries?: string[]; fields?: string[]; codes?: string[] }) => {

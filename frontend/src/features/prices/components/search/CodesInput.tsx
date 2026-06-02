@@ -1,6 +1,5 @@
 import { useState, useCallback, useRef, useEffect, useMemo, type FC } from 'react'
 import { Box, Chip, Popover } from '@mui/material'
-import { toast } from 'react-toastify'
 
 const chipSx = {
 	fontFamily: 'monospace',
@@ -76,7 +75,7 @@ export const CodesInput: FC<CodesInputProps> = ({ codes, onChange }) => {
 
 	const commitValue = useCallback(() => {
 		const trimmed = value.trim()
-		if (trimmed && /^\d+$/.test(trimmed) && !codes.includes(trimmed)) {
+		if (trimmed && /^\d+$/.test(trimmed)) {
 			onChange([...codes, trimmed])
 			setValue('')
 		}
@@ -86,10 +85,6 @@ export const CodesInput: FC<CodesInputProps> = ({ codes, onChange }) => {
 		(raw: string) => {
 			const trimmed = raw.trim()
 			if (!trimmed || !/^\d+$/.test(trimmed)) return false
-			if (codes.includes(trimmed)) {
-				toast.warn('Такой код уже есть')
-				return false
-			}
 			onChange([...codes, trimmed])
 			return true
 		},
@@ -103,12 +98,7 @@ export const CodesInput: FC<CodesInputProps> = ({ codes, onChange }) => {
 			const parts = text.split(/[^0-9]+/).filter(Boolean)
 			if (parts.length > 1) {
 				e.preventDefault()
-				const newCodes = parts.filter(p => !codes.includes(p))
-				const duplicates = parts.filter(p => codes.includes(p))
-				if (duplicates.length > 0) {
-					toast.warn(`Пропущено ${duplicates.length} повторяющихся кодов`)
-				}
-				onChange([...codes, ...newCodes])
+				onChange([...codes, ...parts])
 			}
 		},
 		[codes, onChange],
@@ -170,15 +160,18 @@ export const CodesInput: FC<CodesInputProps> = ({ codes, onChange }) => {
 						}}
 					/>
 				)}
-				{visibleChips.map(code => (
-					<Chip
-						key={code}
-						label={code}
-						size='small'
-						onDelete={() => onChange(codes.filter(c => c !== code))}
-						sx={chipSx}
-					/>
-				))}
+				{visibleChips.map((code, i) => {
+					const chipIndex = hiddenChips.length + i
+					return (
+						<Chip
+							key={`${code}-${chipIndex}`}
+							label={code}
+							size='small'
+							onDelete={() => onChange(codes.filter((_, idx) => idx !== chipIndex))}
+							sx={chipSx}
+						/>
+					)
+				})}
 				<input
 					ref={inputRef}
 					value={value}
@@ -217,12 +210,12 @@ export const CodesInput: FC<CodesInputProps> = ({ codes, onChange }) => {
 						minWidth: 200,
 					}}
 				>
-					{hiddenChips.map(code => (
+					{hiddenChips.map((code, i) => (
 						<Chip
-							key={code}
+							key={`${code}-${i}`}
 							label={code}
 							size='small'
-							onDelete={() => onChange(codes.filter(c => c !== code))}
+							onDelete={() => onChange(codes.filter((_, idx) => idx !== i))}
 							sx={chipSx}
 						/>
 					))}

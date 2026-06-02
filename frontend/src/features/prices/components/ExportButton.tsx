@@ -50,7 +50,7 @@ export const ExportButton: FC<ExportButtonProps> = ({ lastParams, visibleColumns
 				</Button>
 				{!allVisible && (
 					<Button variant='outlined' sx={buttonSx} onClick={e => setAnchorEl(e.currentTarget)}>
-						<LeftArrowIcon sx={{ fontSize: 12, transform: 'rotate(-90deg)' }} />
+						<LeftArrowIcon fontSize={12} transform={'rotate(-90deg)'} />
 					</Button>
 				)}
 			</ButtonGroup>

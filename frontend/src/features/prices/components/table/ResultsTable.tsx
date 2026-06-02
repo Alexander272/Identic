@@ -1,5 +1,5 @@
 import { type FC, useCallback, useMemo, useState, useEffect } from 'react'
-import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Alert, Box } from '@mui/material'
+import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Alert, Box, Stack, Typography } from '@mui/material'
 
 import type { Price } from '@/features/prices/types/types'
 import { COLUMNS, STORAGE_KEY, COLUMN_KEYS, createCellRenderers, highlight } from './cells'
@@ -58,7 +58,13 @@ export const ResultsTable: FC<ResultsTableProps> = ({
 	})
 
 	useEffect(() => {
-		localStorage.setItem(STORAGE_KEY, JSON.stringify(visibleColumns))
+		const isDefault =
+			visibleColumns.length === COLUMN_KEYS.length && COLUMN_KEYS.every(k => visibleColumns.includes(k))
+		if (isDefault) {
+			localStorage.removeItem(STORAGE_KEY)
+		} else {
+			localStorage.setItem(STORAGE_KEY, JSON.stringify(visibleColumns))
+		}
 	}, [visibleColumns])
 
 	const matchedFields = useMemo(() => (results.length > 0 ? (results[0].matched_fields ?? []) : []), [results])
@@ -84,6 +90,7 @@ export const ResultsTable: FC<ResultsTableProps> = ({
 	const visibleColumnDefs = useMemo(() => COLUMNS.filter(col => visibleColumns.includes(col.key)), [visibleColumns])
 
 	const tableRows = useMemo<TableRow[]>(() => {
+		if (isLoading && mode === 'search') return []
 		if (codes && codes.length > 0) {
 			const map = new Map<string, Price>()
 			for (const p of results) map.set(p.code, p)
@@ -93,7 +100,7 @@ export const ResultsTable: FC<ResultsTableProps> = ({
 			})
 		}
 		return results.map(p => ({ kind: 'data', position: p }))
-	}, [results, codes])
+	}, [results, codes, isLoading, mode])
 
 	const cellRenderers = useMemo(() => createCellRenderers(renderCell), [renderCell])
 
@@ -153,6 +160,22 @@ export const ResultsTable: FC<ResultsTableProps> = ({
 						</TableRow>
 					</TableHead>
 					<TableBody>
+						{isLoading && (
+							<TableRow>
+								<TableCell
+									colSpan={visibleColumnDefs.length}
+									align='center'
+									sx={{ py: 4 }}
+								>
+									<Stack alignItems='center' justifyContent='center'>
+										<Typography fontSize='1.3rem'>Идет поиск...</Typography>
+										<Typography fontSize='1.1rem' variant='caption' color='text.secondary'>
+											Поиск может занять некоторое время
+										</Typography>
+									</Stack>
+								</TableCell>
+							</TableRow>
+						)}
 						{tableRows.length === 0 && !isLoading && (
 							<TableRow>
 								<TableCell
@@ -168,10 +191,10 @@ export const ResultsTable: FC<ResultsTableProps> = ({
 								</TableCell>
 							</TableRow>
 						)}
-						{tableRows.map(row =>
+						{tableRows.map((row, i) =>
 							row.kind === 'data' ? (
 								<TableRow
-									key={row.position.id}
+									key={`${i}-${row.position.id}`}
 									sx={{
 										'&:nth-of-type(even)': { backgroundColor: '#fafafa' },
 										'&:hover': { backgroundColor: '#f0f4f8 !important' },
@@ -182,7 +205,7 @@ export const ResultsTable: FC<ResultsTableProps> = ({
 								</TableRow>
 							) : (
 								<TableRow
-									key={`nf-${row.code}`}
+									key={`${i}-nf-${row.code}`}
 									sx={{
 										backgroundColor: '#ffced5',
 										transition: 'background-color 0.2s ease-in-out',
