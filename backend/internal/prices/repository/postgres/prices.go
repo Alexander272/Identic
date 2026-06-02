@@ -31,7 +31,7 @@ type Prices interface {
 }
 
 func (r *PricesRepo) GetAll(ctx context.Context, page, perPage int) ([]*models.Price, int, error) {
-	columns := "id, code, current_name, new_name, price, template, note, need_sibur_approval"
+	columns := "prices.id, prices.code, prices.current_name, prices.new_name, prices.price, prices.template, prices.note, prices.need_sibur_approval"
 
 	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM %s", Tables.Prices)
 	var total int
@@ -40,7 +40,7 @@ func (r *PricesRepo) GetAll(ctx context.Context, page, perPage int) ([]*models.P
 	}
 
 	offset := (page - 1) * perPage
-	dataQuery := fmt.Sprintf("SELECT %s FROM %s ORDER BY code LIMIT $1 OFFSET $2", columns, Tables.Prices)
+	dataQuery := fmt.Sprintf("SELECT %s FROM %s ORDER BY prices.code LIMIT $1 OFFSET $2", columns, Tables.Prices)
 
 	rows, err := r.db.Query(ctx, dataQuery, perPage, offset)
 	if err != nil {
@@ -77,7 +77,7 @@ var allowedFields = map[string]fieldMapping{
 }
 
 func (r *PricesRepo) Search(ctx context.Context, queries, codes, fields []string, page, perPage int) ([]*models.Price, int, error) {
-	columns := "id, code, current_name, new_name, price, template, note, need_sibur_approval"
+	columns := "prices.id, prices.code, prices.current_name, prices.new_name, prices.price, prices.template, prices.note, prices.need_sibur_approval"
 
 	var conditions []string
 	args := make([]any, 0)
@@ -125,27 +125,53 @@ func (r *PricesRepo) Search(ctx context.Context, queries, codes, fields []string
 		}
 	}
 
-	var codesParamIdx int
+	// Старый вариант: code::text = ANY($N) + array_position — НЕ поддерживал дубликаты кодов и их порядок в запросе
+	// var codesParamIdx int
+	// if len(codes) > 0 {
+	// 	codesParamIdx = len(args) + 1
+	// 	conditions = append(conditions, fmt.Sprintf("code::text = ANY($%d::text[])", codesParamIdx))
+	// 	args = append(args, codes)
+	// }
+
+	// JOIN UNNEST(...) WITH ORDINALITY — для каждого элемента массива создаётся строка,
+	// дубликаты сохраняются, c.ord даёт порядок из запроса.
+	var fromClause string
 	if len(codes) > 0 {
-		codesParamIdx = len(args) + 1
-		conditions = append(conditions, fmt.Sprintf("code::text = ANY($%d::text[])", codesParamIdx))
+		codesParamIdx := len(args) + 1
+		fromClause = fmt.Sprintf("%s JOIN UNNEST($%d::text[]) WITH ORDINALITY AS c(code, ord) ON %s.code::text = c.code",
+			Tables.Prices, codesParamIdx, Tables.Prices)
 		args = append(args, codes)
+	} else {
+		fromClause = Tables.Prices
 	}
 
 	where := strings.Join(conditions, " AND ")
 
-	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM %s WHERE %s", Tables.Prices, where)
+	whereClause := ""
+	if where != "" {
+		whereClause = "WHERE " + where
+	}
+
+	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM %s %s", fromClause, whereClause)
 	var total int
 	if err := r.db.QueryRow(ctx, countQuery, args...).Scan(&total); err != nil {
 		return nil, 0, postgres.MapError(fmt.Errorf("failed to count: %w", err))
 	}
 
+	// var orderConds []string
+	// if len(fields) == 0 && len(queries) == 1 {
+	// 	orderConds = append(orderConds, fmt.Sprintf("similarity(search_text, $%d) DESC", firstQueryIdx))
+	// }
+	// if len(codes) > 0 {
+	// 	orderConds = append(orderConds, fmt.Sprintf("array_position($%d::text[], code::text)", codesParamIdx))
+	// }
+
 	var orderConds []string
+	if len(codes) > 0 {
+		orderConds = append(orderConds, "c.ord")
+	}
 	if len(fields) == 0 && len(queries) == 1 {
 		orderConds = append(orderConds, fmt.Sprintf("similarity(search_text, $%d) DESC", firstQueryIdx))
-	}
-	if len(codes) > 0 {
-		orderConds = append(orderConds, fmt.Sprintf("array_position($%d::text[], code::text)", codesParamIdx))
 	}
 
 	orderBy := ""
@@ -161,8 +187,8 @@ func (r *PricesRepo) Search(ctx context.Context, queries, codes, fields []string
 	dataArgs[len(args)] = perPage
 	dataArgs[len(args)+1] = offset
 
-	dataQuery := fmt.Sprintf("SELECT %s FROM %s WHERE %s %s LIMIT $%d OFFSET $%d",
-		columns, Tables.Prices, where, orderBy, perPageIdx, offsetIdx)
+	dataQuery := fmt.Sprintf("SELECT %s FROM %s %s %s LIMIT $%d OFFSET $%d",
+		columns, fromClause, whereClause, orderBy, perPageIdx, offsetIdx)
 
 	rows, err := r.db.Query(ctx, dataQuery, dataArgs...)
 	if err != nil {
@@ -178,7 +204,7 @@ func (r *PricesRepo) Search(ctx context.Context, queries, codes, fields []string
 }
 
 func (r *PricesRepo) SearchAll(ctx context.Context, queries []string, codes []string) ([]*models.Price, error) {
-	columns := "id, code, current_name, new_name, price, template, note, need_sibur_approval"
+	columns := "prices.id, prices.code, prices.current_name, prices.new_name, prices.price, prices.template, prices.note, prices.need_sibur_approval"
 
 	var conditions []string
 	args := make([]any, 0)
@@ -194,21 +220,42 @@ func (r *PricesRepo) SearchAll(ctx context.Context, queries []string, codes []st
 		conditions = append(conditions, strings.Join(queryConds, " AND "))
 	}
 
-	var codesParamIdx int
+	// Старый вариант: code::text = ANY($N) + array_position — НЕ поддерживал дубликаты кодов и их порядок в запросе
+	// var codesParamIdx int
+	// if len(codes) > 0 {
+	// 	codesParamIdx = len(args) + 1
+	// 	conditions = append(conditions, fmt.Sprintf("code::text = ANY($%d::text[])", codesParamIdx))
+	// 	args = append(args, codes)
+	// }
+
+	// JOIN UNNEST(...) WITH ORDINALITY — для каждого элемента массива создаётся строка,
+	// дубликаты сохраняются, c.ord даёт порядок из запроса.
+	var fromClause string
 	if len(codes) > 0 {
-		codesParamIdx = len(args) + 1
-		conditions = append(conditions, fmt.Sprintf("code::text = ANY($%d::text[])", codesParamIdx))
+		codesParamIdx := len(args) + 1
+		fromClause = fmt.Sprintf("%s JOIN UNNEST($%d::text[]) WITH ORDINALITY AS c(code, ord) ON %s.code::text = c.code",
+			Tables.Prices, codesParamIdx, Tables.Prices)
 		args = append(args, codes)
+	} else {
+		fromClause = Tables.Prices
 	}
 
 	where := strings.Join(conditions, " AND ")
 
+	// var orderConds []string
+	// if len(queries) == 1 {
+	// 	orderConds = append(orderConds, fmt.Sprintf("similarity(search_text, $%d) DESC", firstQueryIdx))
+	// }
+	// if len(codes) > 0 {
+	// 	orderConds = append(orderConds, fmt.Sprintf("array_position($%d::text[], code::text)", codesParamIdx))
+	// }
+
 	var orderConds []string
+	if len(codes) > 0 {
+		orderConds = append(orderConds, "c.ord")
+	}
 	if len(queries) == 1 {
 		orderConds = append(orderConds, fmt.Sprintf("similarity(search_text, $%d) DESC", firstQueryIdx))
-	}
-	if len(codes) > 0 {
-		orderConds = append(orderConds, fmt.Sprintf("array_position($%d::text[], code::text)", codesParamIdx))
 	}
 
 	orderBy := ""
@@ -216,7 +263,7 @@ func (r *PricesRepo) SearchAll(ctx context.Context, queries []string, codes []st
 		orderBy = "ORDER BY " + strings.Join(orderConds, ", ")
 	}
 
-	queryStr := "SELECT " + columns + " FROM " + Tables.Prices
+	queryStr := "SELECT " + columns + " FROM " + fromClause
 	if where != "" {
 		queryStr += " WHERE " + where
 	}

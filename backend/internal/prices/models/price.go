@@ -22,6 +22,7 @@ type Price struct {
 	NewNameNorm     string `json:"-"`
 	TemplateNorm    string `json:"-"`
 	SearchText      string `json:"-"`
+	NotFound        bool   `json:"-"`
 }
 
 type SearchPriceRequest struct {
