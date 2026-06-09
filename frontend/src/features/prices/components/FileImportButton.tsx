@@ -6,6 +6,7 @@ import { useImportPricesMutation } from '@/features/prices/priceApiSlice'
 import { AddFileIcon } from '@/components/Icons/AddFileIcon'
 import { UploadIcon } from '@/components/Icons/UploadIcon'
 import { TimesIcon } from '@/components/Icons/TimesIcon'
+import { buttonSx } from './buttonStyles'
 
 export const FileImportButton: FC = () => {
 	const { palette } = useTheme()
@@ -23,7 +24,7 @@ export const FileImportButton: FC = () => {
 			dragCounterRef.current += 1
 			setGlobalDragOver(true)
 		}
-		const handleDragOver = (e: DragEvent) => {
+		const handleDragOver = (e: globalThis.DragEvent) => {
 			e.preventDefault()
 		}
 		const handleDragLeave = () => {
@@ -33,27 +34,27 @@ export const FileImportButton: FC = () => {
 				setGlobalDragOver(false)
 			}
 		}
-		const handleDrop = (e: DragEvent) => {
+		const handleDrop = (e: globalThis.DragEvent) => {
 			e.preventDefault()
 			dragCounterRef.current = 0
 			setGlobalDragOver(false)
-			const file = e.dataTransfer.files?.[0]
+			const file = e.dataTransfer?.files?.[0]
 			if (file) {
 				setSelectedFile(file)
 				setOpen(true)
 			}
 		}
 
-		window.addEventListener('dragenter', handleDragEnter as unknown as EventListener)
-		window.addEventListener('dragover', handleDragOver as unknown as EventListener)
-		window.addEventListener('dragleave', handleDragLeave as unknown as EventListener)
-		window.addEventListener('drop', handleDrop as unknown as EventListener)
+		window.addEventListener('dragenter', handleDragEnter)
+		window.addEventListener('dragover', handleDragOver)
+		window.addEventListener('dragleave', handleDragLeave)
+		window.addEventListener('drop', handleDrop)
 
 		return () => {
-			window.removeEventListener('dragenter', handleDragEnter as unknown as EventListener)
-			window.removeEventListener('dragover', handleDragOver as unknown as EventListener)
-			window.removeEventListener('dragleave', handleDragLeave as unknown as EventListener)
-			window.removeEventListener('drop', handleDrop as unknown as EventListener)
+			window.removeEventListener('dragenter', handleDragEnter)
+			window.removeEventListener('dragover', handleDragOver)
+			window.removeEventListener('dragleave', handleDragLeave)
+			window.removeEventListener('drop', handleDrop)
 		}
 	}, [])
 
@@ -123,21 +124,7 @@ export const FileImportButton: FC = () => {
 					mb: 1,
 				}}
 			>
-				<Button
-					variant='outlined'
-					color='inherit'
-					onClick={() => setOpen(true)}
-					sx={{
-						minWidth: 48,
-						textTransform: 'inherit',
-						background: '#fff',
-						border: '1px solid #c3c3c4',
-						borderRadius: '6px',
-						padding: '4px 10px',
-						':hover': { svg: { fill: palette.primary.main }, color: palette.primary.main },
-						'&:disabled': { svg: { fill: palette.action.disabled } },
-					}}
-				>
+				<Button variant='outlined' color='inherit' onClick={() => setOpen(true)} sx={buttonSx}>
 					<UploadIcon sx={{ fontSize: 14, mr: 1 }} />
 					Загрузить из XLSX
 				</Button>

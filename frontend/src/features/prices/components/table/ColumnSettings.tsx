@@ -1,7 +1,8 @@
 import { useState, type FC } from 'react'
 import { Badge, Button, Checkbox, FormControlLabel, Menu, MenuItem, Typography } from '@mui/material'
 
-import { COLUMNS, buttonSx } from './cells'
+import { buttonSx } from '../buttonStyles'
+import { COLUMNS } from './cells'
 import { SettingIcon } from '@/components/Icons/SettingIcon'
 
 type Props = {

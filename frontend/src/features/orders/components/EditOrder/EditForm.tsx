@@ -1,10 +1,11 @@
-import { useEffect, type FC } from 'react'
+import { useEffect, useState, type FC } from 'react'
 import {
 	Box,
 	Button,
 	Checkbox,
 	Divider,
 	FormControlLabel,
+	IconButton,
 	Stack,
 	TextField,
 	Tooltip,
@@ -15,6 +16,7 @@ import { Controller, FormProvider, useFieldArray, useForm, useFormContext, useWa
 import { DataSheetGrid, floatColumn, keyColumn, textColumn, type Column } from 'react-datasheet-grid'
 import type { Operation } from 'react-datasheet-grid/dist/types'
 import { toast } from 'react-toastify'
+import { useNavigate } from 'react-router'
 import dayjs from 'dayjs'
 
 import './styles.css'
@@ -22,16 +24,21 @@ import './styles.css'
 import type { IFetchError } from '@/app/types/error'
 import type { IOrder, IOrderUpdate } from '../../types/order'
 import type { IPositionUpdate } from '../../types/positions'
-import { useGetOrderByIdQuery, useUpdateOrderMutation } from '../../orderApiSlice'
+import { useGetOrderByIdQuery, useUpdateOrderMutation, useDeleteOrderMutation } from '../../orderApiSlice'
+import { AppRoutes } from '@/pages/router/routes'
 import { extractQuantity } from '@/utils/extract'
 import { handleGlobalPaste } from '@/utils/globalPaste'
 import { AddRow } from '@/components/DataSheet/AddRow'
+import { Confirm } from '@/components/Confirm/Confirm'
 import { ContextMenu } from '@/components/DataSheet/ContextMenu'
 import { DateField } from '@/components/Form/DateField'
+import { AutocompleteInput } from '@/components/Autocomplete/AutocompleteInput'
 import { SaveIcon } from '@/components/Icons/SaveIcon'
 import { RefreshIcon } from '@/components/Icons/RefreshIcon'
-import { AutocompleteInput } from '@/components/Autocomplete/AutocompleteInput'
+import { TrashBinIcon } from '@/components/Icons/TrashBinIcon'
 import { BoxFallback } from '@/components/Fallback/BoxFallback'
+import { useCheckPermission } from '@/features/user/hooks/check'
+import { PermRules } from '@/features/access/constants/permissions'
 
 const defaultValues: IOrderUpdate = {
 	id: '',
@@ -86,11 +93,30 @@ type Props = {
 }
 
 export const EditOrderForm: FC<Props> = ({ orderId }) => {
+	const [deleted, setDeleted] = useState(false)
+
+	const canDelete = useCheckPermission(PermRules.Orders.Delete)
+
 	const methods = useForm<IOrderUpdate>({ defaultValues })
 	const { control, reset } = methods
 	const consumer = useWatch({ control, name: 'consumer' })
+	const navigate = useNavigate()
 
-	const { data: order, isFetching } = useGetOrderByIdQuery({ id: orderId }, { skip: !orderId })
+	const { data: order, isFetching } = useGetOrderByIdQuery({ id: orderId }, { skip: !orderId || deleted })
+	const [deleteOrder, { isLoading }] = useDeleteOrderMutation()
+
+	const deleteHandler = async () => {
+		setDeleted(true)
+		try {
+			await deleteOrder(orderId).unwrap()
+			toast.success('Заказ удалён')
+			navigate(AppRoutes.Home)
+		} catch (error) {
+			setDeleted(false)
+			const fetchError = error as IFetchError
+			toast.error(fetchError.data.message, { autoClose: false })
+		}
+	}
 
 	useEffect(() => {
 		if (order?.data) reset(order.data)
@@ -107,11 +133,31 @@ export const EditOrderForm: FC<Props> = ({ orderId }) => {
 
 	return (
 		<Stack>
-			<Typography align='center' variant='h5' mt={1} mb={3}>
-				Редактирование заказа
-			</Typography>
+			<Stack direction='row' justifyContent='center' alignItems='center' mt={1} mb={3}>
+				<Typography align='center' variant='h5'>
+					Редактирование заказа
+				</Typography>
+				{orderId && canDelete ? (
+					<Confirm
+						onClick={deleteHandler}
+						confirmText='Вы действительно хотите удалить этот заказ?'
+						buttonComponent={
+							<Tooltip title='Удалить заказ'>
+								<IconButton
+									size='large'
+									color='error'
+									sx={({ palette }) => ({ svg: { fill: palette.error.main } })}
+								>
+									<TrashBinIcon sx={{ fontSize: 16 }} />
+								</IconButton>
+							</Tooltip>
+						}
+						sx={{ ml: 2 }}
+					/>
+				) : null}
+			</Stack>
 
-			{isFetching ? <BoxFallback /> : null}
+			{isFetching || isLoading ? <BoxFallback /> : null}
 
 			<FormProvider {...methods}>
 				<Stack direction={'row'} spacing={2} px={2} mb={2}>
@@ -226,8 +272,17 @@ const Grid: FC<{ orderId: string; data?: IOrder }> = ({ orderId, data }) => {
 			return
 		}
 
-		if (form.positions.some(item => item.quantity === null || item.name === '')) {
-			toast.error('Заполните хотя бы одну позицию')
+		const nonDeleted = form.positions.filter(p => p.status !== 'DELETED')
+		const filled = nonDeleted.filter(p => !(p.status === 'CREATED' && !p.name && !p.quantity && !p.notes))
+
+		if (!filled.length) {
+			toast.error('Добавьте хотя бы одну позицию')
+			return
+		}
+
+		const empty = filled.find(p => !p.name || !p.quantity)
+		if (empty) {
+			toast.error(`Заполните наименование и количество в строке ${filled.indexOf(empty) + 1}`)
 			return
 		}
 		if (form.id == '') form.id = orderId
@@ -267,22 +322,39 @@ const Grid: FC<{ orderId: string; data?: IOrder }> = ({ orderId, data }) => {
 		for (const operation of operations) {
 			if (operation.type === 'DELETE') {
 				const deletedRows = fields.slice(operation.fromRowIndex, operation.toRowIndex)
+				let insertIndex = operation.fromRowIndex
 
-				deletedRows.forEach((row, index) => {
-					if (row.status == 'CREATED') {
-						updatedValue.splice(operation.fromRowIndex, 1)
+				for (const row of deletedRows) {
+					if (row.status === 'CREATED') {
+						// уже удалена гридом, не возвращаем
+					} else if (row.status === 'DELETED') {
+						// toggle: восстановить
+						if (data) {
+							const original = data.positions.find(p => p.id === row.id)
+							if (
+								original &&
+								(original.name !== row.name ||
+									original.quantity !== row.quantity ||
+									original.notes !== row.notes)
+							) {
+								// была изменена до удаления — возвращаем UPDATED
+								updatedValue.splice(insertIndex++, 0, { ...row, status: 'UPDATED' })
+								continue
+							}
+						}
+						// без изменений — без статуса
+						updatedValue.splice(insertIndex++, 0, { ...row, status: undefined })
 					} else {
-						const deletedRow = { ...row, status: 'DELETED' as const }
-						updatedValue.splice(operation.fromRowIndex + index, 0, deletedRow)
+						// пометить на удаление
+						updatedValue.splice(insertIndex++, 0, { ...row, status: 'DELETED' })
 					}
-				})
+				}
 			}
 
 			if (operation.type === 'UPDATE') {
 				for (let i = operation.fromRowIndex; i < operation.toRowIndex; i++) {
 					const row = updatedValue[i]
-					// Если строка уже помечена как созданная или удаленная, статус не меняем
-					if (!row.status) {
+					if (row && !row.status) {
 						updatedValue[i] = { ...row, status: 'UPDATED' }
 					}
 				}
@@ -290,14 +362,15 @@ const Grid: FC<{ orderId: string; data?: IOrder }> = ({ orderId, data }) => {
 
 			if (operation.type === 'CREATE') {
 				for (let i = operation.fromRowIndex; i < operation.toRowIndex; i++) {
-					updatedValue[i] = { ...updatedValue[i], status: 'CREATED' }
+					if (updatedValue[i]) {
+						updatedValue[i] = { ...updatedValue[i], status: 'CREATED' }
+					}
 				}
 			}
 		}
 
 		setValue('positions', updatedValue, { shouldDirty: true })
 	}
-
 	return (
 		<Stack position={'relative'} mb={1}>
 			<DataSheetGrid

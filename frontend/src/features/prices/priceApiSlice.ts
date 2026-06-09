@@ -1,7 +1,7 @@
 import { toast } from 'react-toastify'
 
 import type { IBaseFetchError, IFetchError } from '@/app/types/error'
-import { saveAs } from '@/features/prices/utils/saveAs'
+import { saveAs } from '@/utils/saveAs'
 import type {
 	Price,
 	PaginatedPriceResponse,
@@ -9,17 +9,18 @@ import type {
 	ExportPriceRequest,
 	BatchSaveRequest,
 	BatchSaveResponse,
-} from './types/types'
+} from './types'
 import { apiSlice } from '@/app/apiSlice'
 import { API } from '@/app/api'
 
 export const priceApiSlice = apiSlice.injectEndpoints({
+	overrideExisting: false,
 	endpoints: builder => ({
 		getPrices: builder.query<PaginatedPriceResponse, { page: number; limit: number }>({
 			query: ({ page, limit }) => `${API.price.base}?page=${page}&limit=${limit}`,
 			providesTags: ['Prices'],
 		}),
-		searchPrice: builder.mutation<{ data: Price[]; total?: number }, SearchPriceRequest>({
+		searchPrice: builder.query<{ data: Price[]; total?: number }, SearchPriceRequest>({
 			query: body => ({
 				url: API.price.search,
 				method: 'POST',
@@ -58,7 +59,6 @@ export const priceApiSlice = apiSlice.injectEndpoints({
 				}
 				return { data: null }
 			},
-			invalidatesTags: ['Prices'],
 		}),
 		importPrices: builder.mutation<{ imported: number }, FormData>({
 			query: body => ({
@@ -84,21 +84,13 @@ export const priceApiSlice = apiSlice.injectEndpoints({
 				body,
 			}),
 			invalidatesTags: ['Prices'],
-			onQueryStarted: async (_arg, api) => {
-				try {
-					await api.queryFulfilled
-				} catch (error) {
-					const fetchError = (error as IBaseFetchError).error
-					toast.error(fetchError.data.message, { autoClose: false })
-				}
-			},
 		}),
 	}),
 })
 
 export const {
 	useGetPricesQuery,
-	useSearchPriceMutation,
+	useLazySearchPriceQuery,
 	useSearchAllPricesMutation,
 	useExportPricesMutation,
 	useImportPricesMutation,

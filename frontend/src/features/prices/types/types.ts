@@ -6,13 +6,13 @@ export type PaginatedPriceResponse = {
 export type Price = {
 	id: string
 	code: string
-	current_name: string
-	new_name: string | null
+	currentName: string
+	newName: string | null
 	price: number | null
 	template: string | null
 	note: string | null
-	need_sibur_approval: string | null
-	matched_fields: string[] | null
+	needSiburApproval: string | null
+	matchedFields: string[] | null
 }
 
 export type SearchPriceRequest = {
@@ -26,22 +26,23 @@ export type SearchPriceRequest = {
 export type ExportPriceRequest = {
 	queries?: string[]
 	codes?: string[]
+	fields?: string[]
 	columns?: string[]
 }
 
 export type UpdatePrice = {
 	code: string
-	current_name?: string
-	new_name?: string | null
+	currentName?: string
+	newName?: string | null
 	price?: number | null
 	template?: string | null
 	note?: string | null
-	need_sibur_approval?: string | null
+	needSiburApproval?: string | null
 }
 
 export type BatchSaveRequest = {
-	positions: UpdatePrice[]
-	delete_codes?: string[]
+	prices: UpdatePrice[]
+	deleteCodes?: string[]
 }
 
 export type BatchSaveResponse = {

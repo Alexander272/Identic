@@ -8,7 +8,8 @@ import { SearchIcon } from '@/components/Icons/SearchIcon'
 import { RefreshIcon } from '@/components/Icons/RefreshIcon'
 import { TimesIcon } from '@/components/Icons/TimesIcon'
 import { CheckIcon } from '@/components/Icons/CheckSimpleIcon'
-import { cardSx, buttonSx } from './searchStyles'
+import { buttonSx } from '../buttonStyles'
+import { cardSx } from './searchStyles'
 
 type Props = SearchHandlers & {
 	isLoading: boolean

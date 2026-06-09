@@ -2,18 +2,19 @@ import { type FC } from 'react'
 import { Link } from 'react-router'
 import { Box, Button, Typography } from '@mui/material'
 
-import type { Price } from '@/features/prices/types/types'
+import type { Price } from '@/features/prices/types'
 import { AppRoutes } from '@/pages/router/routes'
-import { COLUMN_KEYS, buttonSx } from './cells'
+import { buttonSx } from '../buttonStyles'
+import { COLUMN_KEYS } from './cells'
 import { ColumnSettings } from './ColumnSettings'
-import { ExportButton } from '@/features/prices/components/ExportButton'
+import { ExportButton } from '@/features/prices/components/table/ExportButton'
 import { EditBoxIcon } from '@/components/Icons/EditBoxIcon'
 
 type Props = {
 	results: Price[]
 	mode: 'browse' | 'search'
 	totalCount: number
-	lastParams: { queries?: string[]; codes?: string[] }
+	lastParams: { queries?: string[]; codes?: string[]; fields?: string[] }
 	visibleColumns: string[]
 	onToggleColumn: (key: string) => void
 	canEdit: boolean

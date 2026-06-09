@@ -3,6 +3,7 @@ import { Box, Typography, Tabs, Tab } from '@mui/material'
 
 import {
 	useLazyGetSearchLogsQuery,
+	useLazyGetPriceSearchLogsQuery,
 	useLazyGetActivityLogsQuery,
 	useLazyGetLastUserLoginsQuery,
 } from '../../statisticsApiSlice'
@@ -10,9 +11,11 @@ import { getDateRange } from '../utils'
 import { BoxFallback } from '@/components/Fallback/BoxFallback'
 import { PeriodPicker } from '@/components/Period/Period'
 import { SearchTable } from '../Search/Table'
+import { PriceSearchTable } from '../PriceSearch/Table'
 import { ActivityTable } from '../Activity/Table'
 import { LoginsTable } from '../Logins/Table'
 import { SearchCards } from './SearchCards'
+import { PriceSearchCards } from './PriceSearchCards'
 import { OrderCards } from './OrderCards'
 import { useCheckPermission } from '@/features/user/hooks/check'
 import { PermRules } from '@/features/access/constants/permissions'
@@ -35,6 +38,8 @@ export const Statistics = () => {
 	const [dateRange, setDateRange] = useState<{ startDate: string; endDate: string } | undefined>(getDateRange('week'))
 
 	const [triggerSearch, { data: searchData, isFetching: isFetchingSearch }] = useLazyGetSearchLogsQuery()
+	const [triggerPriceSearch, { data: priceSearchData, isFetching: isFetchingPriceSearch }] =
+		useLazyGetPriceSearchLogsQuery()
 	const [triggerActivity, { data: activityData, isFetching: isFetchingActivity }] = useLazyGetActivityLogsQuery()
 	const [triggerUserLogins, { data: userLoginsData, isFetching: isFetchingUserLogins }] =
 		useLazyGetLastUserLoginsQuery()
@@ -42,21 +47,23 @@ export const Statistics = () => {
 	const fetchSearchLogs = useCallback(() => {
 		const params = dateRange ? { startDate: dateRange.startDate, endDate: dateRange.endDate } : {}
 		triggerSearch(params)
+		triggerPriceSearch(params)
 		triggerActivity(params)
 		triggerUserLogins(params)
-	}, [dateRange, triggerSearch, triggerActivity, triggerUserLogins])
+	}, [dateRange, triggerSearch, triggerPriceSearch, triggerActivity, triggerUserLogins])
 
-	const isLoading = isFetchingSearch || isFetchingActivity || isFetchingUserLogins
+	const isLoading = isFetchingSearch || isFetchingPriceSearch || isFetchingActivity || isFetchingUserLogins
 
 	const periodHandler = useCallback(
 		(newRange?: { startDate: string; endDate: string }) => {
 			setDateRange(newRange)
 
 			triggerSearch(newRange || {})
+			triggerPriceSearch(newRange || {})
 			triggerActivity(newRange || {})
 			triggerUserLogins(newRange || {})
 		},
-		[triggerSearch, triggerActivity, triggerUserLogins],
+		[triggerSearch, triggerPriceSearch, triggerActivity, triggerUserLogins],
 	)
 
 	useEffect(() => {
@@ -65,6 +72,7 @@ export const Statistics = () => {
 	}, [])
 
 	const canSeeSearch = useCheckPermission(PermRules.SearchLog.Read)
+	const canSeePriceSearch = useCheckPermission(PermRules.PriceSearchLog.Read)
 	const canSeeActivity = useCheckPermission(PermRules.ActivityLog.Read)
 	const canSeeLogins = useCheckPermission(PermRules.Logins.Read)
 
@@ -93,8 +101,9 @@ export const Statistics = () => {
 				sx={{ borderBottom: 1, borderColor: 'divider' }}
 			>
 				{canSeeSearch && <Tab value={0} label='Поисковые запросы' sx={{ textTransform: 'none' }} />}
-				{canSeeActivity && <Tab value={1} label='Заявки' sx={{ textTransform: 'none' }} />}
-				{canSeeLogins && <Tab value={2} label='Пользователи' sx={{ textTransform: 'none' }} />}
+				{canSeePriceSearch && <Tab value={1} label='Поиск цен' sx={{ textTransform: 'none' }} />}
+				{canSeeActivity && <Tab value={2} label='Заявки' sx={{ textTransform: 'none' }} />}
+				{canSeeLogins && <Tab value={3} label='Пользователи' sx={{ textTransform: 'none' }} />}
 			</Tabs>
 
 			{canSeeSearch && (
@@ -107,8 +116,18 @@ export const Statistics = () => {
 				</TabPanel>
 			)}
 
-			{canSeeActivity && (
+			{canSeePriceSearch && (
 				<TabPanel value={tabValue} index={1}>
+					{isLoading && <BoxFallback />}
+
+					<PriceSearchCards data={priceSearchData?.data || []} total={priceSearchData?.total || 0} />
+
+					{priceSearchData?.data && <PriceSearchTable data={priceSearchData.data} />}
+				</TabPanel>
+			)}
+
+			{canSeeActivity && (
+				<TabPanel value={tabValue} index={2}>
 					{isLoading && <BoxFallback />}
 
 					<OrderCards data={activityData?.data || []} total={activityData?.total || 0} />
@@ -118,7 +137,7 @@ export const Statistics = () => {
 			)}
 
 			{canSeeLogins && (
-				<TabPanel value={tabValue} index={2}>
+				<TabPanel value={tabValue} index={3}>
 					{isLoading && <BoxFallback />}
 
 					{searchData?.data && activityData?.data && userLoginsData?.data && (

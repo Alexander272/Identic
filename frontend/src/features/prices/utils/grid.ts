@@ -3,12 +3,12 @@ import type { Price, UpdatePrice } from '../types/types'
 export type GridRow = {
 	id: string
 	code: string | null
-	current_name: string | null
-	new_name: string | null
+	currentName: string | null
+	newName: string | null
 	price: number | null
 	template: string | null
 	note: string | null
-	need_sibur_approval: string | null
+	needSiburApproval: string | null
 	status: 'ORIGINAL' | 'CREATED' | 'UPDATED' | 'DELETED'
 }
 
@@ -16,12 +16,12 @@ export function positionToGridRow(p: Price): GridRow {
 	return {
 		id: p.id,
 		code: p.code,
-		current_name: p.current_name ?? '',
-		new_name: p.new_name,
+		currentName: p.currentName ?? '',
+		newName: p.newName,
 		price: p.price,
 		template: p.template,
 		note: p.note,
-		need_sibur_approval: p.need_sibur_approval,
+		needSiburApproval: p.needSiburApproval,
 		status: 'ORIGINAL',
 	}
 }
@@ -29,11 +29,11 @@ export function positionToGridRow(p: Price): GridRow {
 export function gridRowToUpdate(r: GridRow): UpdatePrice {
 	return {
 		code: r.code || '',
-		current_name: r.current_name || undefined,
-		new_name: r.new_name,
+		currentName: r.currentName || undefined,
+		newName: r.newName,
 		price: r.price,
 		template: r.template,
 		note: r.note,
-		need_sibur_approval: r.need_sibur_approval,
+		needSiburApproval: r.needSiburApproval,
 	}
 }

@@ -1,11 +1,12 @@
 import { toast } from 'react-toastify'
 
-import type { IBaseFetchError } from '@/app/types/error'
+import type { IBaseFetchError, IFetchError } from '@/app/types/error'
 import type { IFlatOrder, IGetFlatOrders, IOrder, IOrderCreate, IOrderUpdate } from './types/order'
 import type { IFilter } from './types/params'
 import { API } from '@/app/api'
 import { apiSlice } from '@/app/apiSlice'
 import { wsService } from '@/app/services/socket'
+import { saveAs } from '@/utils/saveAs'
 import { buildFilterUrlParams } from './utils/buildFilters'
 
 export const orderApiSlice = apiSlice.injectEndpoints({
@@ -194,6 +195,40 @@ export const orderApiSlice = apiSlice.injectEndpoints({
 			}),
 			invalidatesTags: ['Orders'],
 		}),
+		deleteOrder: builder.mutation<null, string>({
+			query: id => ({
+				url: `${API.orders.base}/${id}`,
+				method: 'DELETE',
+			}),
+			invalidatesTags: ['Orders'],
+		}),
+
+		exportOrder: builder.mutation<null, string>({
+			queryFn: async (id, _api, _options, baseQuery) => {
+				const filename = `Заказ ${id}.xlsx`
+				const result = await baseQuery({
+					url: API.orders.export,
+					method: 'POST',
+					cache: 'no-cache',
+					body: { id },
+					responseHandler: async response => {
+						if (!response.ok) return response.json()
+						return response.blob()
+					},
+				})
+				if (result.error) {
+					const fetchError = result.error as IFetchError
+					if (fetchError.status !== 401) {
+						toast.error(fetchError.data.message, { autoClose: false })
+					}
+					return { data: null }
+				}
+				if (result.data instanceof Blob) {
+					saveAs(result.data, filename)
+				}
+				return { data: null }
+			},
+		}),
 	}),
 })
 
@@ -208,4 +243,6 @@ export const {
 	useLazyGetFlatOrderQuery,
 	useCreateOrderMutation,
 	useUpdateOrderMutation,
+	useDeleteOrderMutation,
+	useExportOrderMutation,
 } = orderApiSlice

@@ -22,5 +22,5 @@ export interface IPositionUpdate {
 	name: string | null
 	quantity: number | null
 	notes: string | null
-	status: 'CREATED' | 'UPDATED' | 'DELETED'
+	status?: 'CREATED' | 'UPDATED' | 'DELETED'
 }

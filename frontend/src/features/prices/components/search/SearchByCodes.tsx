@@ -7,7 +7,8 @@ import { CodesInput } from './CodesInput'
 import { ListIcon } from '@/components/Icons/ListIcon'
 import { DocSearchIcon } from '@/components/Icons/DocSearchIcon'
 import { RefreshIcon } from '@/components/Icons/RefreshIcon'
-import { cardSx, buttonSx } from './searchStyles'
+import { buttonSx } from '../buttonStyles'
+import { cardSx } from './searchStyles'
 
 type Props = SearchHandlers & {
 	isLoading: boolean

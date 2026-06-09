@@ -14,6 +14,7 @@ export const API = {
 		byYear: (year: string) => `orders/by-year/${year}` as const,
 		unique: (field: string) => `orders/unique/${field}` as const,
 		flat: `orders/flat` as const,
+		export: `/orders/export` as const,
 	},
 	users: {
 		base: '/users' as const,
@@ -33,6 +34,7 @@ export const API = {
 	audit: '/audit' as const,
 	statistics: {
 		search: '/statistics/search' as const,
+		priceSearch: '/prices/statistics/search/' as const,
 		activity: '/statistics/activity' as const,
 		logins: '/statistics/logins' as const,
 	},

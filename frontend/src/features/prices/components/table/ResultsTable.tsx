@@ -1,9 +1,10 @@
 import { type FC, useCallback, useMemo, useState, useEffect } from 'react'
 import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Alert, Box, Stack, Typography } from '@mui/material'
 
-import type { Price } from '@/features/prices/types/types'
+import type { Price } from '@/features/prices/types'
 import { COLUMNS, STORAGE_KEY, COLUMN_KEYS, createCellRenderers, highlight } from './cells'
 import { ResultsTableToolbar } from './ResultsTableToolbar'
+import { isApiError } from '../../utils/error'
 import { PaginationBar } from './PaginationBar'
 import { useCheckPermission } from '@/features/user/hooks/check'
 import { PermRules } from '@/features/access/constants/permissions'
@@ -13,6 +14,7 @@ type TableRow = { kind: 'data'; position: Price } | { kind: 'not-found'; code: s
 export type ResultsTableProps = {
 	results: Price[]
 	queries: string[]
+	fields?: string[]
 	isLoading: boolean
 	error: unknown
 	hasFilters: boolean
@@ -29,6 +31,7 @@ export type ResultsTableProps = {
 export const ResultsTable: FC<ResultsTableProps> = ({
 	results,
 	queries,
+	fields,
 	isLoading,
 	error,
 	hasFilters,
@@ -67,7 +70,11 @@ export const ResultsTable: FC<ResultsTableProps> = ({
 		}
 	}, [visibleColumns])
 
-	const matchedFields = useMemo(() => (results.length > 0 ? (results[0].matched_fields ?? []) : []), [results])
+	const matchedFields = useMemo(() => {
+		const set = new Set<string>()
+		for (const r of results) r.matchedFields?.forEach(f => set.add(f))
+		return [...set]
+	}, [results])
 
 	const renderCell = useCallback(
 		(value: string | null, field: string) => {
@@ -104,18 +111,12 @@ export const ResultsTable: FC<ResultsTableProps> = ({
 
 	const cellRenderers = useMemo(() => createCellRenderers(renderCell), [renderCell])
 
-	const handleToggleColumn = (key: string) => {
+	const handleToggleColumn = useCallback((key: string) => {
 		setVisibleColumns(prev => (prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]))
-	}
+	}, [])
 
 	if (error) {
-		return (
-			<Alert severity='error'>
-				{'data' in (error as object)
-					? (error as { data?: { message?: string } }).data?.message || 'Ошибка поиска'
-					: 'Ошибка поиска'}
-			</Alert>
-		)
+		return <Alert severity='error'>{isApiError(error) ? error.data.message : 'Ошибка поиска'}</Alert>
 	}
 
 	return (
@@ -139,7 +140,7 @@ export const ResultsTable: FC<ResultsTableProps> = ({
 				results={results}
 				mode={mode}
 				totalCount={totalCount}
-				lastParams={{ codes }}
+				lastParams={{ queries, codes, fields }}
 				visibleColumns={visibleColumns}
 				onToggleColumn={handleToggleColumn}
 				canEdit={canEdit}

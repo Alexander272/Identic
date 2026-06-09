@@ -2,6 +2,7 @@ import { useMemo, useState, type FC } from 'react'
 import {
 	Box,
 	Button,
+	CircularProgress,
 	Stack,
 	Table,
 	TableBody,
@@ -18,13 +19,14 @@ import dayjs from 'dayjs'
 
 import type { IFilter } from '../../types/filter'
 import { AppRoutes } from '@/pages/router/routes'
-import { useGetOrderByIdQuery } from '../../orderApiSlice'
+import { useGetOrderByIdQuery, useExportOrderMutation } from '../../orderApiSlice'
 import { numberFormat } from '@/utils/format'
 import { BoxFallback } from '@/components/Fallback/BoxFallback'
 import { ModifyIcon } from '@/components/Icons/ModifyIcon'
 import { Filter } from './FlatFilters'
 import { Header } from './Header'
 import { OrderChip } from '../Orders/OrderChip'
+import { DownloadIcon } from '@/components/Icons/DownloadIcon'
 
 type Props = {
 	id: string
@@ -41,6 +43,7 @@ export const Order: FC<Props> = ({ id, searchId }) => {
 	})
 
 	const { data, isFetching } = useGetOrderByIdQuery({ id, searchId }, { skip: !id })
+	const [exportOrder, { isLoading: isExporting }] = useExportOrderMutation()
 
 	const updateFilter = (name: string, value: unknown) => {
 		setFilters(prev => ({
@@ -55,6 +58,10 @@ export const Order: FC<Props> = ({ id, searchId }) => {
 
 		// navigate(`/orders/edit/${id}`)
 		navigate(AppRoutes.EditOrder.replace(':id', id))
+	}
+
+	const exportHandler = () => {
+		exportOrder(id)
 	}
 
 	const filteredPositions = useMemo(() => {
@@ -116,49 +123,29 @@ export const Order: FC<Props> = ({ id, searchId }) => {
 						<ModifyIcon sx={{ fontSize: 18 }} />
 					</Button>
 				</Tooltip>
+
+				<Tooltip title='Скачать'>
+					<Button
+						onClick={exportHandler}
+						disabled={isExporting}
+						sx={{
+							minWidth: 48,
+							textTransform: 'inherit',
+							borderRadius: '12px',
+							padding: '4px 10px',
+							':hover': { svg: { fill: palette.primary.main }, color: palette.primary.main },
+						}}
+					>
+						{isExporting ? <CircularProgress size={18} /> : <DownloadIcon sx={{ fontSize: 22 }} />}
+					</Button>
+				</Tooltip>
 			</Stack>
 
 			<Stack mb={2} pr={2}>
-				{/* <Table size='small'>
-					<TableHead>
-						<TableRow>
-							<TableCell width={'20%'} align='center'>
-								Заказчик
-							</TableCell>
-							<TableCell width={'20%'} align='center'>
-								Конечник
-							</TableCell>
-							<TableCell width={'20%'} align='center'>
-								Менеджер / помощник
-							</TableCell>
-							<TableCell width={'20%'} align='center'>
-								Счет в 1С
-							</TableCell>
-							<TableCell width={'20%'} align='center'>
-								Примечание
-							</TableCell>
-						</TableRow>
-					</TableHead>
-
-					<TableBody>
-						<TableRow>
-							<TableCell align='center'>{data?.data.customer}</TableCell>
-							<TableCell align='center'>{data?.data.consumer}</TableCell>
-							<TableCell align='center'>{data?.data.manager}</TableCell>
-							<TableCell align='center'>{data?.data.bill}</TableCell>
-							<TableCell align='center'>{data?.data.notes}</TableCell>
-						</TableRow>
-					</TableBody>
-				</Table> */}
-
 				{data?.data && <Header order={data?.data} />}
 			</Stack>
 
 			<Stack direction={'row'} spacing={2} justifyContent={'center'} alignItems={'center'} mb={2} mt={1}>
-				{/* <Typography component='h5' fontSize={'1.2rem'}>
-					Позиции
-				</Typography> */}
-
 				<Filter filters={filters} onChange={updateFilter} showFound={data?.data.posWereFound} />
 			</Stack>
 

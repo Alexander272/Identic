@@ -7,11 +7,11 @@ import { useForm, FormProvider } from 'react-hook-form'
 import { SearchByText } from './SearchByText'
 import { SearchByCodes } from './SearchByCodes'
 
-export const DEFAULT_SEARCH_FIELDS = ['current_name', 'new_name', 'template']
+export const DEFAULT_SEARCH_FIELDS = ['currentName', 'newName', 'template']
 
 export const SEARCH_FIELD_OPTIONS = [
-	{ value: 'current_name', label: 'Наименование СИБУР' },
-	{ value: 'new_name', label: 'Наименование СИЛУР' },
+	{ value: 'currentName', label: 'Наименование СИБУР' },
+	{ value: 'newName', label: 'Наименование СИЛУР' },
 	{ value: 'template', label: 'Шаблон' },
 	{ value: 'price', label: 'Цена' },
 ] as const
@@ -51,7 +51,7 @@ export const SearchModes: FC<SearchModesProps> = ({ onSearch, isLoading, onReset
 			.filter(Boolean)
 		if (!queries.length) return
 		const selected = formData.searchFields
-		const fields = selected.length > 0 && selected.length < SEARCH_FIELD_OPTIONS.length ? selected : undefined
+		const fields = selected.length > 0 ? selected : undefined
 		onSearch({ queries, fields })
 	})
 

@@ -1,23 +1,13 @@
 import { type FC, useCallback, useState } from 'react'
-import { Button, ButtonGroup, Menu, MenuItem, Typography, CircularProgress, type Theme } from '@mui/material'
+import { Button, ButtonGroup, Menu, MenuItem, Typography, CircularProgress } from '@mui/material'
 
 import { useExportPricesMutation } from '@/features/prices/priceApiSlice'
 import { LeftArrowIcon } from '@/components/Icons/LeftArrowIcon'
 import { ExcelIcon } from '@/components/Icons/ExcelIcon'
-
-const buttonSx = ({ palette }: Theme) => ({
-	minWidth: 48,
-	textTransform: 'inherit',
-	background: '#fff',
-	border: '1px solid #c3c3c4',
-	borderRadius: '6px',
-	padding: '4px 10px',
-	':hover': { svg: { fill: palette.primary.main }, color: palette.primary.main },
-	'&:disabled': { svg: { fill: palette.action.disabled } },
-})
+import { buttonSx } from '../buttonStyles'
 
 type ExportButtonProps = {
-	lastParams: { queries?: string[]; codes?: string[] }
+	lastParams: { queries?: string[]; codes?: string[]; fields?: string[] }
 	visibleColumns: string[]
 	allColumnKeys: string[]
 }
@@ -41,7 +31,7 @@ export const ExportButton: FC<ExportButtonProps> = ({ lastParams, visibleColumns
 			<ButtonGroup size='small' color='inherit'>
 				<Button
 					variant='outlined'
-					onClick={() => handleExport(visibleColumns)}
+					onClick={() => handleExport(allColumnKeys)}
 					disabled={isExporting}
 					sx={buttonSx}
 				>
@@ -64,11 +54,11 @@ export const ExportButton: FC<ExportButtonProps> = ({ lastParams, visibleColumns
 				<MenuItem
 					dense
 					onClick={() => {
-						handleExport(allColumnKeys)
+						handleExport(visibleColumns)
 						setAnchorEl(null)
 					}}
 				>
-					Экспортировать все колонки
+					Экспортировать видимое
 				</MenuItem>
 			</Menu>
 		</>

@@ -12,24 +12,24 @@ import type { GridRow } from '../utils/grid'
 const defaultRow = (): GridRow => ({
 	id: '',
 	code: '',
-	current_name: '',
-	new_name: null,
+	currentName: '',
+	newName: null,
 	price: null,
 	template: null,
 	note: null,
-	need_sibur_approval: null,
+	needSiburApproval: null,
 	status: 'CREATED',
 })
 
 const columns: Column<GridRow>[] = [
 	{ ...keyColumn<GridRow, 'code'>('code', textColumn), title: 'Код', width: 0.5 },
-	{ ...keyColumn<GridRow, 'current_name'>('current_name', textColumn), title: 'Наименование', width: 1.5 },
-	{ ...keyColumn<GridRow, 'new_name'>('new_name', textColumn), title: 'Новое наименование', width: 1.5 },
+	{ ...keyColumn<GridRow, 'currentName'>('currentName', textColumn), title: 'Наименование', width: 1.5 },
+	{ ...keyColumn<GridRow, 'newName'>('newName', textColumn), title: 'Новое наименование', width: 1.5 },
 	{ ...keyColumn<GridRow, 'price'>('price', floatColumn), title: 'Цена', width: 0.5 },
 	{ ...keyColumn<GridRow, 'template'>('template', textColumn), title: 'Шаблон', width: 1 },
 	{ ...keyColumn<GridRow, 'note'>('note', textColumn), title: 'Примечание', width: 1 },
 	{
-		...keyColumn<GridRow, 'need_sibur_approval'>('need_sibur_approval', textColumn),
+		...keyColumn<GridRow, 'needSiburApproval'>('needSiburApproval', textColumn),
 		title: 'Требуется доп.согл. с СИБУР',
 		width: 1,
 	},
@@ -48,39 +48,52 @@ export const EditPositionsGrid: FC<Props> = ({ rows, onRowsChange, onSave, isSav
 	const { palette } = useTheme()
 
 	const changeHandler = (newRows: GridRow[], operations: Operation[]) => {
-		const updated = [...newRows]
+		// DELETE indices refer to positions in `rows` (old value),
+		// because the grid removes rows before calling onChange.
+		// CREATE and UPDATE indices refer to positions in `newRows`.
+		const rowsToDelete = new Set<number>()
 
 		for (const op of operations) {
-			if (op.type === 'DELETE') {
-				for (let i = op.fromRowIndex; i < op.toRowIndex; i++) {
-					const row = updated[i]
-					if (row && row.status === 'CREATED') {
-						updated.splice(i, 1)
-						i--
-						op.toRowIndex--
-					} else if (row) {
-						row.status = 'DELETED'
-					}
-				}
-			}
-			if (op.type === 'UPDATE') {
-				for (let i = op.fromRowIndex; i < op.toRowIndex; i++) {
-					const row = updated[i]
-					if (row && row.status === 'ORIGINAL') {
-						row.status = 'UPDATED'
-					}
-				}
-			}
-			if (op.type === 'CREATE') {
-				for (let i = op.fromRowIndex; i < op.toRowIndex; i++) {
-					if (updated[i]) {
-						updated[i].status = 'CREATED'
-					}
-				}
+			if (op.type !== 'DELETE') continue
+			for (let i = op.fromRowIndex; i < op.toRowIndex; i++)
+				rowsToDelete.add(i)
+		}
+
+		// Step 1: Apply deletions to old rows
+		const result: GridRow[] = []
+		for (let i = 0; i < rows.length; i++) {
+			if (rowsToDelete.has(i)) {
+				if (rows[i].status !== 'CREATED')
+					result.push({ ...rows[i], status: 'DELETED' })
+			} else {
+				result.push({ ...rows[i] })
 			}
 		}
 
-		onRowsChange(updated)
+		// Step 2: Mark ORIGINAL rows as UPDATED
+		for (const op of operations) {
+			if (op.type !== 'UPDATE') continue
+			for (let i = op.fromRowIndex; i < op.toRowIndex; i++) {
+				const newRow = newRows[i]
+				if (!newRow?.id) continue
+				const pos = result.findIndex(r => r.id === newRow.id)
+				if (pos !== -1 && result[pos].status === 'ORIGINAL')
+					result[pos] = { ...result[pos], status: 'UPDATED' }
+			}
+		}
+
+		// Step 3: Add genuinely new rows (not in old `rows`)
+		for (const op of operations) {
+			if (op.type !== 'CREATE') continue
+			for (let i = op.fromRowIndex; i < op.toRowIndex; i++) {
+				const newRow = newRows[i]
+				if (!newRow) continue
+				if (!newRow.id || !result.some(r => r.id === newRow.id))
+					result.push({ ...newRow, status: 'CREATED' })
+			}
+		}
+
+		onRowsChange(result)
 	}
 
 	const addClasses = ({ rowData }: { rowData: GridRow }) => {
