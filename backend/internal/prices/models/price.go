@@ -8,15 +8,15 @@ import (
 )
 
 type Price struct {
-	ID               uuid.UUID `json:"id"`
-	Code             string    `json:"code"`
-	CurrentName      string    `json:"current_name"`
-	NewName          string    `json:"new_name"`
-	Price            float64   `json:"price"`
-	Template         string    `json:"template"`
-	Note             string    `json:"note"`
-	NeedSiburApproval string   `json:"need_sibur_approval"`
-	MatchedFields    []string  `json:"matched_fields,omitempty"`
+	ID                uuid.UUID `json:"id"`
+	Code              string    `json:"code"`
+	CurrentName       string    `json:"currentName"`
+	NewName           string    `json:"newName"`
+	Price             float64   `json:"price"`
+	Template          string    `json:"template"`
+	Note              string    `json:"note"`
+	NeedSiburApproval string    `json:"needSiburApproval"`
+	MatchedFields     []string  `json:"matchedFields,omitempty"`
 
 	CurrentNameNorm string `json:"-"`
 	NewNameNorm     string `json:"-"`
@@ -38,22 +38,23 @@ type SearchPriceRequest struct {
 type ExportPriceRequest struct {
 	Queries []string `form:"query" json:"queries"`
 	Codes   []string `json:"codes"`
+	Fields  []string `json:"fields"`
 	Columns []string `json:"columns"`
 }
 
 type UpdatePrice struct {
 	Code              string  `json:"code" binding:"required"`
-	CurrentName       string  `json:"current_name"`
-	NewName           string  `json:"new_name"`
+	CurrentName       string  `json:"currentName"`
+	NewName           string  `json:"newName"`
 	Price             float64 `json:"price"`
 	Template          string  `json:"template"`
 	Note              string  `json:"note"`
-	NeedSiburApproval string  `json:"need_sibur_approval"`
+	NeedSiburApproval string  `json:"needSiburApproval"`
 }
 
 type BatchSavePricesRequest struct {
 	Prices      []*UpdatePrice `json:"prices" binding:"required"`
-	DeleteCodes []string       `json:"delete_codes"`
+	DeleteCodes []string       `json:"deleteCodes"`
 }
 
 func CleanAndValidateAtLeastOne(sl validator.StructLevel) {

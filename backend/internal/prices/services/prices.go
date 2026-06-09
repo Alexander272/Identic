@@ -88,14 +88,14 @@ func (s *PricesService) Search(ctx context.Context, req *models.SearchPriceReque
 	}
 
 	if s.searchLog != nil {
-		s.searchLog.LogAsync(codes, req.Queries, req.ActorID, req.ActorName, time.Since(start), total)
+		s.searchLog.LogAsync(codes, req.Queries, req.Fields, req.ActorID, req.ActorName, time.Since(start), total)
 	}
 
 	return prices, total, nil
 }
 
 func (s *PricesService) SearchAll(ctx context.Context, req *models.SearchPriceRequest) ([]*models.Price, error) {
-	prices, err := s.repo.SearchAll(ctx, req.Queries, req.Codes)
+	prices, err := s.repo.SearchAll(ctx, req.Queries, req.Codes, req.Fields)
 	if err != nil {
 		return nil, fmt.Errorf("failed to search all prices. error: %w", err)
 	}
@@ -184,10 +184,10 @@ func computeMatchedFields(p *models.Price, queries []string) []string {
 	fieldsMap := make(map[string]struct{})
 	for _, query := range queries {
 		if strings.Contains(normalizeQuery(p.CurrentName), query) {
-			fieldsMap["current_name"] = struct{}{}
+			fieldsMap["currentName"] = struct{}{}
 		}
 		if strings.Contains(normalizeQuery(p.NewName), query) {
-			fieldsMap["new_name"] = struct{}{}
+			fieldsMap["newName"] = struct{}{}
 		}
 		if strings.Contains(normalizeQuery(p.Template), query) {
 			fieldsMap["template"] = struct{}{}

@@ -64,7 +64,7 @@ var (
 	ErrSessionExpired   = NewDomainError(errors.New("session expired"), http.StatusUnauthorized, "AU004", "Время сессии истекло, повторите вход")
 
 	// 422 Unprocessable Entity
-	ErrInvalidToken = NewDomainError(errors.New("invalid token"), http.StatusUnprocessableEntity, "UE001", "Токен невалиден")
+	ErrInvalidToken = NewDomainError(errors.New("invalid token"), http.StatusUnauthorized, "UE001", "Токен невалиден")
 
 	// 500 & 504
 	ErrInternal         = NewDomainError(errors.New("internal server error"), http.StatusInternalServerError, "SRV01", "Внутренняя ошибка сервера")

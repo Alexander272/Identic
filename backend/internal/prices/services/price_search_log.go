@@ -16,7 +16,7 @@ import (
 type PriceSearchLogs interface {
 	Get(ctx context.Context, dto *models.GetPriceSearchLogsDTO) ([]*models.PriceSearchLog, error)
 	Create(ctx context.Context, dto *models.CreatePriceSearchLogDTO) error
-	LogAsync(codes, queries []string, actorID uuid.UUID, actorName string, duration time.Duration, resultsCount int)
+	LogAsync(codes, queries, fields []string, actorID uuid.UUID, actorName string, duration time.Duration, resultsCount int)
 }
 
 type PriceSearchLogService struct {
@@ -42,10 +42,11 @@ func (s *PriceSearchLogService) Get(ctx context.Context, dto *models.GetPriceSea
 	return data, nil
 }
 
-func (s *PriceSearchLogService) LogAsync(codes, queries []string, actorID uuid.UUID, actorName string, duration time.Duration, resultsCount int) {
+func (s *PriceSearchLogService) LogAsync(codes, queries, fields []string, actorID uuid.UUID, actorName string, duration time.Duration, resultsCount int) {
 	dto := &models.CreatePriceSearchLogDTO{
 		Queries:      queries,
 		Codes:        codes,
+		Fields:       fields,
 		ActorID:      actorID,
 		ActorName:    actorName,
 		DurationMs:   duration.Milliseconds(),

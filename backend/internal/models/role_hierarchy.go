@@ -9,8 +9,8 @@ type RoleHierarchy struct {
 
 type RoleWithHierarchy struct {
 	Role
-	InheritsFrom []*RoleHierarchy `json:"inherits_from"` // от кого наследуем
-	InheritedBy  []*RoleHierarchy `json:"inherited_by"`  // кто наследует от нас
+	InheritsFrom []*RoleHierarchy `json:"inheritsFrom"` // от кого наследуем
+	InheritedBy  []*RoleHierarchy `json:"inheritedBy"`  // кто наследует от нас
 }
 
 type RoleHierarchyDTO struct {

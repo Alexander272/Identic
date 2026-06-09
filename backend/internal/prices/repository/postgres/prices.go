@@ -24,7 +24,7 @@ func NewPricesRepo(db *pgxpool.Pool) *PricesRepo {
 type Prices interface {
 	GetAll(ctx context.Context, page, perPage int) ([]*models.Price, int, error)
 	Search(ctx context.Context, queries, codes, fields []string, page, perPage int) ([]*models.Price, int, error)
-	SearchAll(ctx context.Context, queries []string, codes []string) ([]*models.Price, error)
+	SearchAll(ctx context.Context, queries []string, codes []string, fields []string) ([]*models.Price, error)
 	CreateSeveral(ctx context.Context, tx postgres.Tx, dto []*models.Price) error
 	UpsertSeveral(ctx context.Context, tx postgres.Tx, dto []*models.Price) error
 	DeleteSeveral(ctx context.Context, tx postgres.Tx, codes []string) error
@@ -68,12 +68,12 @@ type fieldMapping struct {
 }
 
 var allowedFields = map[string]fieldMapping{
-	"current_name":        {"current_name_norm", false},
-	"new_name":            {"new_name_norm", false},
-	"template":            {"template_norm", false},
-	"price":               {"price", true},
-	"note":                {"note", false},
-	"need_sibur_approval": {"need_sibur_approval", false},
+	"currentName":       {"current_name_norm", false},
+	"newName":           {"new_name_norm", false},
+	"template":          {"template_norm", false},
+	"price":             {"price", true},
+	"note":              {"note", false},
+	"needSiburApproval": {"need_sibur_approval", false},
 }
 
 func (r *PricesRepo) Search(ctx context.Context, queries, codes, fields []string, page, perPage int) ([]*models.Price, int, error) {
@@ -203,7 +203,7 @@ func (r *PricesRepo) Search(ctx context.Context, queries, codes, fields []string
 	return positions, total, nil
 }
 
-func (r *PricesRepo) SearchAll(ctx context.Context, queries []string, codes []string) ([]*models.Price, error) {
+func (r *PricesRepo) SearchAll(ctx context.Context, queries []string, codes []string, fields []string) ([]*models.Price, error) {
 	columns := "prices.id, prices.code, prices.current_name, prices.new_name, prices.price, prices.template, prices.note, prices.need_sibur_approval"
 
 	var conditions []string
@@ -212,24 +212,46 @@ func (r *PricesRepo) SearchAll(ctx context.Context, queries []string, codes []st
 	var firstQueryIdx int
 	if len(queries) > 0 {
 		firstQueryIdx = len(args) + 1
-		queryConds := make([]string, len(queries))
-		for i, q := range queries {
-			queryConds[i] = fmt.Sprintf("search_text ILIKE '%%' || $%d || '%%'", i+1)
-			args = append(args, q)
+
+		if len(fields) > 0 {
+			fieldMappers := make([]fieldMapping, 0, len(fields))
+			for _, f := range fields {
+				if fm, ok := allowedFields[f]; ok {
+					fieldMappers = append(fieldMappers, fm)
+				}
+			}
+			if len(fieldMappers) == 0 {
+				fieldMappers = []fieldMapping{{column: "search_text", exact: false}}
+			}
+
+			queryConds := make([]string, len(queries))
+			for i, q := range queries {
+				fieldConds := make([]string, len(fieldMappers))
+				for j, fm := range fieldMappers {
+					if fm.exact {
+						if _, err := strconv.ParseFloat(q, 64); err == nil {
+							fieldConds[j] = fmt.Sprintf("%s = $%d::numeric", fm.column, i+1)
+						} else {
+							fieldConds[j] = "false"
+						}
+					} else {
+						fieldConds[j] = fmt.Sprintf("%s ILIKE '%%' || $%d || '%%'", fm.column, i+1)
+					}
+				}
+				queryConds[i] = "(" + strings.Join(fieldConds, " OR ") + ")"
+				args = append(args, q)
+			}
+			conditions = append(conditions, strings.Join(queryConds, " AND "))
+		} else {
+			queryConds := make([]string, len(queries))
+			for i, q := range queries {
+				queryConds[i] = fmt.Sprintf("search_text ILIKE '%%' || $%d || '%%'", i+1)
+				args = append(args, q)
+			}
+			conditions = append(conditions, strings.Join(queryConds, " AND "))
 		}
-		conditions = append(conditions, strings.Join(queryConds, " AND "))
 	}
 
-	// Старый вариант: code::text = ANY($N) + array_position — НЕ поддерживал дубликаты кодов и их порядок в запросе
-	// var codesParamIdx int
-	// if len(codes) > 0 {
-	// 	codesParamIdx = len(args) + 1
-	// 	conditions = append(conditions, fmt.Sprintf("code::text = ANY($%d::text[])", codesParamIdx))
-	// 	args = append(args, codes)
-	// }
-
-	// JOIN UNNEST(...) WITH ORDINALITY — для каждого элемента массива создаётся строка,
-	// дубликаты сохраняются, c.ord даёт порядок из запроса.
 	var fromClause string
 	if len(codes) > 0 {
 		codesParamIdx := len(args) + 1
@@ -242,19 +264,11 @@ func (r *PricesRepo) SearchAll(ctx context.Context, queries []string, codes []st
 
 	where := strings.Join(conditions, " AND ")
 
-	// var orderConds []string
-	// if len(queries) == 1 {
-	// 	orderConds = append(orderConds, fmt.Sprintf("similarity(search_text, $%d) DESC", firstQueryIdx))
-	// }
-	// if len(codes) > 0 {
-	// 	orderConds = append(orderConds, fmt.Sprintf("array_position($%d::text[], code::text)", codesParamIdx))
-	// }
-
 	var orderConds []string
 	if len(codes) > 0 {
 		orderConds = append(orderConds, "c.ord")
 	}
-	if len(queries) == 1 {
+	if len(fields) == 0 && len(queries) == 1 {
 		orderConds = append(orderConds, fmt.Sprintf("similarity(search_text, $%d) DESC", firstQueryIdx))
 	}
 

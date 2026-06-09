@@ -1,6 +1,7 @@
 package services
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 
@@ -9,6 +10,7 @@ import (
 	"github.com/Alexander272/Identic/backend/internal/repository/postgres"
 	"github.com/Alexander272/Identic/backend/pkg/logger"
 	"github.com/google/uuid"
+	"github.com/xuri/excelize/v2"
 )
 
 type OrdersService struct {
@@ -36,9 +38,11 @@ type Orders interface {
 	GetByYear(ctx context.Context, req *models.GetOrderByYearDTO) ([]*models.Order, error)
 	GetUniqueData(ctx context.Context, req *models.GetUniqueDTO) ([]string, error)
 	GetFlatData(ctx context.Context, req *models.GetFlatOrderDTO) (*models.FlatOrderRes, error)
+	ExportOrderXLSX(ctx context.Context, req *models.ExportOrderRequest) ([]byte, error)
 	Create(ctx context.Context, dto *models.OrderDTO) (string, error)
 	CreateSeveral(ctx context.Context, tx postgres.Tx, dto []*models.OrderDTO) error
 	Update(ctx context.Context, dto *models.OrderDTO) error
+	Delete(ctx context.Context, dto *models.DeleteOrderDTO) error
 }
 
 func (s *OrdersService) Get(ctx context.Context, req *models.OrderFilterDTO) ([]*models.Order, error) {
@@ -135,6 +139,169 @@ func (s *OrdersService) GetFlatData(ctx context.Context, req *models.GetFlatOrde
 		return nil, fmt.Errorf("failed to get flat data. error: %w", err)
 	}
 	return data, nil
+}
+
+func (s *OrdersService) ExportOrderXLSX(ctx context.Context, req *models.ExportOrderRequest) ([]byte, error) {
+	order, err := s.repo.GetById(ctx, nil, &models.GetOrderByIdDTO{Id: req.Id})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get order for export: %w", err)
+	}
+
+	positions, err := s.positions.GetByOrder(ctx, nil, &models.GetPositionsByOrderIdDTO{OrderId: req.Id})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get positions for export: %w", err)
+	}
+	order.Positions = positions
+
+	return buildOrderXLSX(order)
+}
+
+type orderInfoField struct {
+	Label string
+	Value func(o *models.Order) interface{}
+}
+
+var orderInfoFields = []orderInfoField{
+	{Label: "Конечник", Value: func(o *models.Order) interface{} { return o.Consumer }},
+	{Label: "Заказчик / Перекуп", Value: func(o *models.Order) interface{} { return o.Customer }},
+	{Label: "Менеджер / помощник	", Value: func(o *models.Order) interface{} { return o.Manager }},
+	{Label: "Счет в 1С", Value: func(o *models.Order) interface{} { return o.Bill }},
+	{Label: "Дата", Value: func(o *models.Order) interface{} { return o.Date.Format("02.01.2006") }},
+	{Label: "Тендер", Value: func(o *models.Order) interface{} {
+		if o.IsBargaining {
+			return "Да"
+		}
+		return "Нет"
+	}},
+	{Label: "Бюджет", Value: func(o *models.Order) interface{} {
+		if o.IsBudget {
+			return "Да"
+		}
+		return "Нет"
+	}},
+	{Label: "Примечание", Value: func(o *models.Order) interface{} { return o.Notes }},
+}
+
+func buildOrderXLSX(order *models.Order) ([]byte, error) {
+	f := excelize.NewFile()
+	defer f.Close()
+
+	sheet := "Позиции"
+	if err := f.SetSheetName("Sheet1", sheet); err != nil {
+		return nil, fmt.Errorf("failed to set sheet name: %w", err)
+	}
+
+	baseStyle := &excelize.Style{
+		Font: &excelize.Font{Size: 9, Family: "Arial"},
+		Border: []excelize.Border{
+			{Type: "left", Style: 1, Color: "000000"},
+			{Type: "right", Style: 1, Color: "000000"},
+			{Type: "top", Style: 1, Color: "000000"},
+			{Type: "bottom", Style: 1, Color: "000000"},
+		},
+	}
+
+	borderStyle, err := f.NewStyle(baseStyle)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create border style: %w", err)
+	}
+
+	headerStyle, err := f.NewStyle(&excelize.Style{
+		Font:   &excelize.Font{Size: 9, Bold: true, Family: "Arial"},
+		Border: baseStyle.Border,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create header style: %w", err)
+	}
+
+	labelStyle, err := f.NewStyle(&excelize.Style{
+		Font:   &excelize.Font{Size: 9, Bold: true, Family: "Arial"},
+		Border: baseStyle.Border,
+		Fill:   excelize.Fill{Type: "pattern", Pattern: 1, Color: []string{"F2F2F2"}},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create label style: %w", err)
+	}
+
+	centerStyle, err := f.NewStyle(&excelize.Style{
+		Font:      &excelize.Font{Size: 9, Family: "Arial"},
+		Alignment: &excelize.Alignment{Horizontal: "center"},
+		Border:    baseStyle.Border,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create center style: %w", err)
+	}
+
+	// Column widths
+	f.SetColWidth(sheet, "A", "A", 20) // Параметр / №
+	f.SetColWidth(sheet, "B", "B", 60) // Значение / Наименование
+	f.SetColWidth(sheet, "C", "C", 10) // Кол-во
+	f.SetColWidth(sheet, "D", "D", 30) // Примечание
+
+	infoRowCount := len(orderInfoFields)
+	headerLine := infoRowCount + 2
+	posStartLine := headerLine + 1
+
+	// Write order info (rows 1..N)
+	for i, field := range orderInfoFields {
+		row := i + 1
+
+		f.SetCellValue(sheet, fmt.Sprintf("A%d", row), field.Label)
+		f.SetCellValue(sheet, fmt.Sprintf("B%d", row), field.Value(order))
+	}
+
+	// Position headers (row N+2)
+	posHeaders := []string{"№", "Наименование", "Кол-во", "Примечание"}
+	for i, h := range posHeaders {
+		cell, _ := excelize.CoordinatesToCellName(i+1, headerLine)
+		f.SetCellValue(sheet, cell, h)
+	}
+
+	hCell, _ := excelize.CoordinatesToCellName(1, headerLine)
+	vCell, _ := excelize.CoordinatesToCellName(4, headerLine)
+	f.SetCellStyle(sheet, hCell, vCell, headerStyle)
+
+	// Write positions (rows N+3..)
+	for i, pos := range order.Positions {
+		row := posStartLine + i
+
+		f.SetCellValue(sheet, fmt.Sprintf("A%d", row), pos.RowNumber)
+		f.SetCellValue(sheet, fmt.Sprintf("B%d", row), pos.Name)
+		f.SetCellValue(sheet, fmt.Sprintf("C%d", row), pos.Quantity)
+		f.SetCellValue(sheet, fmt.Sprintf("D%d", row), pos.Notes)
+	}
+
+	// Base borders
+	if infoRowCount > 0 {
+		hCell, _ = excelize.CoordinatesToCellName(1, 1)
+		vCell, _ = excelize.CoordinatesToCellName(2, infoRowCount)
+		f.SetCellStyle(sheet, hCell, vCell, borderStyle)
+	}
+
+	posCount := len(order.Positions)
+	if posCount > 0 {
+		posEndLine := posStartLine + posCount - 1
+		hCell, _ = excelize.CoordinatesToCellName(1, posStartLine)
+		vCell, _ = excelize.CoordinatesToCellName(4, posEndLine)
+		f.SetCellStyle(sheet, hCell, vCell, borderStyle)
+	}
+
+	// Granular styles on top of borders
+	for i := range orderInfoFields {
+		row := i + 1
+		f.SetCellStyle(sheet, fmt.Sprintf("A%d", row), fmt.Sprintf("A%d", row), labelStyle)
+	}
+	for i := range order.Positions {
+		row := posStartLine + i
+		f.SetCellStyle(sheet, fmt.Sprintf("A%d", row), fmt.Sprintf("A%d", row), centerStyle)
+		f.SetCellStyle(sheet, fmt.Sprintf("C%d", row), fmt.Sprintf("C%d", row), centerStyle)
+	}
+
+	var buf bytes.Buffer
+	if err := f.Write(&buf); err != nil {
+		return nil, fmt.Errorf("failed to write xlsx: %w", err)
+	}
+	return buf.Bytes(), nil
 }
 
 func (s *OrdersService) IsExist(ctx context.Context, tx postgres.Tx, dto *models.OrderDTO) (bool, error) {
@@ -298,6 +465,41 @@ func (s *OrdersService) Update(ctx context.Context, dto *models.OrderDTO) error 
 		"order_id": dto.Id,
 		"actor":    dto.Actor,
 		"action":   "order_" + models.ActionUpdate,
+	})
+
+	return nil
+}
+
+func (s *OrdersService) Delete(ctx context.Context, dto *models.DeleteOrderDTO) error {
+	oldOrder := &models.Order{}
+
+	err := s.txManager.WithinTransaction(ctx, func(tx postgres.Tx) error {
+		var err error
+		oldOrder, err = s.GetById(ctx, tx, &models.GetOrderByIdDTO{Id: dto.Id})
+		if err != nil {
+			return fmt.Errorf("failed to get old order: %w", err)
+		}
+
+		if err := s.repo.Delete(ctx, tx, dto); err != nil {
+			return fmt.Errorf("failed to delete order. error: %w", err)
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	go s.activity.AsyncLog(context.Background(), func() error {
+		return s.txManager.WithinTransaction(context.Background(), func(tx postgres.Tx) error {
+			if err := s.activity.LogOrderDelete(context.Background(), dto.Actor, oldOrder); err != nil {
+				return fmt.Errorf("failed to log order delete: %w", err)
+			}
+			return nil
+		})
+	}, map[string]any{
+		"order_id": dto.Id,
+		"action":   "order_" + models.ActionDelete,
+		"actor":    dto.Actor,
 	})
 
 	return nil

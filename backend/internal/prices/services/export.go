@@ -29,7 +29,7 @@ func (s *ExportService) ExportXLSX(ctx context.Context, req models.ExportPriceRe
 		codes = []string{}
 	}
 
-	positions, err := s.repo.SearchAll(ctx, normalizedQueries, codes)
+	positions, err := s.repo.SearchAll(ctx, normalizedQueries, codes, req.Fields)
 	if err != nil {
 		return nil, fmt.Errorf("failed to search positions for export: %w", err)
 	}
@@ -69,13 +69,18 @@ type columnSpec struct {
 
 var allColumns = []columnSpec{
 	{Key: "code", Header: "КОД", Value: func(p *models.Price) interface{} { return p.Code }},
-	{Key: "current_name", Header: "Наименование СИБУР", Value: func(p *models.Price) interface{} { return p.CurrentName }},
-	{Key: "new_name", Header: "Наименование СИЛУР (для проверки спецификации)", Value: func(p *models.Price) interface{} { return p.NewName }},
-	{Key: "price", Header: "Цена, руб", Value: func(p *models.Price) interface{} { if p.NotFound { return "" }; return p.Price }},
+	{Key: "currentName", Header: "Наименование СИБУР", Value: func(p *models.Price) interface{} { return p.CurrentName }},
+	{Key: "newName", Header: "Наименование СИЛУР (для проверки спецификации)", Value: func(p *models.Price) interface{} { return p.NewName }},
+	{Key: "price", Header: "Цена, руб", Value: func(p *models.Price) interface{} {
+		if p.NotFound {
+			return ""
+		}
+		return p.Price
+	}},
 	{Key: "template", Header: "Шаблон", Value: func(p *models.Price) interface{} { return p.Template }},
 	{Key: "note", Header: "Примечание для СИЛУР", Value: func(p *models.Price) interface{} { return p.Note }},
-	{Key: "need_sibur_approval", Header: "Требуется доп.согл. с СИБУР", Value: func(p *models.Price) interface{} { return p.NeedSiburApproval }},
-	{Key: "code_new_name", Header: "Код / Наименование СИЛУР (для счета в ERP)", Value: func(p *models.Price) interface{} { return p.Code + " / " + p.NewName }},
+	{Key: "needSiburApproval", Header: "Требуется доп.согл. с СИБУР", Value: func(p *models.Price) interface{} { return p.NeedSiburApproval }},
+	{Key: "codeNewName", Header: "Код / Наименование СИЛУР (для счета в ERP)", Value: func(p *models.Price) interface{} { return p.Code + " / " + p.NewName }},
 }
 
 func buildXLSX(positions []*models.Price, cols []string) ([]byte, error) {
@@ -107,14 +112,14 @@ func buildXLSX(positions []*models.Price, cols []string) ([]byte, error) {
 	}
 
 	colWidths := map[string]float64{
-		"code":                12,
-		"current_name":        40,
-		"new_name":            40,
-		"price":               12,
-		"template":            20,
-		"note":                20,
-		"need_sibur_approval": 15,
-		"code_new_name":       40,
+		"code":              12,
+		"currentName":       40,
+		"newName":           40,
+		"price":             12,
+		"template":          20,
+		"note":              20,
+		"needSiburApproval": 15,
+		"codeNewName":       40,
 	}
 	for i, col := range columns {
 		if w, ok := colWidths[col.Key]; ok {
@@ -129,7 +134,7 @@ func buildXLSX(positions []*models.Price, cols []string) ([]byte, error) {
 	}
 
 	baseStyle := &excelize.Style{
-		Font: &excelize.Font{Size: 9},
+		Font: &excelize.Font{Size: 9, Family: "Arial"},
 		Border: []excelize.Border{
 			{Type: "left", Style: 1, Color: "000000"},
 			{Type: "right", Style: 1, Color: "000000"},
@@ -153,7 +158,7 @@ func buildXLSX(positions []*models.Price, cols []string) ([]byte, error) {
 	}
 
 	centerStyle, err := f.NewStyle(&excelize.Style{
-		Font:      &excelize.Font{Size: 9},
+		Font:      &excelize.Font{Size: 9, Family: "Arial"},
 		Alignment: &excelize.Alignment{Horizontal: "center"},
 		Border:    baseStyle.Border,
 	})
@@ -162,13 +167,21 @@ func buildXLSX(positions []*models.Price, cols []string) ([]byte, error) {
 	}
 
 	redCenterStyle, err := f.NewStyle(&excelize.Style{
-		Font:      &excelize.Font{Size: 9},
+		Font:      &excelize.Font{Size: 9, Family: "Arial"},
 		Fill:      excelize.Fill{Type: "pattern", Pattern: 1, Color: []string{"FFCCCC"}},
 		Alignment: &excelize.Alignment{Horizontal: "center"},
 		Border:    baseStyle.Border,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create red center style: %w", err)
+	}
+
+	headerStyle, err := f.NewStyle(&excelize.Style{
+		Font:   &excelize.Font{Size: 9, Bold: true, Family: "Arial"},
+		Border: baseStyle.Border,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create header style: %w", err)
 	}
 
 	for i, col := range columns {
@@ -250,6 +263,13 @@ func buildXLSX(positions []*models.Price, cols []string) ([]byte, error) {
 					f.SetCellStyle(sheet, cell, cell, redCenterStyle)
 				}
 			}
+		}
+		if len(columns) > 0 {
+			hCell, _ := excelize.CoordinatesToCellName(1, 1)
+			vCell, _ := excelize.CoordinatesToCellName(len(columns), 1)
+			f.SetCellStyle(sheet, hCell, vCell, headerStyle)
+
+			vCell, _ = excelize.CoordinatesToCellName(len(columns), len(positions)+1)
 		}
 	}
 

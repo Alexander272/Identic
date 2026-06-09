@@ -37,6 +37,7 @@ func Register(api *gin.RouterGroup, service services.Orders, middleware *middlew
 		orders.GET("/by-year/:year", handler.getByYear)
 		orders.GET("/unique/:field", handler.getUniqueData)
 		orders.GET("/flat", handler.getFlatData)
+		orders.POST("/export", handler.exportXLSX)
 
 		write := orders.Group("", middleware.CheckPermissions(access.Reg.R(access.ResourceOrder).Write()))
 		{
@@ -44,7 +45,10 @@ func Register(api *gin.RouterGroup, service services.Orders, middleware *middlew
 			write.PUT("/:id", handler.update)
 		}
 
-		// orders.DELETE("/:id", handler.delete)
+		delete := orders.Group("", middleware.CheckPermissions(access.Reg.R(access.ResourceOrder).Delete()))
+		{
+			delete.DELETE("/:id", handler.delete)
+		}
 	}
 }
 
@@ -223,6 +227,22 @@ func (h *Handler) getFlatData(c *gin.Context) {
 	response.SendData(c, data)
 }
 
+func (h *Handler) exportXLSX(c *gin.Context) {
+	var req models.ExportOrderRequest
+	if err := c.BindJSON(&req); err != nil {
+		response.SendError(c, err)
+		return
+	}
+
+	data, err := h.service.ExportOrderXLSX(c.Request.Context(), &req)
+	if err != nil {
+		response.SendError(c, err, req)
+		return
+	}
+
+	response.SendFile(c, data, "order-"+req.Id+".xlsx")
+}
+
 func (h *Handler) create(c *gin.Context) {
 	dto := &models.OrderDTO{}
 	if err := c.BindJSON(dto); err != nil {
@@ -283,4 +303,31 @@ func (h *Handler) update(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, &response.IdResponse{Id: dto.Id, Message: "Заказ успешно обновлен"})
+}
+
+func (h *Handler) delete(c *gin.Context) {
+	id := c.Param("id")
+	if err := uuid.Validate(id); err != nil {
+		response.SendError(c, fmt.Errorf("%w: %v", models.ErrInvalidInput, err))
+		return
+	}
+	req := &models.DeleteOrderDTO{Id: id}
+
+	u, exists := c.Get(constants.CtxUser)
+	if !exists {
+		response.SendError(c, models.ErrSessionEmpty)
+		return
+	}
+	user := u.(models.User)
+
+	req.Actor = models.Actor{
+		ID:   user.ID,
+		Name: user.Name,
+	}
+
+	if err := h.service.Delete(c, req); err != nil {
+		response.SendError(c, err, req)
+		return
+	}
+	c.Status(http.StatusNoContent)
 }

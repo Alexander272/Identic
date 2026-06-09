@@ -2,6 +2,7 @@ package redis
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -25,17 +26,12 @@ type Search interface {
 }
 
 func (r *SearchRepo) GetCache(ctx context.Context, req *models.GetCacheDTO) ([]string, error) {
-	cmd := r.db.Get(ctx, fmt.Sprintf("%s_%s", req.SearchId, req.OrderId))
-	if cmd.Err() != nil {
-		return nil, fmt.Errorf("failed to execute query. error: %w", cmd.Err())
-	}
-
-	str, err := cmd.Result()
+	str, err := r.db.Get(ctx, fmt.Sprintf("%s_%s", req.SearchId, req.OrderId)).Result()
 	if err != nil {
-		if err == redis.Nil {
+		if errors.Is(err, redis.Nil) {
 			return nil, models.ErrSearchExpired
 		}
-		return nil, fmt.Errorf("failed to get result. error: %w", err)
+		return nil, fmt.Errorf("failed to execute query. error: %w", err)
 	}
 
 	return strings.Split(str, ";"), nil

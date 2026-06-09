@@ -35,15 +35,21 @@ func (r *PriceSearchLogRepo) Create(ctx context.Context, dto *models.CreatePrice
 		return fmt.Errorf("failed to marshal codes: %w", err)
 	}
 
+	fieldsJSON, err := json.Marshal(dto.Fields)
+	if err != nil {
+		return fmt.Errorf("failed to marshal fields: %w", err)
+	}
+
 	query := fmt.Sprintf(`
-		INSERT INTO %s (queries, codes, actor_id, actor_name, results_count, duration_ms)
-		VALUES ($1, $2, $3, $4, $5, $6)`,
+		INSERT INTO %s (queries, codes, fields, actor_id, actor_name, results_count, duration_ms)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)`,
 		Tables.PriceSearchLogs,
 	)
 
 	_, err = r.db.Exec(ctx, query,
 		queriesJSON,
 		codesJSON,
+		fieldsJSON,
 		dto.ActorID,
 		dto.ActorName,
 		dto.ResultsCount,
@@ -57,14 +63,16 @@ func (r *PriceSearchLogRepo) Create(ctx context.Context, dto *models.CreatePrice
 }
 
 func (r *PriceSearchLogRepo) Get(ctx context.Context, dto *models.GetPriceSearchLogsDTO) ([]*models.PriceSearchLog, error) {
-	baseQuery := fmt.Sprintf(`SELECT id, queries, codes, actor_id, actor_name, results_count, duration_ms, created_at FROM %s`,
-		Tables.PriceSearchLogs,
+	baseQuery := fmt.Sprintf(`SELECT s.id, queries, codes, fields, actor_id, actor_name, results_count, duration_ms, s.created_at,
+		COALESCE(u.last_name, ''), COALESCE(u.first_name, ''), COALESCE(u.email, '')
+		FROM %s s LEFT JOIN %s u ON actor_id::text=u.sso_id`,
+		Tables.PriceSearchLogs, Tables.Users,
 	)
 
 	qb := postgres.NewQueryBuilder(baseQuery)
 	qb.AddUUIDFilter("actor_id", dto.ActorID)
-	qb.AddDateRangeFilter("created_at", dto.StartDate, dto.EndDate)
-	qb.SetSort("created_at", true)
+	qb.AddDateRangeFilter("s.created_at", dto.StartDate, dto.EndDate)
+	qb.SetSort("s.created_at", true)
 
 	if dto.Limit > 0 {
 		qb.SetLimit(dto.Limit)
@@ -84,11 +92,12 @@ func (r *PriceSearchLogRepo) Get(ctx context.Context, dto *models.GetPriceSearch
 	logs := make([]*models.PriceSearchLog, 0, 20)
 	for rows.Next() {
 		log := &models.PriceSearchLog{}
-		var queriesBytes, codesBytes []byte
+		var queriesBytes, codesBytes, fieldsBytes []byte
 
 		if err := rows.Scan(
-			&log.ID, &queriesBytes, &codesBytes, &log.ActorID, &log.ActorName,
+			&log.ID, &queriesBytes, &codesBytes, &fieldsBytes, &log.ActorID, &log.ActorName,
 			&log.ResultsCount, &log.DurationMs, &log.CreatedAt,
+			&log.Actor.LastName, &log.Actor.FirstName, &log.Actor.Email,
 		); err != nil {
 			return nil, postgres.MapError(fmt.Errorf("failed to scan price search log: %w", err))
 		}
@@ -99,6 +108,11 @@ func (r *PriceSearchLogRepo) Get(ctx context.Context, dto *models.GetPriceSearch
 		if codesBytes != nil {
 			json.Unmarshal(codesBytes, &log.Codes)
 		}
+		if fieldsBytes != nil {
+			json.Unmarshal(fieldsBytes, &log.Fields)
+		}
+
+		log.Actor.SSO_ID = log.ActorID.String()
 
 		logs = append(logs, log)
 	}

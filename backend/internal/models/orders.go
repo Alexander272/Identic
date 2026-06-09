@@ -64,7 +64,8 @@ type OrderDTO struct {
 }
 
 type DeleteOrderDTO struct {
-	Id string `json:"id" db:"id"`
+	Id    string `json:"id" db:"id"`
+	Actor Actor
 }
 
 type OrderUpdateEvent struct {
@@ -88,6 +89,10 @@ type FlatOrder struct {
 	Quantity      float32   `json:"quantity" db:"quantity"`
 	PositionNotes string    `json:"positionNotes" db:"pos_notes"`
 	CreatedAt     time.Time `json:"createdAt" db:"created_at"`
+}
+
+type ExportOrderRequest struct {
+	Id string `json:"id" binding:"required"`
 }
 
 type FlatOrderRes struct {
