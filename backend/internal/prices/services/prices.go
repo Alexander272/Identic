@@ -95,7 +95,13 @@ func (s *PricesService) Search(ctx context.Context, req *models.SearchPriceReque
 }
 
 func (s *PricesService) SearchAll(ctx context.Context, req *models.SearchPriceRequest) ([]*models.Price, error) {
-	prices, err := s.repo.SearchAll(ctx, req.Queries, req.Codes, req.Fields)
+	normalizedQueries := normalizeQueries(req.Queries)
+	codes := req.Codes
+	if codes == nil {
+		codes = []string{}
+	}
+
+	prices, err := s.repo.SearchAll(ctx, normalizedQueries, codes, req.Fields)
 	if err != nil {
 		return nil, fmt.Errorf("failed to search all prices. error: %w", err)
 	}
