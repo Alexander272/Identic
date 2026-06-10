@@ -26,13 +26,15 @@ export const priceApiSlice = apiSlice.injectEndpoints({
 				method: 'POST',
 				body,
 			}),
+			providesTags: ['Prices'],
 		}),
-		searchAllPrices: builder.mutation<{ data: Price[]; total?: number }, SearchPriceRequest>({
+		searchAllPrices: builder.query<{ data: Price[]; total?: number }, SearchPriceRequest>({
 			query: body => ({
 				url: API.price.searchAll,
 				method: 'POST',
 				body,
 			}),
+			providesTags: ['Prices'],
 		}),
 		exportPrices: builder.mutation<null, ExportPriceRequest>({
 			queryFn: async (params, _api, _options, baseQuery) => {
@@ -91,7 +93,8 @@ export const priceApiSlice = apiSlice.injectEndpoints({
 export const {
 	useGetPricesQuery,
 	useLazySearchPriceQuery,
-	useSearchAllPricesMutation,
+	useSearchAllPricesQuery,
+	useLazySearchAllPricesQuery,
 	useExportPricesMutation,
 	useImportPricesMutation,
 	useBatchPriceSaveMutation,

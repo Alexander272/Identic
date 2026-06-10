@@ -100,9 +100,9 @@ export const Statistics = () => {
 				}}
 				sx={{ borderBottom: 1, borderColor: 'divider' }}
 			>
-				{canSeeSearch && <Tab value={0} label='Поисковые запросы' sx={{ textTransform: 'none' }} />}
-				{canSeePriceSearch && <Tab value={1} label='Поиск цен' sx={{ textTransform: 'none' }} />}
+				{canSeePriceSearch && <Tab value={1} label='Книга цен' sx={{ textTransform: 'none' }} />}
 				{canSeeActivity && <Tab value={2} label='Заявки' sx={{ textTransform: 'none' }} />}
+				{canSeeSearch && <Tab value={0} label='Поисковые запросы' sx={{ textTransform: 'none' }} />}
 				{canSeeLogins && <Tab value={3} label='Пользователи' sx={{ textTransform: 'none' }} />}
 			</Tabs>
 

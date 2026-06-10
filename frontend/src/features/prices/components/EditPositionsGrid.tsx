@@ -4,13 +4,13 @@ import { DataSheetGrid, textColumn, floatColumn, keyColumn, type Column } from '
 import type { Operation } from 'react-datasheet-grid/dist/types'
 import './editPositionsGrid.css'
 
+import type { GridRow } from '../utils/grid'
 import { ContextMenu } from '@/components/DataSheet/ContextMenu'
 import { AddRow } from '@/components/DataSheet/AddRow'
 import { SaveIcon } from '@/components/Icons/SaveIcon'
-import type { GridRow } from '../utils/grid'
 
 const defaultRow = (): GridRow => ({
-	id: '',
+	id: new Date().getTime().toString() + Math.random().toString(36).slice(2, 9),
 	code: '',
 	currentName: '',
 	newName: null,
@@ -55,30 +55,30 @@ export const EditPositionsGrid: FC<Props> = ({ rows, onRowsChange, onSave, isSav
 
 		for (const op of operations) {
 			if (op.type !== 'DELETE') continue
-			for (let i = op.fromRowIndex; i < op.toRowIndex; i++)
-				rowsToDelete.add(i)
+			for (let i = op.fromRowIndex; i < op.toRowIndex; i++) rowsToDelete.add(i)
 		}
 
 		// Step 1: Apply deletions to old rows
 		const result: GridRow[] = []
 		for (let i = 0; i < rows.length; i++) {
 			if (rowsToDelete.has(i)) {
-				if (rows[i].status !== 'CREATED')
-					result.push({ ...rows[i], status: 'DELETED' })
+				if (rows[i].status !== 'CREATED') result.push({ ...rows[i], status: 'DELETED' })
 			} else {
 				result.push({ ...rows[i] })
 			}
 		}
 
-		// Step 2: Mark ORIGINAL rows as UPDATED
+		// Step 2: Apply updates from grid to result
 		for (const op of operations) {
 			if (op.type !== 'UPDATE') continue
 			for (let i = op.fromRowIndex; i < op.toRowIndex; i++) {
 				const newRow = newRows[i]
 				if (!newRow?.id) continue
 				const pos = result.findIndex(r => r.id === newRow.id)
-				if (pos !== -1 && result[pos].status === 'ORIGINAL')
-					result[pos] = { ...result[pos], status: 'UPDATED' }
+				if (pos !== -1) {
+					const status = result[pos].status === 'ORIGINAL' ? 'UPDATED' : result[pos].status
+					result[pos] = { ...newRow, status }
+				}
 			}
 		}
 
@@ -88,8 +88,7 @@ export const EditPositionsGrid: FC<Props> = ({ rows, onRowsChange, onSave, isSav
 			for (let i = op.fromRowIndex; i < op.toRowIndex; i++) {
 				const newRow = newRows[i]
 				if (!newRow) continue
-				if (!newRow.id || !result.some(r => r.id === newRow.id))
-					result.push({ ...newRow, status: 'CREATED' })
+				if (!newRow.id || !result.some(r => r.id === newRow.id)) result.push({ ...newRow, status: 'CREATED' })
 			}
 		}
 

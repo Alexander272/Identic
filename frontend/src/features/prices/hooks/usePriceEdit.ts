@@ -1,10 +1,10 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { toast } from 'react-toastify'
 
 import type { SearchPriceRequest } from '@/features/prices/types'
 import { gridRowToUpdate, positionToGridRow, type GridRow } from '@/features/prices/utils/grid'
 import { isApiError } from '@/features/prices/utils/error'
-import { useBatchPriceSaveMutation, useSearchAllPricesMutation } from '@/features/prices/priceApiSlice'
+import { useBatchPriceSaveMutation, useLazySearchAllPricesQuery } from '@/features/prices/priceApiSlice'
 
 type SearchParams = {
 	queries?: string[]
@@ -14,12 +14,27 @@ type SearchParams = {
 
 export const usePriceEdit = () => {
 	const [batchSave, { isLoading: isSaving }] = useBatchPriceSaveMutation()
-	const [search, { isLoading }] = useSearchAllPricesMutation()
+	const [search, { isLoading, data }] = useLazySearchAllPricesQuery()
 
-	const [rows, setRows] = useState<GridRow[]>([])
+	const [localRows, setLocalRows] = useState<GridRow[] | null>(null)
 
-	const hasChanges = rows.some(r => r.status !== 'ORIGINAL')
-	const hasInvalid = rows.some(r => r.status !== 'DELETED' && !r.code)
+	const serverRows = useMemo(() => {
+		return data?.data.map(positionToGridRow) || []
+	}, [data])
+
+	const rows = useMemo(() => {
+		return localRows !== null ? localRows : serverRows
+	}, [localRows, serverRows])
+
+	const hasChanges = useMemo(() => rows.some(r => r.status !== 'ORIGINAL'), [rows])
+	const hasInvalid = useMemo(() => rows.some(r => r.status !== 'DELETED' && !r.code), [rows])
+
+	const handleRowsChange = useCallback((nextRows: GridRow[] | ((prev: GridRow[]) => GridRow[])) => {
+		setLocalRows(prev => {
+			const current = prev !== null ? prev : serverRows
+			return typeof nextRows === 'function' ? nextRows(current) : nextRows
+		})
+	}, [serverRows])
 
 	const handleSearch = useCallback(
 		async (params: SearchParams) => {
@@ -31,12 +46,12 @@ export const usePriceEdit = () => {
 				const body: SearchPriceRequest = isCodes
 					? { codes: params.codes }
 					: { queries: params.queries, fields: params.fields }
-				const result = await search(body).unwrap()
 
-				setRows(result.data.map(positionToGridRow))
+				setLocalRows(null)
+				await search(body).unwrap()
 			} catch (err) {
 				toast.error(isApiError(err) ? err.data.message : 'Ошибка поиска')
-				setRows([])
+				setLocalRows([])
 			}
 		},
 		[search],
@@ -56,8 +71,9 @@ export const usePriceEdit = () => {
 				prices: toUpdate.map(gridRowToUpdate),
 				deleteCodes: toDelete.length > 0 ? toDelete : undefined,
 			}).unwrap()
+
 			toast.success('Изменения сохранены')
-			setRows(prev => prev.filter(r => r.status !== 'DELETED').map(r => ({ ...r, status: 'ORIGINAL' as const })))
+			setLocalRows(null)
 		} catch (err) {
 			toast.error(isApiError(err) ? err.data.message : 'Ошибка сохранения', { autoClose: false })
 		}
@@ -65,7 +81,7 @@ export const usePriceEdit = () => {
 
 	return {
 		rows,
-		setRows,
+		setRows: handleRowsChange,
 		hasChanges,
 		hasInvalid,
 		handleSearch,
