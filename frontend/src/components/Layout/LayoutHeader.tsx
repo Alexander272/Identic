@@ -72,6 +72,26 @@ export const LayoutHeader = () => {
 						) : null}
 
 						<Stack direction={'row'} spacing={0.5}>
+							<Link to={AppRoutes.CreateOrder}>
+								<Tooltip title='Добавить заказ' disableInteractive>
+									<NavBox sx={{ ':hover': { svg: { fill: palette.primary.main } } }}>
+										<AddFileIcon fill={'#000'} fontSize={26} transition={'0.3s all ease-in-out'} />
+									</NavBox>
+								</Tooltip>
+							</Link>
+
+							<Link to={AppRoutes.Search}>
+								<Tooltip title='Поиск' disableInteractive>
+									<NavBox sx={{ ':hover': { svg: { fill: palette.primary.main } } }}>
+										<SearchIcon
+											sx={{ fontSize: 24, transition: '0.3s all ease-in-out', fill: '#000' }}
+										/>
+									</NavBox>
+								</Tooltip>
+							</Link>
+						</Stack>
+
+						<Stack direction={'row'} spacing={0.5}>
 							{canEditSettings ? (
 								<Link to={AppRoutes.Accesses}>
 									<Tooltip title='Настройка доступа' disableInteractive>
@@ -92,28 +112,10 @@ export const LayoutHeader = () => {
 								</Link>
 							) : null}
 
-							<Link to={AppRoutes.CreateOrder}>
-								<Tooltip title='Добавить заказ' disableInteractive>
-									<NavBox sx={{ ':hover': { svg: { fill: palette.primary.main } } }}>
-										<AddFileIcon fill={'#000'} fontSize={26} transition={'0.3s all ease-in-out'} />
-									</NavBox>
-								</Tooltip>
-							</Link>
-
-							<Link to={AppRoutes.Search}>
-								<Tooltip title='Поиск' disableInteractive>
-									<NavBox sx={{ ':hover': { svg: { fill: palette.primary.main } } }}>
-										<SearchIcon
-											sx={{ fontSize: 24, transition: '0.3s all ease-in-out', fill: '#000' }}
-										/>
-									</NavBox>
-								</Tooltip>
-							</Link>
+							<NavBox onClick={logoutHandler} sx={{ ':hover': { svg: { fill: palette.primary.main } } }}>
+								<LogoutIcon fill={'#000'} fontSize={24} transition={'0.3s all ease-in-out'} />
+							</NavBox>
 						</Stack>
-
-						<NavBox onClick={logoutHandler} sx={{ ':hover': { svg: { fill: palette.primary.main } } }}>
-							<LogoutIcon fill={'#000'} fontSize={24} transition={'0.3s all ease-in-out'} />
-						</NavBox>
 					</Stack>
 				) : null}
 			</Toolbar>

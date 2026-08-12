@@ -1,5 +1,6 @@
 import { type FC, useCallback, useMemo, useState, useEffect } from 'react'
 import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Alert, Box, Stack, Typography } from '@mui/material'
+import { Check } from '@mui/icons-material'
 
 import type { Price } from '@/features/prices/types'
 import { COLUMNS, STORAGE_KEY, COLUMN_KEYS, createCellRenderers, highlight } from './cells'
@@ -45,6 +46,24 @@ export const ResultsTable: FC<ResultsTableProps> = ({
 	onRowsPerPageChange,
 }) => {
 	const canEdit = useCheckPermission(PermRules.Prices.Write)
+
+	const [selected, setSelected] = useState<Record<string, Price>>({})
+
+	const selectedCodes = useMemo(() => Object.keys(selected), [selected])
+
+	const toggleSelect = useCallback((position: Price) => {
+		setSelected(prev => {
+			const next = { ...prev }
+			if (next[position.code]) {
+				delete next[position.code]
+			} else {
+				next[position.code] = position
+			}
+			return next
+		})
+	}, [])
+
+	const handleClearSelection = useCallback(() => setSelected({}), [])
 
 	const [visibleColumns, setVisibleColumns] = useState<string[]>(() => {
 		try {
@@ -144,12 +163,15 @@ export const ResultsTable: FC<ResultsTableProps> = ({
 				visibleColumns={visibleColumns}
 				onToggleColumn={handleToggleColumn}
 				canEdit={canEdit}
+				selected={selectedCodes.map(code => selected[code])}
+				onClearSelection={handleClearSelection}
 			/>
 
 			<TableContainer sx={{ maxHeight: 'calc(100vh - 350px)', borderRadius: 2 }}>
 				<Table stickyHeader size='small'>
 					<TableHead>
 						<TableRow>
+							<TableCell sx={{ width: 36, padding: 0.5, backgroundColor: '#fafafa' }} />
 							{visibleColumnDefs.map(col => (
 								<TableCell
 									key={col.key}
@@ -164,7 +186,7 @@ export const ResultsTable: FC<ResultsTableProps> = ({
 						{isLoading && (
 							<TableRow>
 								<TableCell
-									colSpan={visibleColumnDefs.length}
+									colSpan={visibleColumnDefs.length + 1}
 									align='center'
 									sx={{ py: 4 }}
 								>
@@ -180,7 +202,7 @@ export const ResultsTable: FC<ResultsTableProps> = ({
 						{tableRows.length === 0 && !isLoading && (
 							<TableRow>
 								<TableCell
-									colSpan={visibleColumnDefs.length}
+									colSpan={visibleColumnDefs.length + 1}
 									align='center'
 									sx={{ py: 4, color: 'text.secondary' }}
 								>
@@ -196,12 +218,24 @@ export const ResultsTable: FC<ResultsTableProps> = ({
 							row.kind === 'data' ? (
 								<TableRow
 									key={`${i}-${row.position.id}`}
+									onClick={() => toggleSelect(row.position)}
 									sx={{
-										'&:nth-of-type(even)': { backgroundColor: '#fafafa' },
-										'&:hover': { backgroundColor: '#f0f4f8 !important' },
+										'&:nth-of-type(even)': {
+											backgroundColor: selected[row.position.code] ? '#e3f2fd' : '#fafafa',
+										},
+										backgroundColor: selected[row.position.code] ? '#e3f2fd' : undefined,
+										'&:hover': {
+											backgroundColor: selected[row.position.code]
+												? '#dbeafe !important'
+												: '#f0f4f8 !important',
+										},
+										cursor: 'pointer',
 										transition: 'background-color 0.2s ease-in-out',
 									}}
 								>
+									<TableCell sx={{ padding: 0.5, textAlign: 'center' }}>
+										{selected[row.position.code] && <Check sx={{ fontSize: 16, color: 'primary.main' }} />}
+									</TableCell>
 									{visibleColumnDefs.map(col => cellRenderers[col.key](row.position))}
 								</TableRow>
 							) : (
@@ -213,6 +247,7 @@ export const ResultsTable: FC<ResultsTableProps> = ({
 										'&:hover': { backgroundColor: '#fdb9c3 !important' },
 									}}
 								>
+									<TableCell sx={{ padding: 0.5 }} />
 									<TableCell sx={{ fontFamily: 'monospace', fontWeight: 600, whiteSpace: 'nowrap' }}>
 										{row.code}
 									</TableCell>

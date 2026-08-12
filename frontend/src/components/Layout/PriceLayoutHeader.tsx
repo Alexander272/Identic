@@ -55,7 +55,7 @@ export const PriceLayoutHeader = () => {
 					<Typography sx={{ color: '#042e60', fontWeight: 700, fontSize: 24 }}>
 						Книга цен СИБУР - 2026{' '}
 						<Typography component='span' sx={{ fontSize: 14 }}>
-							(прайс действует по 31.05.2027)
+							(Договор СР.36710 от 07.05.2026, действует до 31.05.2027)
 						</Typography>
 					</Typography>
 					{/* <BottomArrowIcon sx={{ fontSize: 14, fill: '#008b96' }} /> */}
