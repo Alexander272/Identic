@@ -208,6 +208,7 @@ func TestOrdersService_Create_Success(t *testing.T) {
 func TestOrdersService_Create_AlreadyExists(t *testing.T) {
 	svc, repo, txMgr, _, _, _ := newTestOrdersService()
 
+	existingID := uuid.NewString()
 	dto := &models.OrderDTO{
 		Id:       uuid.NewString(),
 		Customer: "Test Customer",
@@ -216,13 +217,15 @@ func TestOrdersService_Create_AlreadyExists(t *testing.T) {
 		},
 	}
 
-	// Заказ уже существует - IsExistByPos возвращает ID существующего заказа
+	// Заказ уже существует - IsExistByPos возвращает ID существующего заказа.
+	// Сервис возвращает ID и сигнализирует о дубликате ошибкой ErrOrderAlreadyExists.
 	txMgr.On("WithinTransaction", mock.Anything, mock.Anything).Return(true, nil)
-	repo.On("IsExistByPos", mock.Anything, mock.Anything, mock.Anything).Return(dto.Id, nil)
+	repo.On("IsExistByPos", mock.Anything, mock.Anything, mock.Anything).Return(existingID, nil)
 
 	id, err := svc.Create(context.Background(), dto)
-	assert.NoError(t, err)
-	assert.Equal(t, dto.Id, id)
+	assert.ErrorIs(t, err, models.ErrOrderAlreadyExists)
+	assert.Equal(t, existingID, id) // Возвращаем ID существующего заказа
+	assert.Equal(t, existingID, dto.Id)
 }
 
 func TestOrdersService_Create_EmptyPositions(t *testing.T) {
@@ -375,12 +378,12 @@ func TestOrdersService_Create_SameContentDifferentCustomer(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, dto1.Id, id1)
 
-	// Второй заказ с тем же содержимым - возвращаем ID первого заказа
+	// Второй заказ с тем же содержимым - возвращаем ID первого заказа и сигнал о дубликате
 	txMgr.On("WithinTransaction", mock.Anything, mock.Anything).Return(true, nil).Once()
 	repo.On("IsExistByPos", mock.Anything, mock.Anything, mock.Anything).Return(dto1.Id, nil).Once()
 
 	id2, err := svc.Create(context.Background(), dto2)
-	assert.NoError(t, err)
+	assert.ErrorIs(t, err, models.ErrOrderAlreadyExists)
 	assert.Equal(t, dto1.Id, id2) // Возвращаем ID существующего заказа
 }
 

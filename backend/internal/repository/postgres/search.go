@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"fmt"
+	"strconv"
 
 	"github.com/Alexander272/Identic/backend/internal/models"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -35,6 +36,55 @@ func (r *SearchRepo) FetchExact(ctx context.Context, req *models.SearchRequest) 
 		qtys[i] = item.Quantity
 	}
 
+	// 1. Прямая подстрока: запрос является подстрокой search/notes записи.
+	//    Использует GIN-триграммный индекс на search (быстро для многих позиций).
+	results, err := r.fetchExactPass(ctx, names, qtys, ids, false)
+	if err != nil {
+		return nil, err
+	}
+
+	// 2. Обратная подстрока только для позиций без совпадений: имя записи
+	//    является подстрокой запроса (полный ввод имени с лишними словами,
+	//    запись короче запроса). Обычный сценарий этот проход не платит.
+	matched := make(map[string]struct{}, len(results))
+	for _, m := range results {
+		matched[m.ReqId] = struct{}{}
+	}
+
+	var unmatchedNames []string
+	var unmatchedQtys []float64
+	var unmatchedIds []int
+	for i, item := range req.Items {
+		if _, ok := matched[strconv.Itoa(item.Id)]; ok {
+			continue
+		}
+		unmatchedNames = append(unmatchedNames, names[i])
+		unmatchedQtys = append(unmatchedQtys, qtys[i])
+		unmatchedIds = append(unmatchedIds, ids[i])
+	}
+
+	if len(unmatchedNames) > 0 {
+		rev, err := r.fetchExactPass(ctx, unmatchedNames, unmatchedQtys, unmatchedIds, true)
+		if err != nil {
+			return nil, err
+		}
+		results = append(results, rev...)
+	}
+
+	return results, nil
+}
+
+func (r *SearchRepo) fetchExactPass(ctx context.Context, names []string, qtys []float64, ids []int, reverse bool) ([]*models.RawMatch, error) {
+	if len(names) == 0 {
+		return nil, nil
+	}
+
+	joinCond := `(p.search LIKE '%%' || r.req_name || '%%' OR p.normalized_notes LIKE '%%' || r.req_name || '%%') AND r.req_name <> ''`
+	if reverse {
+		joinCond = `(r.req_name LIKE '%%' || p.search || '%%' AND p.search <> '' AND p.search ~ '[0-9]') OR
+		            (r.req_name LIKE '%%' || p.normalized_notes || '%%' AND p.normalized_notes <> '' AND length(p.normalized_notes) > length(p.search))`
+	}
+
 	query := fmt.Sprintf(`
         WITH req AS (
             SELECT 
@@ -45,14 +95,14 @@ func (r *SearchRepo) FetchExact(ctx context.Context, req *models.SearchRequest) 
         )
         SELECT 
             o.id::text, o.year, o.customer, o.consumer, o.date, o.is_bargaining, o.is_budget,
-            r.req_item_id, p.id::text as matched_item_id, 
-			CASE WHEN p.search=r.req_name THEN p.search ELSE p.normalized_notes END as p_search,
+            r.req_item_id, p.id::text as matched_item_id,
+            CASE WHEN p.search=r.req_name THEN p.search ELSE p.normalized_notes END as p_search,
             r.req_qty, p.quantity as db_qty,
             1.0 as similarity -- Для точного поиска всегда 1.0
         FROM req r
-        JOIN %s p ON p.search LIKE '%%' || r.req_name || '%%' OR p.normalized_notes LIKE '%%' || r.req_name || '%%'
+        JOIN %s p ON %s
         JOIN %s o ON o.id = p.order_id`,
-		Tables.Positions, Tables.Orders,
+		Tables.Positions, joinCond, Tables.Orders,
 	)
 
 	rows, err := r.db.Query(ctx, query, names, qtys, ids)
@@ -93,7 +143,7 @@ func (r *SearchRepo) FetchFuzzy(ctx context.Context, req *models.SearchRequest) 
 	}
 	defer tx.Rollback(ctx)
 
-	_, _ = tx.Exec(ctx, `SET LOCAL pg_trgm.word_similarity_threshold = 0.3;`)
+	_, _ = tx.Exec(ctx, `SET LOCAL pg_trgm.word_similarity_threshold = 0.5;`)
 
 	query := fmt.Sprintf(`
         WITH req AS (
@@ -114,7 +164,7 @@ func (r *SearchRepo) FetchFuzzy(ctx context.Context, req *models.SearchRequest) 
             p.quantity as db_qty,
             word_similarity(r.req_name, p.search) as sml
         FROM req r
-        JOIN %s p ON p.search %% r.req_name 
+        JOIN %s p ON p.search %%> r.req_name 
         JOIN %s o ON o.id = p.order_id;`,
 		Tables.Positions, Tables.Orders,
 	)

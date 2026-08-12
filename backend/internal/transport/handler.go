@@ -48,6 +48,10 @@ func NewHandler(keycloak *auth.KeycloakClient, services *services.Services, hub 
 func (h *Handler) Init(conf *config.Config) *gin.Engine {
 	router := gin.New()
 
+	// Отключаем редиректы для SPA
+	router.RedirectTrailingSlash = false
+	router.RedirectFixedPath = false
+
 	router.Use(
 		gin.LoggerWithConfig(gin.LoggerConfig{
 			Skip: func(c *gin.Context) bool {
@@ -75,13 +79,16 @@ func (h *Handler) Init(conf *config.Config) *gin.Engine {
 func securityHeaders() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Header("X-Content-Type-Options", "nosniff")
-		c.Header("X-Frame-Options", "SAMEORIGIN")
-		c.Header("X-XSS-Protection", "1; mode=block")
-		c.Header("Referrer-Policy", "no-referrer-when-downgrade")
+		c.Header("X-Frame-Options", "DENY")
+		c.Header("Referrer-Policy", "strict-origin-when-cross-origin")
 		c.Header("Content-Security-Policy",
-			"default-src 'self' http: https: data: blob: 'unsafe-inline'")
-		c.Header("Strict-Transport-Security",
-			"max-age=31536000; includeSubDomains")
+			"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "+
+				"img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' ws: wss:; "+
+				"frame-ancestors 'none'; base-uri 'self'; form-action 'self';")
+		c.Header("Permissions-Policy",
+			"camera=(), microphone=(), geolocation=(), gyroscope=(), "+
+				"accelerometer=(), magnetometer=(), usb=(), payment=(), "+
+				"display-capture=(), document-domain=()")
 		c.Next()
 	}
 }
@@ -123,65 +130,76 @@ const (
 
 func (h *Handler) initStatic(router *gin.Engine) {
 	router.NoRoute(func(c *gin.Context) {
-		if strings.HasPrefix(c.Request.URL.Path, "/api") {
-			c.Status(http.StatusNotFound)
-			return
-		}
+		h.serveFrontend(c, web.Frontend)
+	})
+}
 
-		filePath := strings.TrimPrefix(c.Request.URL.Path, "/")
-		if filePath == "" {
+func (h *Handler) serveFrontend(c *gin.Context, frontend fs.FS) {
+	if strings.HasPrefix(c.Request.URL.Path, "/api") {
+		c.Status(http.StatusNotFound)
+		return
+	}
+
+	filePath := strings.TrimPrefix(c.Request.URL.Path, "/")
+	if filePath == "" {
+		filePath = indexFile
+	}
+	filePath = path.Clean(filePath)
+
+	var f fs.File
+	var err error
+	openPath := frontendRoot + "/" + filePath
+	encoding := negotiateEncoding(c.Request.Header.Get("Accept-Encoding"))
+
+	if encoding == "br" {
+		f, err = frontend.Open(openPath + ".br")
+		if err == nil {
+			c.Header("Content-Encoding", "br")
+		}
+	}
+	if f == nil && encoding == "gzip" {
+		f, err = frontend.Open(openPath + ".gz")
+		if err == nil {
+			c.Header("Content-Encoding", "gzip")
+		}
+	}
+	if f == nil {
+		f, err = frontend.Open(openPath)
+		if err != nil {
+			// Для недостающих файлов (чанки, шрифты и т.п.) возвращаем 404,
+			// а не index.html: иначе браузер получает text/html под видом JS
+			// и падает с "MIME type error" / NS_ERROR_CORRUPTED_CONTENT.
+			if path.Ext(filePath) != "" {
+				c.Status(http.StatusNotFound)
+				return
+			}
+			f, err = frontend.Open(frontendRoot + "/" + indexFile)
+			if err != nil {
+				c.Status(http.StatusNotFound)
+				return
+			}
 			filePath = indexFile
 		}
-		filePath = path.Clean(filePath)
+	}
+	defer f.Close()
 
-		var f fs.File
-		var err error
-		openPath := frontendRoot + "/" + filePath
-		encoding := negotiateEncoding(c.Request.Header.Get("Accept-Encoding"))
+	c.Header("Vary", "Accept-Encoding")
 
-		if encoding == "br" {
-			f, err = web.Frontend.Open(openPath + ".br")
-			if err == nil {
-				c.Header("Content-Encoding", "br")
-			}
-		}
-		if f == nil && encoding == "gzip" {
-			f, err = web.Frontend.Open(openPath + ".gz")
-			if err == nil {
-				c.Header("Content-Encoding", "gzip")
-			}
-		}
-		if f == nil {
-			f, err = web.Frontend.Open(openPath)
-			if err != nil {
-				f, err = web.Frontend.Open(frontendRoot + "/" + indexFile)
-				if err != nil {
-					c.Status(http.StatusNotFound)
-					return
-				}
-				filePath = indexFile
-			}
-		}
-		defer f.Close()
+	if strings.HasPrefix(filePath, assetsPrefix) {
+		c.Header("Cache-Control", "public, max-age=31536000, immutable")
+	} else {
+		c.Header("Cache-Control", "no-cache")
+	}
 
-		c.Header("Vary", "Accept-Encoding")
+	if ctype := mime.TypeByExtension(path.Ext(filePath)); ctype != "" {
+		c.Header("Content-Type", ctype)
+	}
 
-		if strings.HasPrefix(filePath, assetsPrefix) {
-			c.Header("Cache-Control", "public, max-age=31536000, immutable")
-		} else {
-			c.Header("Cache-Control", "no-cache")
-		}
-
-		if ctype := mime.TypeByExtension(path.Ext(filePath)); ctype != "" {
-			c.Header("Content-Type", ctype)
-		}
-
-		if rs, ok := f.(io.ReadSeeker); ok {
-			http.ServeContent(c.Writer, c.Request, path.Base(filePath), appStartTime, rs)
-		} else {
-			io.Copy(c.Writer, f)
-		}
-	})
+	if rs, ok := f.(io.ReadSeeker); ok {
+		http.ServeContent(c.Writer, c.Request, path.Base(filePath), appStartTime, rs)
+	} else {
+		io.Copy(c.Writer, f)
+	}
 }
 
 // negotiateEncoding parses Accept-Encoding and returns the best compression

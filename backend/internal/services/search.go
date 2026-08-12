@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/Alexander272/Identic/backend/internal/models"
 	"github.com/Alexander272/Identic/backend/internal/repository"
@@ -158,7 +159,6 @@ func (s *SearchService) genLink(item *models.OrderMatchResult, searchId string) 
 }
 
 func (s *SearchService) validateTokens(pSearch string, reqTokens []string) bool {
-	isValid := true
 	pSearchLower := strings.ToLower(pSearch)
 	dbTokens := s.makeTokenMap(pSearchLower)
 
@@ -173,26 +173,27 @@ func (s *SearchService) validateTokens(pSearch string, reqTokens []string) bool 
 			totalSpecificCount++
 			if _, exists := dbTokens[token]; exists {
 				matchedSpecificCount++
-			} else {
-				// Если специфичный токен (например, часть артикула) не найден - это мусор
-				isValid = false
-				break
 			}
-		} else if len(token) >= 2 {
-			// Для коротких слов (типа "Г" или "В") требуем точного совпадения,
-			// но не бракуем весь результат сразу, если это общее слово.
-			// Но если это тип СНП (А, В, Г), он критичен.
-			if s.isCriticalType(token) {
-				if _, exists := dbTokens[token]; !exists {
-					isValid = false
-					break
-				}
+		} else if utf8.RuneCountInString(token) == 1 && s.isCriticalType(token) {
+			// Буква типа СНП/ПУТГ (А, Б, В, Г, Д) критична и должна быть в кандидате.
+			// Токены вида "в3" уже раскрыты в "в" и "3" в makeTokenMap.
+			if _, exists := dbTokens[token]; !exists {
+				return false
 			}
 		}
 	}
 
-	if !isValid || (totalSpecificCount > 0 && matchedSpecificCount == 0) {
-		return false
+	if totalSpecificCount > 0 {
+		// Короткие запросы (артикул) требуют все специфичные токены.
+		// Для длинных (наименование с аннотацией) достаточно половины - запись
+		// может быть короче запроса (входит в него) или содержать опечатку.
+		required := totalSpecificCount
+		if totalSpecificCount > 3 {
+			required = (totalSpecificCount + 1) / 2
+		}
+		if matchedSpecificCount < required {
+			return false
+		}
 	}
 	return true
 }
@@ -202,6 +203,13 @@ func (s *SearchService) makeTokenMap(searchStr string) map[string]struct{} {
 	m := make(map[string]struct{}, len(words))
 	for _, w := range words {
 		m[w] = struct{}{}
+		// Токен вида "в3" (буква типа, слитая с цифрой размера) учитываем
+		// и как "в", и как "3" — данные могут хранить оба варианта.
+		runes := []rune(w)
+		if len(runes) == 2 && s.isCriticalType(string(runes[:1])) && runes[1] >= '0' && runes[1] <= '9' {
+			m[string(runes[:1])] = struct{}{}
+			m[string(runes[1:])] = struct{}{}
+		}
 	}
 	return m
 }
@@ -209,15 +217,11 @@ func (s *SearchService) containsDigits(str string) bool {
 	return strings.ContainsAny(str, "0123456789")
 }
 
-var reSymbols = regexp.MustCompile(`[а-яА-Яa-zA-Z]`)
+var reCriticalType = regexp.MustCompile(`^[абвгд]$`)
 
-// Критичные токены - это одиночные буквы, которые часто значат тип (А, В, Г, П)
+// Критичные токены - это одиночные буквы типа СНП/ПУТГ (А, Б, В, Г, Д)
 func (s *SearchService) isCriticalType(str string) bool {
-	if len(str) != 1 {
-		return false
-	}
-	// Проверяем, что это буква, а не просто мусор
-	return reSymbols.MatchString(str)
+	return reCriticalType.MatchString(str)
 }
 
 func (s *SearchService) calculateItemScore(sml, reqQty, dbQty float64) float64 {

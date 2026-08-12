@@ -21,6 +21,13 @@ var (
 	reCleanSymbols = regexp.MustCompile(`[^a-zA-Zа-яА-Я0-9]+`)
 	reMultiSpace   = regexp.MustCompile(`\s+`)
 	// reStd          = regexp.MustCompile(`(?:гост|ост|ту)[\s\-]*[\d\.\-]+`)
+
+	// Похожие латинские буквы → кириллица (коварные символы при копировании из Excel/PDF)
+	reLatinToCyr = strings.NewReplacer(
+		"a", "а", "e", "е", "o", "о", "p", "р",
+		"c", "с", "x", "х", "y", "у", "h", "н", "k", "к",
+		"b", "в", "m", "м", "t", "т",
+	)
 )
 
 func NormalizeString(name string) string {
@@ -47,12 +54,8 @@ func NormalizeString(name string) string {
 	//3. Удаляем все символы кроме букв, цифр
 	name = reCleanSymbols.ReplaceAllString(name, " ")
 
-	// // 4. Замена латиницы на кириллицу (самые коварные символы)
-	// replacer := strings.NewReplacer(
-	// 	"a", "а", "e", "е", "o", "о", "p", "р",
-	// 	"c", "с", "x", "х", "y", "у", "h", "н", "k", "к",
-	// )
-	// name = replacer.Replace(name)
+	// 4. Замена латиницы на кириллицу (самые коварные символы)
+	name = reLatinToCyr.Replace(name)
 
 	// 5. Схлопываем лишние пробелы внутри и по краям
 	name = reMultiSpace.ReplaceAllString(name, " ")
