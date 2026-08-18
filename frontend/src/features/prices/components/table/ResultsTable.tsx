@@ -1,14 +1,25 @@
 import { type FC, useCallback, useMemo, useState, useEffect } from 'react'
-import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Alert, Box, Stack, Typography } from '@mui/material'
+import {
+	Table,
+	TableBody,
+	TableCell,
+	TableContainer,
+	TableHead,
+	TableRow,
+	Alert,
+	Box,
+	Stack,
+	Typography,
+} from '@mui/material'
 import { Check } from '@mui/icons-material'
 
 import type { Price } from '@/features/prices/types'
+import { PermRules } from '@/features/access/constants/permissions'
 import { COLUMNS, STORAGE_KEY, COLUMN_KEYS, createCellRenderers, highlight } from './cells'
-import { ResultsTableToolbar } from './ResultsTableToolbar'
+import { useCheckPermission } from '@/features/user/hooks/check'
 import { isApiError } from '../../utils/error'
 import { PaginationBar } from './PaginationBar'
-import { useCheckPermission } from '@/features/user/hooks/check'
-import { PermRules } from '@/features/access/constants/permissions'
+import { ResultsTableToolbar } from './ResultsTableToolbar'
 
 type TableRow = { kind: 'data'; position: Price } | { kind: 'not-found'; code: string }
 
@@ -64,6 +75,14 @@ export const ResultsTable: FC<ResultsTableProps> = ({
 	}, [])
 
 	const handleClearSelection = useCallback(() => setSelected({}), [])
+
+	const handleRemoveSelected = useCallback((code: string) => {
+		setSelected(prev => {
+			const next = { ...prev }
+			delete next[code]
+			return next
+		})
+	}, [])
 
 	const [visibleColumns, setVisibleColumns] = useState<string[]>(() => {
 		try {
@@ -164,6 +183,7 @@ export const ResultsTable: FC<ResultsTableProps> = ({
 				onToggleColumn={handleToggleColumn}
 				canEdit={canEdit}
 				selected={selectedCodes.map(code => selected[code])}
+				onRemoveSelected={handleRemoveSelected}
 				onClearSelection={handleClearSelection}
 			/>
 
@@ -185,11 +205,7 @@ export const ResultsTable: FC<ResultsTableProps> = ({
 					<TableBody>
 						{isLoading && (
 							<TableRow>
-								<TableCell
-									colSpan={visibleColumnDefs.length + 1}
-									align='center'
-									sx={{ py: 4 }}
-								>
+								<TableCell colSpan={visibleColumnDefs.length + 1} align='center' sx={{ py: 4 }}>
 									<Stack alignItems='center' justifyContent='center'>
 										<Typography fontSize='1.3rem'>Идет поиск...</Typography>
 										<Typography fontSize='1.1rem' variant='caption' color='text.secondary'>
@@ -234,7 +250,9 @@ export const ResultsTable: FC<ResultsTableProps> = ({
 									}}
 								>
 									<TableCell sx={{ padding: 0.5, textAlign: 'center' }}>
-										{selected[row.position.code] && <Check sx={{ fontSize: 16, color: 'primary.main' }} />}
+										{selected[row.position.code] && (
+											<Check sx={{ fontSize: 16, color: 'primary.main' }} />
+										)}
 									</TableCell>
 									{visibleColumnDefs.map(col => cellRenderers[col.key](row.position))}
 								</TableRow>

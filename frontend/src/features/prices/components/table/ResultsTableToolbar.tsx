@@ -8,7 +8,7 @@ import { buttonSx } from '../buttonStyles'
 import { COLUMN_KEYS } from './cells'
 import { ColumnSettings } from './ColumnSettings'
 import { ExportButton } from '@/features/prices/components/table/ExportButton'
-import { SelectedPositionsPopover } from '@/features/prices/components/table/SelectedPositionsPopover'
+import { SelectedPositionsDialog } from '@/features/prices/components/table/SelectedPositionsDialog'
 import { EditBoxIcon } from '@/components/Icons/EditBoxIcon'
 
 type Props = {
@@ -20,6 +20,7 @@ type Props = {
 	onToggleColumn: (key: string) => void
 	canEdit: boolean
 	selected: Price[]
+	onRemoveSelected: (code: string) => void
 	onClearSelection: () => void
 }
 
@@ -32,11 +33,10 @@ export const ResultsTableToolbar: FC<Props> = ({
 	onToggleColumn,
 	canEdit,
 	selected,
+	onRemoveSelected,
 	onClearSelection,
 }) => {
-	const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
-
-	const handleClose = () => setAnchorEl(null)
+	const [dialogOpen, setDialogOpen] = useState(false)
 
 	return (
 		<Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1, gap: 1 }}>
@@ -53,16 +53,18 @@ export const ResultsTableToolbar: FC<Props> = ({
 								size='small'
 								color='primary'
 								variant='outlined'
-								onClick={e => setAnchorEl(e.currentTarget)}
+								onClick={() => setDialogOpen(true)}
 								sx={{ cursor: 'pointer' }}
 							/>
-							<SelectedPositionsPopover
-								anchorEl={anchorEl}
+							<SelectedPositionsDialog
+								open={dialogOpen}
 								selected={selected}
-								onClose={handleClose}
+								visibleColumns={visibleColumns}
+								onClose={() => setDialogOpen(false)}
+								onRemove={onRemoveSelected}
 								onClear={() => {
 									onClearSelection()
-									handleClose()
+									setDialogOpen(false)
 								}}
 							/>
 						</>
