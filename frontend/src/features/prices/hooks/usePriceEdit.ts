@@ -73,7 +73,12 @@ export const usePriceEdit = () => {
 			}).unwrap()
 
 			toast.success('Изменения сохранены')
-			setLocalRows(null)
+			setLocalRows(prev => {
+				if (!prev) return null
+				return prev
+					.filter(r => r.status !== 'DELETED')
+					.map(r => ({ ...r, status: 'ORIGINAL' as const }))
+			})
 		} catch (err) {
 			toast.error(isApiError(err) ? err.data.message : 'Ошибка сохранения', { autoClose: false })
 		}
