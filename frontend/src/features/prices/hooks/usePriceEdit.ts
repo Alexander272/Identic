@@ -19,7 +19,7 @@ export const usePriceEdit = () => {
 	const [localRows, setLocalRows] = useState<GridRow[] | null>(null)
 
 	const serverRows = useMemo(() => {
-		return data?.data.map(positionToGridRow) || []
+		return data?.data?.map(positionToGridRow) || []
 	}, [data])
 
 	const rows = useMemo(() => {

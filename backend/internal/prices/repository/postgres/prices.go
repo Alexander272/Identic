@@ -393,7 +393,7 @@ func (r *PricesRepo) DeleteSeveral(ctx context.Context, tx postgres.Tx, codes []
 }
 
 func scanPositions(rows pgx.Rows) ([]*models.Price, error) {
-	var data []*models.Price
+	data := make([]*models.Price, 0)
 	for rows.Next() {
 		var p models.Price
 		if err := rows.Scan(&p.ID, &p.Code, &p.CurrentName, &p.NewName, &p.Price, &p.Template, &p.Note, &p.NeedSiburApproval); err != nil {
