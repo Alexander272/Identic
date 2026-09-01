@@ -1,4 +1,4 @@
-import { type FC, useCallback, useMemo, useState, useEffect } from 'react'
+import { type FC, useCallback, useMemo, useState, useEffect, useRef } from 'react'
 import {
 	Table,
 	TableBody,
@@ -22,6 +22,8 @@ import { PaginationBar } from './PaginationBar'
 import { ResultsTableToolbar } from './ResultsTableToolbar'
 
 type TableRow = { kind: 'data'; position: Price } | { kind: 'not-found'; code: string }
+
+export type SelectedItem = { uid: number; position: Price; rowKey: string }
 
 export type ResultsTableProps = {
 	results: Price[]
@@ -58,30 +60,31 @@ export const ResultsTable: FC<ResultsTableProps> = ({
 }) => {
 	const canEdit = useCheckPermission(PermRules.Prices.Write)
 
-	const [selected, setSelected] = useState<Record<string, Price>>({})
+	const uidRef = useRef(0)
 
-	const selectedCodes = useMemo(() => Object.keys(selected), [selected])
+	const [selected, setSelected] = useState<SelectedItem[]>([])
 
-	const toggleSelect = useCallback((position: Price) => {
+	const selectedItems = useMemo(
+		() => selected.map(({ uid, position }) => ({ uid, position })),
+		[selected],
+	)
+
+	const selectedRowKeys = useMemo(() => new Set(selected.map(s => s.rowKey)), [selected])
+
+	const toggleSelect = useCallback((position: Price, rowKey: string) => {
 		setSelected(prev => {
-			const next = { ...prev }
-			if (next[position.code]) {
-				delete next[position.code]
-			} else {
-				next[position.code] = position
+			const existing = prev.find(s => s.rowKey === rowKey)
+			if (existing) {
+				return prev.filter(s => s.rowKey !== rowKey)
 			}
-			return next
+			return [...prev, { uid: ++uidRef.current, position, rowKey }]
 		})
 	}, [])
 
-	const handleClearSelection = useCallback(() => setSelected({}), [])
+	const handleClearSelection = useCallback(() => setSelected([]), [])
 
-	const handleRemoveSelected = useCallback((code: string) => {
-		setSelected(prev => {
-			const next = { ...prev }
-			delete next[code]
-			return next
-		})
+	const handleRemoveSelected = useCallback((uid: number) => {
+		setSelected(prev => prev.filter(s => s.uid !== uid))
 	}, [])
 
 	const [visibleColumns, setVisibleColumns] = useState<string[]>(() => {
@@ -182,7 +185,7 @@ export const ResultsTable: FC<ResultsTableProps> = ({
 				visibleColumns={visibleColumns}
 				onToggleColumn={handleToggleColumn}
 				canEdit={canEdit}
-				selected={selectedCodes.map(code => selected[code])}
+				selected={selectedItems}
 				onRemoveSelected={handleRemoveSelected}
 				onClearSelection={handleClearSelection}
 			/>
@@ -231,32 +234,32 @@ export const ResultsTable: FC<ResultsTableProps> = ({
 							</TableRow>
 						)}
 						{tableRows.map((row, i) =>
-							row.kind === 'data' ? (
-								<TableRow
-									key={`${i}-${row.position.id}`}
-									onClick={() => toggleSelect(row.position)}
-									sx={{
-										'&:nth-of-type(even)': {
-											backgroundColor: selected[row.position.code] ? '#e3f2fd' : '#fafafa',
-										},
-										backgroundColor: selected[row.position.code] ? '#e3f2fd' : undefined,
-										'&:hover': {
-											backgroundColor: selected[row.position.code]
-												? '#dbeafe !important'
-												: '#f0f4f8 !important',
-										},
-										cursor: 'pointer',
-										transition: 'background-color 0.2s ease-in-out',
-									}}
-								>
-									<TableCell sx={{ padding: 0.5, textAlign: 'center' }}>
-										{selected[row.position.code] && (
-											<Check sx={{ fontSize: 16, color: 'primary.main' }} />
-										)}
-									</TableCell>
-									{visibleColumnDefs.map(col => cellRenderers[col.key](row.position))}
-								</TableRow>
-							) : (
+							row.kind === 'data' ? (() => {
+								const rowKey = `${i}-${row.position.id}`
+								const isSelected = selectedRowKeys.has(rowKey)
+								return (
+									<TableRow
+										key={rowKey}
+										onClick={() => toggleSelect(row.position, rowKey)}
+										sx={{
+											'&:nth-of-type(even)': {
+												backgroundColor: isSelected ? '#e3f2fd' : '#fafafa',
+											},
+											backgroundColor: isSelected ? '#e3f2fd' : undefined,
+											'&:hover': {
+												backgroundColor: isSelected ? '#dbeafe !important' : '#f0f4f8 !important',
+											},
+											cursor: 'pointer',
+											transition: 'background-color 0.2s ease-in-out',
+										}}
+									>
+										<TableCell sx={{ padding: 0.5, textAlign: 'center' }}>
+											{isSelected && <Check sx={{ fontSize: 16, color: 'primary.main' }} />}
+										</TableCell>
+										{visibleColumnDefs.map(col => cellRenderers[col.key](row.position))}
+									</TableRow>
+								)
+							})() : (
 								<TableRow
 									key={`${i}-nf-${row.code}`}
 									sx={{

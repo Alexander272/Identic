@@ -26,10 +26,10 @@ import { buttonSx } from '../buttonStyles'
 
 type Props = {
 	open: boolean
-	selected: Price[]
+	selected: Array<{ uid: number; position: Price }>
 	visibleColumns: string[]
 	onClose: () => void
-	onRemove: (code: string) => void
+	onRemove: (uid: number) => void
 	onClear: () => void
 }
 
@@ -38,7 +38,7 @@ export const SelectedPositionsDialog: FC<Props> = ({ open, selected, visibleColu
 	const visibleCols = COLUMNS.filter(col => visibleColumns.includes(col.key))
 
 	const handleExport = useCallback(async () => {
-		const codes = selected.map(p => p.code)
+		const codes = selected.map(s => s.position.code)
 		await exportPositions({ codes, columns: visibleColumns })
 	}, [selected, visibleColumns, exportPositions])
 
@@ -109,26 +109,26 @@ export const SelectedPositionsDialog: FC<Props> = ({ open, selected, visibleColu
 								</TableRow>
 							</TableHead>
 							<TableBody>
-								{selected.map(item => (
-									<TableRow key={item.code} hover>
-										{visibleCols.map(col => (
-											<TableCell key={col.key} sx={col.sx}>
-												{col.key === 'price'
-													? (item.price ?? '').toLocaleString('ru-RU')
-													: String(item[col.key as keyof Price] ?? '')}
-											</TableCell>
-										))}
-										<TableCell sx={{ textAlign: 'center' }}>
-											<IconButton
-												size='large'
-												onClick={() => onRemove(item.code)}
-												sx={{ color: 'text.secondary', '&:hover': { color: 'error.main' } }}
-											>
-												<TimesIcon fontSize={14} />
-											</IconButton>
+							{selected.map(item => (
+								<TableRow key={item.uid} hover>
+									{visibleCols.map(col => (
+										<TableCell key={col.key} sx={col.sx}>
+											{col.key === 'price'
+												? (item.position.price ?? '').toLocaleString('ru-RU')
+												: String(item.position[col.key as keyof Price] ?? '')}
 										</TableCell>
-									</TableRow>
-								))}
+									))}
+									<TableCell sx={{ textAlign: 'center' }}>
+										<IconButton
+											size='large'
+											onClick={() => onRemove(item.uid)}
+											sx={{ color: 'text.secondary', '&:hover': { color: 'error.main' } }}
+										>
+											<TimesIcon fontSize={14} />
+										</IconButton>
+									</TableCell>
+								</TableRow>
+							))}
 							</TableBody>
 						</Table>
 					</TableContainer>

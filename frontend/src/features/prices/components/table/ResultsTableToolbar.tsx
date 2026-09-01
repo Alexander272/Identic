@@ -19,8 +19,8 @@ type Props = {
 	visibleColumns: string[]
 	onToggleColumn: (key: string) => void
 	canEdit: boolean
-	selected: Price[]
-	onRemoveSelected: (code: string) => void
+	selected: Array<{ uid: number; position: Price }>
+	onRemoveSelected: (uid: number) => void
 	onClearSelection: () => void
 }
 
@@ -92,7 +92,7 @@ export const ResultsTableToolbar: FC<Props> = ({
 						lastParams={lastParams}
 						visibleColumns={visibleColumns}
 						allColumnKeys={COLUMN_KEYS}
-						selectedCodes={selected.map(p => p.code)}
+						selectedCodes={selected.map(s => s.position.code)}
 					/>
 				)}
 			</Box>
