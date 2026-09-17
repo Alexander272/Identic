@@ -131,6 +131,14 @@ func (s *PricesService) BatchSave(ctx context.Context, req *models.BatchSavePric
 		}
 	}
 
+	seenCodes := make(map[string]struct{}, len(priceList))
+	for _, p := range priceList {
+		if _, ok := seenCodes[p.Code]; ok {
+			return fmt.Errorf("%w: повторяющийся код %q", base_models.ErrDuplicateCodes, p.Code)
+		}
+		seenCodes[p.Code] = struct{}{}
+	}
+
 	return s.txManager.WithinTransaction(ctx, func(tx postgres.Tx) error {
 		if len(priceList) > 0 {
 			if err := s.repo.UpsertSeveral(ctx, tx, priceList); err != nil {

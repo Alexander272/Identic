@@ -56,6 +56,7 @@ var (
 	ErrInvalidInput          = NewDomainError(errors.New("invalid input data"), http.StatusBadRequest, "BR001", "Переданы некорректные данные")
 	ErrRelatedRecordNotFound = NewDomainError(errors.New("related record not found"), http.StatusBadRequest, "BR002", "Указанный связанный ресурс не существует")
 	ErrNotValid              = NewDomainError(errors.New("data is not valid"), http.StatusBadRequest, "BR003", "Данные не валидны")
+	ErrDuplicateCodes        = NewDomainError(errors.New("duplicate codes in batch"), http.StatusBadRequest, "BR004", "В одной заявке не может быть несколько записей с одинаковым кодом")
 
 	// 401 & 403
 	ErrUnauthenticated  = NewDomainError(errors.New("unauthenticated"), http.StatusUnauthorized, "AU001", "Требуется авторизация")
