@@ -47,7 +47,7 @@ export const Results: FC<Props> = ({ data, search, isLoading, searchId }) => {
 
 			{data.length > 0 && !isLoading ? (
 				<Box sx={{ flexGrow: 1, minHeight: 500 }}>
-					<ResultsTable data={data} search={search} searchId={searchId} />
+					<ResultsTable key={searchId} data={data} search={search} searchId={searchId} />
 				</Box>
 			) : null}
 		</Stack>

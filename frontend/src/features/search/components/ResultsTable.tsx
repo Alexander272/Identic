@@ -1,4 +1,4 @@
-import { useState, type FC, type MouseEvent } from 'react'
+import { useMemo, useState, type FC, type MouseEvent } from 'react'
 import {
 	Stack,
 	Table,
@@ -12,6 +12,7 @@ import {
 	Tooltip,
 	useTheme,
 	TableHead,
+	TableSortLabel,
 } from '@mui/material'
 import { Link } from 'react-router'
 import dayjs from 'dayjs'
@@ -29,8 +30,13 @@ type Props = {
 	searchId: string
 }
 
+type SortKey = 'score' | 'date'
+type SortDir = 'asc' | 'desc'
+
 export const ResultsTable: FC<Props> = ({ data, search, searchId }) => {
 	const [openOrderId, setOpenOrderId] = useState<string | null>(null)
+	const [sortKey, setSortKey] = useState<SortKey>('score')
+	const [sortDir, setSortDir] = useState<SortDir>('desc')
 
 	const closeHandler = (event: MouseEvent) => {
 		event.stopPropagation()
@@ -41,12 +47,34 @@ export const ResultsTable: FC<Props> = ({ data, search, searchId }) => {
 		setOpenOrderId(orderId)
 	}
 
+	const handleSort = (key: SortKey) => {
+		if (key === sortKey) {
+			setSortDir(prev => (prev === 'desc' ? 'asc' : 'desc'))
+			return
+		}
+		setSortKey(key)
+		setSortDir('desc')
+	}
+
+	const sortedData = useMemo(() => {
+		const dir = sortDir === 'desc' ? -1 : 1
+
+		return [...data].sort((a, b) => {
+			const diff = sortKey === 'date' ? dayjs(a.date).valueOf() - dayjs(b.date).valueOf() : a.score - b.score
+
+			if (diff !== 0) return diff * dir
+
+			// Тай-брейкер при равенстве значений основной колонки
+			return sortKey === 'date' ? b.score - a.score : dayjs(a.date).valueOf() - dayjs(b.date).valueOf()
+		})
+	}, [data, sortKey, sortDir])
+
 	const openOrder = data.find(order => order.orderId === openOrderId)
 
 	return (
 		<>
 			<TableVirtuoso
-				data={data}
+				data={sortedData}
 				components={{
 					Table: props => <Table {...props} size='small' />,
 					TableHead: props => <TableHead {...props} />,
@@ -58,7 +86,7 @@ export const ResultsTable: FC<Props> = ({ data, search, searchId }) => {
 								hover
 								onClick={() => {
 									if (typeof index === 'number') {
-										handleRowClick(data[index]?.orderId)
+										handleRowClick(sortedData[index]?.orderId)
 									}
 								}}
 								sx={{ cursor: 'pointer', transition: '0.2s all ease-in-out' }}
@@ -70,14 +98,28 @@ export const ResultsTable: FC<Props> = ({ data, search, searchId }) => {
 					<>
 						<TableRow sx={{ bgcolor: '#f7f7f7', '& th': { fontWeight: 700 } }}>
 							<TableCell rowSpan={2} width={80} align='center' sx={{ borderTopLeftRadius: 8 }}>
-								Дата
+								<TableSortLabel
+									active={sortKey === 'date'}
+									direction={sortKey === 'date' ? sortDir : 'desc'}
+									onClick={() => handleSort('date')}
+									sx={{ justifyContent: 'center' }}
+								>
+									Дата
+								</TableSortLabel>
 							</TableCell>
 							<TableCell rowSpan={2} width={30} sx={{ p: 0 }} />
 							<TableCell rowSpan={2} width={480}>
 								Контрагент
 							</TableCell>
 							<TableCell rowSpan={2} width={130} align='center'>
-								% совпадения
+								<TableSortLabel
+									active={sortKey === 'score'}
+									direction={sortKey === 'score' ? sortDir : 'desc'}
+									onClick={() => handleSort('score')}
+									sx={{ justifyContent: 'center' }}
+								>
+									%&nbsp;совпадения
+								</TableSortLabel>
 							</TableCell>
 							<TableCell
 								colSpan={2}
