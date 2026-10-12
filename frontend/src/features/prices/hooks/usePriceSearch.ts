@@ -1,6 +1,8 @@
 import { useState, useCallback, useEffect } from 'react'
+import { toast } from 'react-toastify'
 
 import { useGetPricesQuery, useLazySearchPriceQuery } from '@/features/prices/priceApiSlice'
+import { MAX_SEARCH_CODES } from '@/features/prices/constants'
 import { STORAGE_KEYS } from '@/constants/storage'
 
 const ROWS_PER_PAGE_OPTIONS = [15, 30, 50, 100]
@@ -57,6 +59,11 @@ export const usePriceSearch = () => {
 			const isCodes = !!params.codes?.length
 			if (!isText && !isCodes) return
 
+			if (params.codes && params.codes.length > MAX_SEARCH_CODES) {
+				toast.error(`Слишком много кодов в запросе: ${params.codes.length}. Максимум ${MAX_SEARCH_CODES}`)
+				return
+			}
+
 			setMode('search')
 			setSearchQueries(params.queries ?? [])
 			setSearchFields(params.fields ?? [])
@@ -64,7 +71,7 @@ export const usePriceSearch = () => {
 			setPage(1)
 
 			if (isCodes) {
-				search({ codes: params.codes })
+				search({ codes: params.codes, page: 1, limit: params.codes?.length })
 			} else {
 				search({ queries: params.queries, fields: params.fields, page: 1, limit: rowsPerPage })
 			}
