@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"regexp"
 	"strings"
@@ -13,6 +14,10 @@ import (
 	"github.com/Alexander272/Identic/backend/internal/prices/repository"
 	"github.com/Alexander272/Identic/backend/internal/repository/postgres"
 )
+
+// SearchTimeout — таймаут поиска цен, меньше http.WriteTimeout (10s),
+// чтобы клиент получил понятную ошибку вместо обрыва соединения
+const SearchTimeout = 8 * time.Second
 
 var reMultiSpace = regexp.MustCompile(`\s+`)
 
@@ -51,8 +56,14 @@ func (s *PricesService) Search(ctx context.Context, req *models.SearchPriceReque
 	if len(req.Queries) == 0 && len(req.Codes) == 0 {
 		return nil, 0, base_models.ErrInvalidInput
 	}
+	if len(req.Codes) > models.MaxSearchCodes {
+		return nil, 0, base_models.ErrTooManyCodes
+	}
 
 	start := time.Now()
+
+	ctx, cancel := context.WithTimeout(ctx, SearchTimeout)
+	defer cancel()
 
 	normalizedQueries := normalizeQueries(req.Queries)
 	codes := req.Codes
@@ -63,15 +74,23 @@ func (s *PricesService) Search(ctx context.Context, req *models.SearchPriceReque
 	if req.Page <= 0 {
 		req.Page = 1
 	}
-	if req.PerPage <= 0 {
-		req.PerPage = 500
-	}
-	if req.PerPage > 100 {
-		req.PerPage = 100
+	if len(codes) > 0 {
+		req.Page = 1
+		req.PerPage = len(codes)
+	} else {
+		if req.PerPage <= 0 {
+			req.PerPage = 100
+		}
+		if req.PerPage > 500 {
+			req.PerPage = 500
+		}
 	}
 
 	prices, total, err := s.repo.Search(ctx, normalizedQueries, codes, req.Fields, req.Page, req.PerPage)
 	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			return nil, 0, base_models.ErrDeadlineExceeded
+		}
 		return nil, 0, fmt.Errorf("failed to search prices. error: %w", err)
 	}
 
@@ -95,6 +114,10 @@ func (s *PricesService) Search(ctx context.Context, req *models.SearchPriceReque
 }
 
 func (s *PricesService) SearchAll(ctx context.Context, req *models.SearchPriceRequest) ([]*models.Price, error) {
+	if len(req.Codes) > models.MaxSearchCodes {
+		return nil, base_models.ErrTooManyCodes
+	}
+
 	normalizedQueries := normalizeQueries(req.Queries)
 	codes := req.Codes
 	if codes == nil {

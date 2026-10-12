@@ -83,8 +83,9 @@ type StatusResponse struct {
 // SendError is the centralized method for sending error responses.
 // It automatically detects:
 // 1. Gin/Validator validation errors (returns 400 with field details)
-// 2. Custom HTTPError implementations (uses their metadata)
-// 3. Unknown errors (returns 500)
+// 2. Request body exceeded the limit (returns 413)
+// 3. Custom HTTPError implementations (uses their metadata)
+// 4. Unknown errors (returns 500)
 // For server errors (5xx), it logs as Error and notifies the error_bot.
 // For client errors (4xx), it logs as Info.
 func SendError(c *gin.Context, err error, request ...any) {
@@ -108,17 +109,26 @@ func SendError(c *gin.Context, err error, request ...any) {
 			})
 		}
 	} else {
-		// 2. Check for custom HTTPError
-		var httpErr HTTPError
-		if errors.As(err, &httpErr) {
-			status = httpErr.Status()
-			code = httpErr.Code()
-			message = httpErr.Message()
+		// 2. Тело запроса превысило лимит (http.MaxBytesReader)
+		var maxBytesErr *http.MaxBytesError
+		if errors.As(err, &maxBytesErr) {
+			// значения должны совпадать с models.ErrRequestTooLarge
+			status = http.StatusRequestEntityTooLarge
+			code = "BR006"
+			message = "Слишком большой запрос"
 		} else {
-			// 3. Unknown error
-			status = http.StatusInternalServerError
-			code = "U001"
-			message = "Внутренняя ошибка сервера"
+			// 3. Check for custom HTTPError
+			var httpErr HTTPError
+			if errors.As(err, &httpErr) {
+				status = httpErr.Status()
+				code = httpErr.Code()
+				message = httpErr.Message()
+			} else {
+				// 4. Unknown error
+				status = http.StatusInternalServerError
+				code = "U001"
+				message = "Внутренняя ошибка сервера"
+			}
 		}
 	}
 

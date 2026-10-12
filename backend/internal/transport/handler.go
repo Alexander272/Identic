@@ -111,6 +111,7 @@ func (h *Handler) initAPI(router *gin.Engine, conf *config.Config) {
 
 	api := router.Group("/api")
 	api.Use(limiter.Limit(conf.Limiter.RPS, conf.Limiter.Burst, conf.Limiter.TTL))
+	api.Use(middleware.BodyLimit)
 	handler.Init(api)
 
 	api.GET("/ws", func(c *gin.Context) {

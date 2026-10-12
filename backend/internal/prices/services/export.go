@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 
+	base_models "github.com/Alexander272/Identic/backend/internal/models"
 	"github.com/Alexander272/Identic/backend/internal/prices/models"
 	"github.com/Alexander272/Identic/backend/internal/prices/repository"
 	"github.com/xuri/excelize/v2"
@@ -23,6 +24,10 @@ type Export interface {
 }
 
 func (s *ExportService) ExportXLSX(ctx context.Context, req models.ExportPriceRequest) ([]byte, error) {
+	if len(req.Codes) > models.MaxSearchCodes {
+		return nil, base_models.ErrTooManyCodes
+	}
+
 	normalizedQueries := normalizeQueries(req.Queries)
 	codes := req.Codes
 	if codes == nil {

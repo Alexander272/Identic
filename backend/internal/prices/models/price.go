@@ -7,6 +7,9 @@ import (
 	"github.com/google/uuid"
 )
 
+// MaxSearchCodes — максимальное количество кодов в одном запросе поиска
+const MaxSearchCodes = 50_000
+
 type Price struct {
 	ID                uuid.UUID `json:"id"`
 	Code              string    `json:"code"`
