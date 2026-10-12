@@ -8,16 +8,21 @@ import { priceFormat } from '@/utils/format'
 
 import { STORAGE_KEYS } from '@/constants/storage'
 
-export type ColumnDef = { key: string; label: string; sx?: Record<string, unknown> }
+export type ColumnDef = { key: string; label: string; width?: number; sx?: Record<string, unknown> }
 
 export const COLUMNS: ColumnDef[] = [
-	{ key: 'code', label: 'Код', sx: { fontFamily: 'monospace', fontWeight: 600, whiteSpace: 'nowrap' as const } },
-	{ key: 'currentName', label: 'Наименование СИБУР' },
-	{ key: 'newName', label: 'Наименование СИЛУР (для проверки спецификации)' },
-	{ key: 'price', label: 'Цена, руб', sx: { whiteSpace: 'nowrap' as const } },
-	{ key: 'template', label: 'Шаблон' },
+	{
+		key: 'code',
+		label: 'Код',
+		width: 95,
+		sx: { fontFamily: 'monospace', fontWeight: 600, whiteSpace: 'nowrap' as const },
+	},
+	{ key: 'currentName', label: 'Наименование СИБУР', width: 345 },
+	{ key: 'newName', label: 'Наименование СИЛУР (для проверки спецификации)', width: 345 },
+	{ key: 'price', label: 'Цена, руб', width: 95, sx: { whiteSpace: 'nowrap' as const } },
+	{ key: 'template', label: 'Шаблон', width: 390 },
 	{ key: 'note', label: 'Примечание для СИЛУР' },
-	{ key: 'needSiburApproval', label: 'Требуется доп.согл. с СИБУР' },
+	{ key: 'needSiburApproval', label: 'Требуется доп.согл. с СИБУР', width: 160 },
 ]
 
 export const COLUMN_KEYS = COLUMNS.map(c => c.key)

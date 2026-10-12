@@ -1,4 +1,4 @@
-import { type FC, useCallback, useMemo, useState, useEffect, useRef } from 'react'
+import { type FC, useCallback, useMemo, useState, useEffect, useRef, forwardRef } from 'react'
 import {
 	Table,
 	TableBody,
@@ -10,7 +10,10 @@ import {
 	Box,
 	Stack,
 	Typography,
+	type TableProps,
+	type TableRowProps,
 } from '@mui/material'
+import { TableVirtuoso } from 'react-virtuoso'
 import { Check } from '@mui/icons-material'
 
 import type { Price } from '@/features/prices/types'
@@ -21,7 +24,13 @@ import { isApiError } from '../../utils/error'
 import { PaginationBar } from './PaginationBar'
 import { ResultsTableToolbar } from './ResultsTableToolbar'
 
-type TableRow = { kind: 'data'; position: Price } | { kind: 'not-found'; code: string }
+type TableRow =
+	| { kind: 'data'; position: Price; rowKey: string; isSelected: boolean; striped: boolean }
+	| { kind: 'not-found'; code: string }
+
+// Фиксированная раскладка: ширины колонок берутся из шапки и не меняются
+// при скролле (иначе виртуализированная таблица дёргается)
+const tableStyle = { borderCollapse: 'separate', tableLayout: 'fixed', width: '100%' } as const
 
 export type SelectedItem = { uid: number; position: Price; rowKey: string }
 
@@ -142,19 +151,89 @@ export const ResultsTable: FC<ResultsTableProps> = ({
 		if (codes && codes.length > 0) {
 			const map = new Map<string, Price>()
 			for (const p of results) map.set(p.code, p)
-			return codes.map(code => {
+			return codes.map((code, i) => {
 				const position = map.get(code)
-				return position ? { kind: 'data', position } : { kind: 'not-found', code }
+				return position
+					? {
+							kind: 'data',
+							position,
+							rowKey: `${i}-${position.id}`,
+							isSelected: selectedRowKeys.has(`${i}-${position.id}`),
+							striped: i % 2 === 1,
+						}
+					: { kind: 'not-found', code }
 			})
 		}
-		return results.map(p => ({ kind: 'data', position: p }))
-	}, [results, codes, isLoading, mode])
+		return results.map((p, i) => ({
+			kind: 'data',
+			position: p,
+			rowKey: `${i}-${p.id}`,
+			isSelected: selectedRowKeys.has(`${i}-${p.id}`),
+			striped: i % 2 === 1,
+		}))
+	}, [results, codes, isLoading, mode, selectedRowKeys])
 
 	const cellRenderers = useMemo(() => createCellRenderers(renderCell), [renderCell])
 
 	const handleToggleColumn = useCallback((key: string) => {
 		setVisibleColumns(prev => (prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]))
 	}, [])
+
+	const headerContent = (
+		<TableRow>
+			<TableCell sx={{ width: 36, padding: 0.5, backgroundColor: '#fafafa' }} />
+			{visibleColumnDefs.map(col => (
+				<TableCell
+					key={col.key}
+					width={col.width}
+					sx={{ fontWeight: 700, backgroundColor: '#fafafa', ...col.sx }}
+				>
+					{col.label}
+				</TableCell>
+			))}
+		</TableRow>
+	)
+
+	const tableComponents = useMemo(
+		() => ({
+			Scroller: forwardRef<HTMLDivElement>((props, ref) => (
+				<TableContainer {...props} ref={ref} sx={{ borderRadius: 2, overflowX: 'auto' }} />
+			)),
+			Table: (props: TableProps) => <Table {...props} stickyHeader size='small' style={tableStyle} />,
+			TableHead: forwardRef<HTMLTableSectionElement>((props, ref) => <TableHead {...props} ref={ref} />),
+			TableRow: (props: TableRowProps & { item: TableRow }) => {
+				const { item, ...rest } = props
+				if (item.kind === 'not-found') {
+					return (
+						<TableRow
+							{...rest}
+							sx={{
+								backgroundColor: '#ffced5',
+								transition: 'background-color 0.2s ease-in-out',
+								'&:hover': { backgroundColor: '#fdb9c3 !important' },
+							}}
+						/>
+					)
+				}
+				return (
+					<TableRow
+						{...rest}
+						onClick={() => toggleSelect(item.position, item.rowKey)}
+						sx={{
+							backgroundColor: item.isSelected ? '#e3f2fd' : item.striped ? '#fafafa' : undefined,
+							'&:hover': {
+								backgroundColor: item.isSelected ? '#dbeafe !important' : '#f0f4f8 !important',
+							},
+							cursor: 'pointer',
+							transition: 'background-color 0.2s ease-in-out',
+						}}
+					/>
+				)
+			},
+			TableBody: forwardRef<HTMLTableSectionElement>((props, ref) => <TableBody {...props} ref={ref} />),
+		}),
+		[toggleSelect],
+	)
 
 	if (error) {
 		return <Alert severity='error'>{isApiError(error) ? error.data.message : 'Ошибка поиска'}</Alert>
@@ -190,106 +269,73 @@ export const ResultsTable: FC<ResultsTableProps> = ({
 				onClearSelection={handleClearSelection}
 			/>
 
-			<TableContainer sx={{ maxHeight: 'calc(100vh - 350px)', borderRadius: 2 }}>
-				<Table stickyHeader size='small'>
-					<TableHead>
-						<TableRow>
-							<TableCell sx={{ width: 36, padding: 0.5, backgroundColor: '#fafafa' }} />
-							{visibleColumnDefs.map(col => (
-								<TableCell
-									key={col.key}
-									sx={{ fontWeight: 700, backgroundColor: '#fafafa', ...col.sx }}
-								>
-									{col.label}
+			{tableRows.length > 0 ? (
+				<TableVirtuoso
+					style={{ height: 'calc(100vh - 350px)' }}
+					data={tableRows}
+					components={tableComponents}
+					fixedHeaderContent={() => headerContent}
+					itemContent={(_index, row) =>
+						row.kind === 'data' ? (
+							<>
+								<TableCell sx={{ padding: 0.5, textAlign: 'center' }}>
+									{row.isSelected && <Check sx={{ fontSize: 16, color: 'primary.main' }} />}
 								</TableCell>
-							))}
-						</TableRow>
-					</TableHead>
-					<TableBody>
-						{isLoading && (
-							<TableRow>
-								<TableCell colSpan={visibleColumnDefs.length + 1} align='center' sx={{ py: 4 }}>
-									<Stack alignItems='center' justifyContent='center'>
-										<Typography fontSize='1.3rem'>Идет поиск...</Typography>
-										<Typography fontSize='1.1rem' variant='caption' color='text.secondary'>
-											Поиск может занять некоторое время
-										</Typography>
-									</Stack>
+								{visibleColumnDefs.map(col => cellRenderers[col.key](row.position))}
+							</>
+						) : (
+							<>
+								<TableCell sx={{ padding: 0.5 }} />
+								<TableCell sx={{ fontFamily: 'monospace', fontWeight: 600, whiteSpace: 'nowrap' }}>
+									{row.code}
 								</TableCell>
-							</TableRow>
-						)}
-						{tableRows.length === 0 && !isLoading && (
-							<TableRow>
-								<TableCell
-									colSpan={visibleColumnDefs.length + 1}
-									align='center'
-									sx={{ py: 4, color: 'text.secondary' }}
-								>
-									{mode === 'browse'
-										? 'Нет данных'
-										: hasFilters
-											? 'Ничего не найдено'
-											: 'Введите запрос для поиска'}
-								</TableCell>
-							</TableRow>
-						)}
-						{tableRows.map((row, i) =>
-							row.kind === 'data' ? (() => {
-								const rowKey = `${i}-${row.position.id}`
-								const isSelected = selectedRowKeys.has(rowKey)
-								return (
-									<TableRow
-										key={rowKey}
-										onClick={() => toggleSelect(row.position, rowKey)}
-										sx={{
-											'&:nth-of-type(even)': {
-												backgroundColor: isSelected ? '#e3f2fd' : '#fafafa',
-											},
-											backgroundColor: isSelected ? '#e3f2fd' : undefined,
-											'&:hover': {
-												backgroundColor: isSelected ? '#dbeafe !important' : '#f0f4f8 !important',
-											},
-											cursor: 'pointer',
-											transition: 'background-color 0.2s ease-in-out',
-										}}
+								{visibleColumnDefs.length > 1 && (
+									<TableCell
+										colSpan={visibleColumnDefs.length - 1}
+										sx={{ color: '#F44336', fontWeight: 'bold', textAlign: 'center' }}
 									>
-										<TableCell sx={{ padding: 0.5, textAlign: 'center' }}>
-											{isSelected && <Check sx={{ fontSize: 16, color: 'primary.main' }} />}
-										</TableCell>
-										{visibleColumnDefs.map(col => cellRenderers[col.key](row.position))}
-									</TableRow>
-								)
-							})() : (
-								<TableRow
-									key={`${i}-nf-${row.code}`}
-									sx={{
-										backgroundColor: '#ffced5',
-										transition: 'background-color 0.2s ease-in-out',
-										'&:hover': { backgroundColor: '#fdb9c3 !important' },
-									}}
-								>
-									<TableCell sx={{ padding: 0.5 }} />
-									<TableCell sx={{ fontFamily: 'monospace', fontWeight: 600, whiteSpace: 'nowrap' }}>
-										{row.code}
+										— Не найдено —
 									</TableCell>
-									{visibleColumnDefs.length > 1 && (
-										<TableCell
-											colSpan={visibleColumnDefs.length - 1}
-											sx={{
-												color: '#F44336',
-												fontWeight: 'bold',
-												textAlign: 'center',
-											}}
-										>
-											— Не найдено —
-										</TableCell>
-									)}
+								)}
+							</>
+						)
+					}
+				/>
+			) : (
+				<TableContainer sx={{ maxHeight: 'calc(100vh - 350px)', borderRadius: 2, overflowX: 'auto' }}>
+					<Table stickyHeader size='small' style={tableStyle}>
+						<TableHead>{headerContent}</TableHead>
+						<TableBody>
+							{isLoading ? (
+								<TableRow>
+									<TableCell colSpan={visibleColumnDefs.length + 1} align='center' sx={{ py: 4 }}>
+										<Stack alignItems='center' justifyContent='center'>
+											<Typography fontSize='1.3rem'>Идет поиск...</Typography>
+											<Typography fontSize='1.1rem' variant='caption' color='text.secondary'>
+												Поиск может занять некоторое время
+											</Typography>
+										</Stack>
+									</TableCell>
 								</TableRow>
-							),
-						)}
-					</TableBody>
-				</Table>
-			</TableContainer>
+							) : (
+								<TableRow>
+									<TableCell
+										colSpan={visibleColumnDefs.length + 1}
+										align='center'
+										sx={{ py: 4, color: 'text.secondary' }}
+									>
+										{mode === 'browse'
+											? 'Нет данных'
+											: hasFilters
+												? 'Ничего не найдено'
+												: 'Введите запрос для поиска'}
+									</TableCell>
+								</TableRow>
+							)}
+						</TableBody>
+					</Table>
+				</TableContainer>
+			)}
 
 			{showPagination && totalCount > 0 && (
 				<PaginationBar
