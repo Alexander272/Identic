@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Button, FormControlLabel, Stack, Tooltip, Typography, useTheme, Checkbox } from '@mui/material'
-import { DataSheetGrid, floatColumn, keyColumn, textColumn, type Column } from 'react-datasheet-grid'
+import { DataSheetGrid, keyColumn, textColumn, type Column } from 'react-datasheet-grid'
 import { toast } from 'react-toastify'
 
 import type { ISearchItem } from '../types/search'
@@ -9,6 +9,7 @@ import { useSearchHotkeys } from '../hooks/search'
 import { extractQuantity } from '@/utils/extract'
 import { handleGlobalPaste } from '@/utils/globalPaste'
 import { ContextMenu } from '@/components/DataSheet/ContextMenu'
+import { decimalColumn } from '@/components/DataSheet/decimalColumn'
 import { AddRow } from '@/components/DataSheet/AddRow'
 import { BoxFallback } from '@/components/Fallback/BoxFallback'
 import { SearchIcon } from '@/components/Icons/SearchIcon'
@@ -43,11 +44,11 @@ const columns: Column<ISearchItem>[] = [
 			return {
 				...rowData,
 				name: name,
-				quantity: quantity ?? rowData.quantity, // берем из парсера или оставляем старое
+				quantity: quantity || rowData.quantity, // берем из парсера или оставляем старое
 			}
 		},
 	},
-	{ ...keyColumn<ISearchItem, 'quantity'>('quantity', floatColumn), title: 'Количество', width: 0.25 },
+	{ ...keyColumn<ISearchItem, 'quantity'>('quantity', decimalColumn), title: 'Количество', width: 0.25 },
 ]
 
 export const Search = () => {

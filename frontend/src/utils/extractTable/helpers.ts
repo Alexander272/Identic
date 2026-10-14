@@ -1,4 +1,5 @@
 import { extractQuantity } from '../extract'
+import { parseDecimal } from '@/utils/number'
 import type { ParsedItem } from './types'
 
 // ================= Утилиты =================
@@ -16,9 +17,8 @@ export function parseQuantity(text: string | null | undefined): number | null {
 	const match = text.match(/(\d[\d\s.,]*)/)
 	if (!match) return null
 
-	const cleaned = match[1].replace(/\s+/g, '').replace(/[.,\s]/g, '.')
-	const value = parseFloat(cleaned)
-	return isNaN(value) || value <= 0 ? null : value
+	const value = parseDecimal(match[1])
+	return value === null || value <= 0 ? null : value
 }
 
 // ================= Таблицы / Grid =================
@@ -52,11 +52,15 @@ export function extractFromGrid<T extends HTMLElement>(
 	nameIndex: number,
 	qtyIndex: number,
 	minValid: number,
+	expectedColumns = 0,
 ): ParsedItem[] {
 	const result: ParsedItem[] = []
 
 	for (let i = startIndex + 1; i < rows.length; i++) {
 		const cells = Array.from(rows[i].children)
+		// защита от съезда колонок: строка с другим числом ячеек читается по позиции некорректно
+		if (expectedColumns && cells.length !== expectedColumns) continue
+
 		const getCellText = (idx: number) => normalizeText(cells[idx]?.textContent) || null
 
 		const nameRaw = getCellText(nameIndex)
@@ -131,35 +135,61 @@ function getSmartText(el: Element): string {
 	// Для остальных (p, li, div) берем текст как есть
 	return el.textContent || ''
 }
+// ================= Нумерация списка =================
+// Явная нумерация снимается всегда: "1. ", "1) ", "№2 ", "п/п 3 ", "п. 3 "
+const DEFINITE_PREFIX = /^\s*(?:(?:№\s*\d+|п\/п\s*\d+|п\.\s*\d+)\s*|\d+\.\s+|\d+\)\s*)/i
+// Голое "N " снимается только внутри последовательности номеров
+const BARE_PREFIX = /^\s*(\d+)\s+/
+
+/**
+ * Снимает нумерацию списка, не задевая названия, начинающиеся с числа ("3.5 мм", "40x40").
+ * Явные маркеры снимаются сразу, голое "N " — только если строки образуют последовательность 1, 2, 3…
+ */
+export function stripListNumbering(lines: string[]): string[] {
+	const definite = lines.map(line => {
+		const match = line.match(DEFINITE_PREFIX)
+		return match ? line.slice(match[0].length) : null
+	})
+
+	const bare = lines.map(line => {
+		const match = line.match(BARE_PREFIX)
+		return match ? { number: Number(match[1]), rest: line.slice(match[0].length) } : null
+	})
+
+	const stripBare = new Array<boolean>(lines.length).fill(false)
+
+	let i = 0
+	while (i < lines.length) {
+		const start = bare[i]
+		if (!start) {
+			i++
+			continue
+		}
+
+		let j = i
+		while (j + 1 < lines.length && bare[j + 1] && start.number + (j + 1 - i) === bare[j + 1]!.number) {
+			j++
+		}
+
+		// снимаем, только если нумерация образует последовательность минимум из двух строк
+		if (j > i) {
+			for (let k = i; k <= j; k++) stripBare[k] = true
+		}
+		i = j + 1
+	}
+
+	return lines.map((line, idx) => {
+		if (definite[idx] !== null) return definite[idx]!
+		if (stripBare[idx]) return bare[idx]!.rest
+		return line
+	})
+}
+
 /** Парсит одну строку в { name, quantity } */
 export function parseLine(line: string, minNameLen: number): ParsedItem | null {
-	// 1. Убираем ведущую нумерацию: "1 ", "№2 ", "3. "
-	const text = line.replace(/^\s*(?:№|п\/п|п\.|n)?\s*\d+[.)\-\s]*/i, '').trim()
+	const text = line.trim()
 	if (text.length < minNameLen) return null
 
-	// let name: string | null = null
-	// let qtyStr: string | null = null
-
-	// 2. Формат с разделителем: "Название — 3 шт"
-	// const sepMatch = text.match(/^(.+?)\s+[—\-–:]\s+(\d[\d\s.,]*)/)
-	// if (sepMatch) {
-	// 	name = sepMatch[1].trim()
-	// 	qtyStr = sepMatch[2]
-	// } else {
-	// 	// 3. Формат с числом в конце: "Название 16 ШТ"
-	// 	const endMatch = text.match(/^(.+)\s+(\d[\d\s.,]*)\s*(?:шт|pcs|ед\.?|unit|ШТ)?\s*$/i)
-	// 	if (endMatch) {
-	// 		name = endMatch[1].trim()
-	// 		qtyStr = endMatch[2]
-	// 	}
-	// }
-
 	const { name, quantity } = extractQuantity(text)
-
-	// if (!name || !qtyStr) return null
-
-	// const quantity = parseQuantity(qtyStr)
-	// if (!quantity || name.length < minNameLen) return null
-
 	return { name, quantity }
 }

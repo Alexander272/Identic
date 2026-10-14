@@ -1,12 +1,13 @@
 import type { FC } from 'react'
 import { Box, Button, Stack, useTheme } from '@mui/material'
-import { DataSheetGrid, textColumn, floatColumn, keyColumn, type Column } from 'react-datasheet-grid'
+import { DataSheetGrid, textColumn, keyColumn, type Column } from 'react-datasheet-grid'
 import type { Operation } from 'react-datasheet-grid/dist/types'
 import './editPositionsGrid.css'
 
 import type { GridRow } from '../utils/grid'
 import { ContextMenu } from '@/components/DataSheet/ContextMenu'
 import { AddRow } from '@/components/DataSheet/AddRow'
+import { decimalColumn } from '@/components/DataSheet/decimalColumn'
 import { SaveIcon } from '@/components/Icons/SaveIcon'
 
 const defaultRow = (): GridRow => ({
@@ -25,7 +26,7 @@ const columns: Column<GridRow>[] = [
 	{ ...keyColumn<GridRow, 'code'>('code', textColumn), title: 'Код', width: 0.5 },
 	{ ...keyColumn<GridRow, 'currentName'>('currentName', textColumn), title: 'Наименование', width: 1.5 },
 	{ ...keyColumn<GridRow, 'newName'>('newName', textColumn), title: 'Новое наименование', width: 1.5 },
-	{ ...keyColumn<GridRow, 'price'>('price', floatColumn), title: 'Цена', width: 0.5 },
+	{ ...keyColumn<GridRow, 'price'>('price', decimalColumn), title: 'Цена', width: 0.5 },
 	{ ...keyColumn<GridRow, 'template'>('template', textColumn), title: 'Шаблон', width: 1 },
 	{ ...keyColumn<GridRow, 'note'>('note', textColumn), title: 'Примечание', width: 1 },
 	{

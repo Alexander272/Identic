@@ -1,10 +1,12 @@
+import { parseDecimal } from '@/utils/number'
+
 // const reWithUnit = /(\d+)\s*(?:шт|кг)|(?:шт|кг)\.?\s*(\d+)/i
 // const reWithUnit = /([\d,.]+)\s*(?:шт|кг)$|(?:шт|кг)\.?\s*([\d,.]+)$/i
 // const reWithUnit = /(?:\s+|—\s*|[-]\s*)([\d,.]+)\s*(?:шт|кг)\.?$/i
 const reWithUnit = /(?:\s+|—\s*|[-]\s*)([\d,.]+)\s*(?:шт|кг)\.?$|(?:^|\s+)(?:шт|кг)\.?\s*([\d,.]+)$/i
 // const reEndDigits = /\s+(\d+)$/
 // const reEndDigits = /(?:\s+|—\s*|[-]\s+)(\d+)$/
-const reEndDigits = /(?:\s+|—\s*|[-]\s+)(\d+(?:,\d+)?)$/
+const reEndDigits = /(?:\s+|—\s*|[-]\s+)(\d+(?:[.,]\d+)?)$/
 
 /**
  * Функция парсит строку, извлекает количество и возвращает очищенное наименование.
@@ -20,7 +22,7 @@ export const extractQuantity = (input: string) => {
 
 	if (unitMatch) {
 		const qtyStr = unitMatch[1] || unitMatch[2]
-		const quantity = parseFloat(qtyStr.replace(',', '.'))
+		const quantity = parseDecimal(qtyStr) ?? 0
 
 		// Удаляем найденное количество и "шт" из названия
 		const name = s.replace(reWithUnit, '').replace(/\s+/g, ' ').trim()
@@ -37,7 +39,7 @@ export const extractQuantity = (input: string) => {
 		const endMatch = s.match(reEndDigits)
 
 		if (endMatch) {
-			const quantity = parseFloat(endMatch[1].replace(',', '.'))
+			const quantity = parseDecimal(endMatch[1]) ?? 0
 			const name = s.replace(reEndDigits, '').trim()
 			return { name, quantity }
 		}

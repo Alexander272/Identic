@@ -12,7 +12,7 @@ import {
 	type Theme,
 } from '@mui/material'
 import { Controller, FormProvider, useForm, useFormContext, useWatch } from 'react-hook-form'
-import { DataSheetGrid, floatColumn, keyColumn, textColumn, type Column } from 'react-datasheet-grid'
+import { DataSheetGrid, keyColumn, textColumn, type Column } from 'react-datasheet-grid'
 import { toast } from 'react-toastify'
 import { useNavigate } from 'react-router'
 import dayjs from 'dayjs'
@@ -25,6 +25,7 @@ import { extractQuantity } from '@/utils/extract'
 import { handleGlobalPaste } from '@/utils/globalPaste'
 import { useCreateOrderMutation } from '../../orderApiSlice'
 import { AddRow } from '@/components/DataSheet/AddRow'
+import { decimalColumn } from '@/components/DataSheet/decimalColumn'
 import { ContextMenu } from '@/components/DataSheet/ContextMenu'
 import { DateField } from '@/components/Form/DateField'
 import { AutocompleteInput } from '@/components/Autocomplete/AutocompleteInput'
@@ -64,11 +65,11 @@ const columns: Column<IPositionCreate>[] = [
 			return {
 				...rowData,
 				name: name,
-				quantity: quantity ?? rowData.quantity, // берем из парсера или оставляем старое
+				quantity: quantity || rowData.quantity, // берем из парсера или оставляем старое
 			}
 		},
 	},
-	{ ...keyColumn<IPositionCreate, 'quantity'>('quantity', floatColumn), title: 'Количество', width: 0.25 },
+	{ ...keyColumn<IPositionCreate, 'quantity'>('quantity', decimalColumn), title: 'Количество', width: 0.25 },
 	{ ...keyColumn<IPositionCreate, 'notes'>('notes', textColumn), title: 'Примечание', width: 0.75 },
 ]
 

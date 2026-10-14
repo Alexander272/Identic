@@ -8,6 +8,7 @@ import {
 	DEFAULT_QTY_PATTERN,
 	extractRawLines,
 	parseLine,
+	stripListNumbering,
 } from './helpers'
 
 export function extractTableData(html: string, config: ExtractConfig = {}): ExtractedData {
@@ -25,10 +26,8 @@ export function extractTableData(html: string, config: ExtractConfig = {}): Extr
 		return []
 	}
 
-	let structureFound = false
 	// ===== 1. Классические <table> =====
 	const tables = Array.from(doc.querySelectorAll('table'))
-	if (tables.length > 0) structureFound = true
 	for (const table of tables) {
 		console.log('parse Table')
 
@@ -42,7 +41,14 @@ export function extractTableData(html: string, config: ExtractConfig = {}): Extr
 		const indexes = findColumnIndexes(cells, DEFAULT_NAME_PATTERN, DEFAULT_QTY_PATTERN)
 		if (!indexes) continue
 
-		const result = extractFromGrid(rows, rows.indexOf(header), indexes.nameIndex, indexes.qtyIndex, minValid)
+		const result = extractFromGrid(
+			rows,
+			rows.indexOf(header),
+			indexes.nameIndex,
+			indexes.qtyIndex,
+			minValid,
+			cells.length,
+		)
 
 		if (result.length) return result
 	}
@@ -77,25 +83,20 @@ export function extractTableData(html: string, config: ExtractConfig = {}): Extr
 					indexes.nameIndex,
 					indexes.qtyIndex,
 					minValid,
+					cells.length,
 				)
 				if (result.length) return result
 			}
 		}
 	}
 
-	// Выходим если нашли таблицу, но её структура невалидна
-	if (structureFound) {
-		console.log('Structure detected but headers were invalid. Aborting before text parse.')
-		return []
-	}
-
 	// ===== 3. Плоские текстовые строки =====
-	// Исправлено: ищем элементы с прямым текстовым содержимым, а не только с 1-2 детьми
-	const lines = extractRawLines(doc)
+	// Если таблица/грид не распознаны — пробуем разобрать плоский текст
+	const lines = stripListNumbering(extractRawLines(doc))
 	const parsed: ParsedItem[] = []
 	console.log('parse text')
 
-	// 2. Парсим каждую строку
+	// Парсим каждую строку
 	for (const line of lines) {
 		const item = parseLine(line, minNameLen)
 		if (item) parsed.push(item)
